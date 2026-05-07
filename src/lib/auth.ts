@@ -54,6 +54,7 @@ export const createAuth = (c: Context<AppBindings>) => betterAuth({
         crossSubDomainCookies: {
           enabled: true,
         },
-      },
+    },
+  experimental: { joins: true },
   plugins: [jwt(jwtOptions), openAPI()]
 });

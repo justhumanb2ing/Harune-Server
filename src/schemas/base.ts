@@ -114,7 +114,7 @@ export const authJwks = pgTable('jwks', {
   expiresAt: timestamp('expiresAt', { mode: 'date' }),
 }).enableRLS()
 
-export const schema = {
+export const baseSchema = {
   user: users,
   account: authAccounts,
   session: authSessions,

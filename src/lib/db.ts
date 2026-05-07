@@ -1,10 +1,10 @@
 import { Context } from "hono";
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import { schema } from "../schemas/base";
+import { baseSchema } from "../schemas/base";
 import { AppBindings } from "../types/types";
 
-export type Database = NodePgDatabase<typeof schema>;
+export type Database = NodePgDatabase<typeof baseSchema>;
 
 export function createDB(c: Context<AppBindings>): Database {
   const cachedDB = c.get("db") as Database | undefined;
@@ -17,7 +17,7 @@ export function createDB(c: Context<AppBindings>): Database {
     max: 1,
   });
 
-  const dbInstance = drizzle({ client: pool, schema });
+  const dbInstance = drizzle({ client: pool, schema: baseSchema });
   c.set("dbPool", pool);
   c.set("db", dbInstance);
 
