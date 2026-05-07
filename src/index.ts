@@ -7,6 +7,8 @@ import { notFound } from './lib/api-response';
 import { handleHonoError } from './lib/error-utils';
 import defaultRoute from './routes/default-route';
 import docRoute from './routes/doc-route';
+import profileRoute from './routes/profile-route';
+import handleRoute from './routes/handle-route';
 
 const app = honoFactory
   .createApp()
@@ -21,6 +23,8 @@ const app = honoFactory
   })
   .route('/', defaultRoute)
   .route('/metadata', metadataRoute)
+  .route('/handle', handleRoute)
+  .route('/profile', profileRoute)
   .route('/docs', docRoute);
 
 export default app
