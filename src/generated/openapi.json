@@ -1,0 +1,163 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Harune API",
+    "version": "1.0.0",
+    "description": "API documentation for Harune"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8787"
+    },
+    {
+      "url": "https://api.harune.me"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Metadata API"
+    }
+  ],
+  "paths": {
+    "/metadata": {
+      "get": {
+        "summary": "Fetch metadata for a URL",
+        "responses": {
+          "200": {
+            "description": "Successful metadata response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string"
+                    },
+                    "canonicalUrl": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "title": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "description": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "image": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "siteName": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "favicon": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "url",
+                    "canonicalUrl",
+                    "title",
+                    "description",
+                    "image",
+                    "siteName",
+                    "favicon"
+                  ]
+                }
+              }
+            }
+          },
+          "error": {
+            "description": "Generic status from 400 | 401 | 403 | 404 | 500 | 502",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string",
+                          "enum": [
+                            "missing_url",
+                            "invalid_url",
+                            "invalid_protocol",
+                            "blocked_host",
+                            "fetch_failed",
+                            "not_found",
+                            "internal_error"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "properties": {}
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "error",
+                        "message"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string"
+                        },
+                        "canonicalUrl": {
+                          "oneOf": [
+                            {}
+                          ]
+                        },
+                        "title": {},
+                        "description": {},
+                        "image": {},
+                        "siteName": {},
+                        "favicon": {}
+                      },
+                      "required": [
+                        "url",
+                        "canonicalUrl",
+                        "title",
+                        "description",
+                        "image",
+                        "siteName",
+                        "favicon"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "description": "Returns metadata extracted from the target URL.",
+        "tags": [
+          "Metadata API"
+        ],
+        "parameters": [
+          {
+            "name": "url",
+            "in": "query",
+            "required": true,
+            "description": "URL to fetch metadata from.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    }
+  }
+}
