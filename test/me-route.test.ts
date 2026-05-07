@@ -3,7 +3,8 @@ import { Hono } from "hono";
 
 import { handleHonoError } from "../src/lib/error-utils";
 import { createMeRoute } from "../src/routes/me-route";
-import type { AppBindings } from "../src/types/types";
+import type { ProfileAnalyticsResponse } from "../src/types/analytics";
+import type { AppBindings } from "../src/types/app-bindings";
 
 type SessionState = {
 	userId: string;
@@ -12,12 +13,23 @@ type SessionState = {
 function createTestApp({
 	session,
 	meResponse,
+	analyticsError,
+	analyticsResponse,
 }: {
 	session: SessionState;
 	meResponse?: unknown;
+	analyticsError?: Error;
+	analyticsResponse?: unknown;
 }) {
 	const route = createMeRoute({
 		getMe: async () => meResponse as never,
+		getAnalytics: async () => {
+			if (analyticsError) {
+				throw analyticsError;
+			}
+
+			return analyticsResponse as never;
+		},
 	});
 
 	const app = new Hono<AppBindings>();
@@ -105,6 +117,66 @@ describe("GET /me", () => {
 				updatedAt: "2026-05-07T00:00:00.000Z",
 				planId: "plan-1",
 				credits: { upload: 12 },
+			},
+		});
+	});
+
+	it("returns the analytics response for the current user and disables caching", async () => {
+		const analyticsResponse = {
+			profilePageId: "page-1",
+			state: "ready",
+			summaries: {},
+			timezone: "Asia/Seoul",
+		} as unknown as ProfileAnalyticsResponse;
+		const app = createTestApp({
+			analyticsResponse,
+			meResponse: {},
+			session: { userId: "user-1" },
+		});
+
+		const response = await app.request("/me/analytics", {
+			headers: {
+				"x-vercel-ip-timezone": "Asia/Seoul",
+			},
+		});
+		const json = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(response.headers.get("Cache-Control")).toBe("no-store");
+		expect(json).toEqual(analyticsResponse);
+	});
+
+	it("returns 401 when analytics is requested without a session", async () => {
+		const app = createTestApp({
+			session: null,
+		});
+
+		const response = await app.request("/users/me/analytics");
+
+		expect(response.status).toBe(401);
+		expect(await response.json()).toEqual({
+			error: {
+				code: "unauthorized",
+				message: "authentication required",
+			},
+		});
+	});
+
+	it("maps analytics errors to the existing JSON error contract", async () => {
+		const app = createTestApp({
+			analyticsError: new Error("analytics unavailable"),
+			session: { userId: "user-1" },
+		});
+
+		const response = await app.request("/me/analytics");
+		const json = await response.json();
+
+		expect(response.status).toBe(500);
+		expect(response.headers.get("Cache-Control")).toBe("no-store");
+		expect(json).toEqual({
+			error: {
+				code: "profile_analytics_failed",
+				message: "failed to load profile analytics",
 			},
 		});
 	});

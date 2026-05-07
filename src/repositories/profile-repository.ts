@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 import { Database } from "../lib/db";
@@ -129,6 +129,19 @@ export async function findProfilePageByHandle(db: Database, handle: string) {
     })
     .from(profilePages)
     .where(eq(profilePages.handle, handle))
+    .limit(1);
+
+  return rows[0] ?? null;
+}
+
+export async function findOwnedProfilePageByUserId(db: Database, userId: string) {
+  const rows = await db
+    .select({
+      id: profilePages.id,
+    })
+    .from(profilePages)
+    .where(eq(profilePages.userId, userId))
+    .orderBy(desc(profilePages.updatedAt), desc(profilePages.createdAt))
     .limit(1);
 
   return rows[0] ?? null;
