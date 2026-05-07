@@ -21,6 +21,9 @@
       "name": "Handle API"
     },
     {
+      "name": "Me API"
+    },
+    {
       "name": "Profile API"
     }
   ],
@@ -531,6 +534,294 @@
             }
           }
         ]
+      }
+    },
+    "/me": {
+      "get": {
+        "summary": "Get current user app context",
+        "responses": {
+          "200": {
+            "description": "Successful me response. `user` is always present. `currentPlan` and `profilePage` are nullable when the user has no plan or owned profile page.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "currentPlan": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "codename": {
+                          "type": "string"
+                        },
+                        "quotas": {
+                          "type": "object",
+                          "properties": {
+                            "permiumSupport": {
+                              "type": "boolean"
+                            },
+                            "monthlyImages": {
+                              "type": "number"
+                            },
+                            "somethingElse": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "permiumSupport",
+                            "monthlyImages",
+                            "somethingElse"
+                          ]
+                        },
+                        "default": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "codename",
+                        "quotas",
+                        "default"
+                      ]
+                    },
+                    "profilePage": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "handle": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "image": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "handle",
+                        "name",
+                        "image"
+                      ]
+                    },
+                    "user": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "image": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "planId": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "credits": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "number"
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "email",
+                        "name",
+                        "image",
+                        "createdAt",
+                        "updatedAt",
+                        "planId",
+                        "credits"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "currentPlan",
+                    "profilePage",
+                    "user"
+                  ]
+                },
+                "examples": {
+                  "default": {
+                    "value": {
+                      "currentPlan": {
+                        "id": "plan_123",
+                        "name": "Pro",
+                        "codename": "pro",
+                        "quotas": {
+                          "permiumSupport": true,
+                          "monthlyImages": 100,
+                          "somethingElse": "something"
+                        },
+                        "default": false
+                      },
+                      "profilePage": {
+                        "id": "page_123",
+                        "handle": "harune",
+                        "name": "Harune",
+                        "image": "https://cdn.example.com/avatar.png"
+                      },
+                      "user": {
+                        "id": "user_123",
+                        "email": "user@example.com",
+                        "name": "User",
+                        "image": null,
+                        "createdAt": "2026-05-07T00:00:00.000Z",
+                        "updatedAt": "2026-05-07T00:00:00.000Z",
+                        "planId": "plan_123",
+                        "credits": {
+                          "upload": 12
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "unauthorized"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                },
+                "examples": {
+                  "unauthorized": {
+                    "summary": "No session",
+                    "value": {
+                      "error": {
+                        "code": "unauthorized",
+                        "message": "authentication required"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No user-owned app context exists for the current session.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "me_not_found"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal me data is inconsistent. This usually means a required user, plan, or profile row is missing.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "description": "Returns the authenticated user's app bootstrap context. `user` is always present, `currentPlan` and `profilePage` can be null, and password data is never exposed.",
+        "tags": [
+          "Me API"
+        ],
+        "operationId": "getMe"
       }
     },
     "/profile/{handle}": {
