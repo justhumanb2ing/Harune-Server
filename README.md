@@ -7,6 +7,12 @@ npm run dev
 npm run deploy
 ```
 
+Production deploy registers secrets from `.env.prod` first, then deploys:
+
+```txt
+bun run deploy:prod
+```
+
 [For generating/synchronizing types based on your Worker configuration run](https://developers.cloudflare.com/workers/wrangler/commands/#types):
 
 ```txt

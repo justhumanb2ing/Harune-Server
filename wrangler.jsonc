@@ -14,6 +14,14 @@
     },
   ],
   "compatibility_flags": ["nodejs_compat"],
+  "secrets": {
+    "required": [
+      "BETTER_AUTH_SECRET",
+      "GOOGLE_CLIENT_ID",
+      "GOOGLE_CLIENT_SECRET",
+      "UPSTASH_REDIS_REST_TOKEN"
+    ]
+  },
   "placement": {
     "mode": "smart",
     // "region": "aws:ap-northeast-2",
