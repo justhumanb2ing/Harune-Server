@@ -13,6 +13,7 @@ const metadataGet = openApi.paths?.["/metadata"]?.get as
 	| {
 			parameters?: unknown[];
 			responses?: Record<string, unknown>;
+			operationId?: string;
 	  }
 	| undefined;
 
@@ -22,6 +23,7 @@ if (!metadataGet) {
 
 metadataGet.responses = metadataGet.responses ?? {};
 metadataGet.responses ??= {};
+metadataGet.operationId = "getMetadata";
 metadataGet.responses["200"] = {
 	description: "Successful metadata response.",
 	content: {
@@ -61,6 +63,7 @@ metadataGet.responses["400"] = {
 				properties: {
 					error: {
 						type: "object",
+						additionalProperties: false,
 						properties: {
 							code: {
 								type: "string",
@@ -73,17 +76,13 @@ metadataGet.responses["400"] = {
 							},
 							message: { type: "string" },
 							details: {
-								oneOf: [
-									{},
-									{
-										type: "object",
-										properties: {
-											rawUrl: { type: "string" },
-											protocol: { type: "string" },
-											hostname: { type: "string" },
-										},
-									},
-								],
+								type: "object",
+								additionalProperties: false,
+								properties: {
+									rawUrl: { type: "string" },
+									protocol: { type: "string" },
+									hostname: { type: "string" },
+								},
 							},
 						},
 						required: ["code", "message"],
@@ -98,6 +97,42 @@ metadataGet.responses["400"] = {
 						error: {
 							code: "missing_url",
 							message: "url query parameter is required",
+						},
+					},
+				},
+				invalidUrl: {
+					summary: "Malformed url",
+					value: {
+						error: {
+							code: "invalid_url",
+							message: "url must be a valid absolute URL",
+							details: {
+								rawUrl: "not-a-url",
+							},
+						},
+					},
+				},
+				invalidProtocol: {
+					summary: "Unsupported protocol",
+					value: {
+						error: {
+							code: "invalid_protocol",
+							message: "url must use http or https",
+							details: {
+								protocol: "ftp:",
+							},
+						},
+					},
+				},
+				blockedHost: {
+					summary: "Blocked host",
+					value: {
+						error: {
+							code: "blocked_host",
+							message: "url points to a blocked host",
+							details: {
+								hostname: "localhost",
+							},
 						},
 					},
 				},
@@ -159,26 +194,38 @@ metadataGet.responses["502"] = {
 				properties: {
 					error: {
 						type: "object",
+						additionalProperties: false,
 						properties: {
 							code: { type: "string", enum: ["fetch_failed"] },
 							message: { type: "string" },
 							details: {
-								oneOf: [
-									{},
-									{
-										type: "object",
-										properties: {
-											reason: { type: "string" },
-											status: { type: "number" },
-										},
-									},
-								],
+								type: "object",
+								additionalProperties: false,
+								properties: {
+									reason: { type: "string" },
+									status: { type: "number" },
+								},
 							},
 						},
 						required: ["code", "message"],
 					},
 				},
 				required: ["error"],
+			},
+			examples: {
+				fetchFailed: {
+					summary: "Upstream fetch failed",
+					value: {
+						error: {
+							code: "fetch_failed",
+							message: "failed to fetch metadata",
+							details: {
+								reason: "upstream_timeout",
+								status: 504,
+							},
+						},
+					},
+				},
 			},
 		},
 	},
@@ -202,6 +249,7 @@ const handleGet = openApi.paths?.["/handle/check"]?.get as
 	| {
 			parameters?: unknown[];
 			responses?: Record<string, unknown>;
+			operationId?: string;
 	  }
 	| undefined;
 
@@ -209,6 +257,7 @@ if (!handleGet) {
 	throw new Error("Could not find /handle/check GET operation in openapi.json");
 }
 
+handleGet.operationId = "checkHandleAvailability";
 handleGet.responses ??= {};
 handleGet.responses["200"] = {
 	description:
@@ -246,24 +295,22 @@ handleGet.responses["400"] = {
 				properties: {
 					error: {
 						type: "object",
+						additionalProperties: false,
 						properties: {
 							code: { type: "string", enum: ["validation_error"] },
 							message: { type: "string" },
 							details: {
-								oneOf: [
-									{},
-									{
-										type: "array",
-										items: {
-											type: "object",
-											properties: {
-												reason: { type: "string" },
-												message: { type: "string" },
-												type: { type: "string" },
-											},
-										},
+								type: "array",
+								items: {
+									type: "object",
+									additionalProperties: false,
+									properties: {
+										reason: { type: "string" },
+										message: { type: "string" },
+										type: { type: "string" },
 									},
-								],
+									required: ["reason", "message", "type"],
+								},
 							},
 						},
 						required: ["code", "message"],
@@ -278,6 +325,22 @@ handleGet.responses["400"] = {
 						error: {
 							code: "validation_error",
 							message: "invalid request",
+						},
+					},
+				},
+				reserved: {
+					summary: "Reserved handle",
+					value: {
+						error: {
+							code: "validation_error",
+							message: "invalid request",
+							details: [
+								{
+									reason: "reserved",
+									message: "handle is reserved",
+									type: "validation",
+								},
+							],
 						},
 					},
 				},
@@ -331,6 +394,8 @@ handleGet.parameters = [
 		},
 	},
 ];
+
+delete handleGet.responses.default;
 
 const meGet = openApi.paths?.["/me"]?.get as
 	| {
@@ -575,34 +640,34 @@ const analyticsSummarySchema = {
 		changes: {
 			type: "object",
 			properties: {
-				ctr: {
-					type: "object",
-					properties: {
-						absolute: { type: "number" },
-						direction: { type: "string", enum: ["down", "flat", "up"] },
-						percent: { oneOf: [{}, { type: "number" }] },
-						previous: { type: "number" },
-					},
+					ctr: {
+						type: "object",
+						properties: {
+							absolute: { type: "number" },
+							direction: { type: "string", enum: ["down", "flat", "up"] },
+							percent: { type: "number", nullable: true },
+							previous: { type: "number" },
+						},
 					required: ["absolute", "direction", "percent", "previous"],
 				},
-				linkClicks: {
-					type: "object",
-					properties: {
-						absolute: { type: "number" },
-						direction: { type: "string", enum: ["down", "flat", "up"] },
-						percent: { oneOf: [{}, { type: "number" }] },
-						previous: { type: "number" },
-					},
+					linkClicks: {
+						type: "object",
+						properties: {
+							absolute: { type: "number" },
+							direction: { type: "string", enum: ["down", "flat", "up"] },
+							percent: { type: "number", nullable: true },
+							previous: { type: "number" },
+						},
 					required: ["absolute", "direction", "percent", "previous"],
 				},
-				pageViews: {
-					type: "object",
-					properties: {
-						absolute: { type: "number" },
-						direction: { type: "string", enum: ["down", "flat", "up"] },
-						percent: { oneOf: [{}, { type: "number" }] },
-						previous: { type: "number" },
-					},
+					pageViews: {
+						type: "object",
+						properties: {
+							absolute: { type: "number" },
+							direction: { type: "string", enum: ["down", "flat", "up"] },
+							percent: { type: "number", nullable: true },
+							previous: { type: "number" },
+						},
 					required: ["absolute", "direction", "percent", "previous"],
 				},
 			},
@@ -637,12 +702,12 @@ const analyticsSummarySchema = {
 		},
 		topItems: {
 			type: "array",
-			items: {
-				type: "object",
-				properties: {
-					change: { type: "number" },
-					changePercent: { oneOf: [{}, { type: "number" }] },
-					clicks: { type: "number" },
+				items: {
+					type: "object",
+					properties: {
+						change: { type: "number" },
+						changePercent: { type: "number", nullable: true },
+						clicks: { type: "number" },
 					kind: { type: "string", enum: ["link", "social"] },
 					label: { type: "string" },
 					previousClicks: { type: "number" },
@@ -763,6 +828,7 @@ const analytics30dExample = {
 meAnalyticsGet.summary = "Get current user analytics summary";
 meAnalyticsGet.description =
 	"Returns the authenticated owner's analytics summary for the current profile page. The response is a stateful DTO with ready, no-profile, and disabled variants. The server normalizes timezone input, reads ownership from the authenticated session, and returns no-store headers on success.";
+meAnalyticsGet.operationId = "getMeAnalytics";
 meAnalyticsGet.tags = ["Me API"];
 meAnalyticsGet.responses = {
 	200: {
