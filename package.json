@@ -10,7 +10,6 @@
   "dependencies": {
     "@better-auth/drizzle-adapter": "^1.6.9",
     "@hono/standard-validator": "^0.2.2",
-    "@hono/zod-validator": "^0.7.6",
     "@scalar/hono-api-reference": "^0.10.14",
     "@upstash/redis": "^1.38.0",
     "@valibot/to-json-schema": "^1.7.0",
