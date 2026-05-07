@@ -1,0 +1,39 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "server",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-05-07",
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 0.1,
+  },
+  "routes": [
+    {
+      "pattern": "api.harune.me",
+      "custom_domain": true,
+    },
+  ],
+  "compatibility_flags": ["nodejs_compat"],
+  "placement": {
+    "mode": "smart",
+    // "region": "aws:ap-northeast-2",
+  },
+  "vars": {
+    "BETTER_AUTH_URL": "https://api.harune.me",
+    "HARUNE_APP_ORIGIN": "https://harune.me",
+    "R2_PUBLIC_BASE_URL": "https://pub-cdb24d695a3d4aa08aa10719325ca3bd.r2.dev",
+    "UPSTASH_REDIS_REST_URL": "https://accepted-midge-95805.upstash.io"
+  },
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "cf2cd4db500f4cd981219bd01b7d3a93"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "PROFILE_MEDIA_BUCKET",
+      "bucket_name": "umbrella",
+    },
+  ]
+}

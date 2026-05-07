@@ -1,0 +1,30 @@
+{
+  "name": "server",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy --minify",
+    "cf-typegen": "wrangler types --env-interface CloudflareBindings",
+    "docs:generate": "hono-docs generate --config ./hono-docs.ts && bun scripts/patch-openapi.ts"
+  },
+  "dependencies": {
+    "@better-auth/drizzle-adapter": "^1.6.9",
+    "@hono/standard-validator": "^0.2.2",
+    "@hono/zod-validator": "^0.7.6",
+    "@scalar/hono-api-reference": "^0.10.14",
+    "@upstash/redis": "^1.38.0",
+    "@valibot/to-json-schema": "^1.7.0",
+    "better-auth": "^1.6.9",
+    "drizzle-orm": "^0.45.2",
+    "hono": "^4.12.18",
+    "pg": "^8.20.0",
+    "postgres": "^3.4.9",
+    "valibot": "^1.4.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260507.1",
+    "@rcmade/hono-docs": "^1.0.32",
+    "@types/pg": "^8.20.0",
+    "wrangler": "^4.4.0"
+  }
+}
