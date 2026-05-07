@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { AppBindings } from "../types/types";
+import { AppBindings } from "../types/app-bindings";
 import { Scalar } from "@scalar/hono-api-reference";
 import openApi from "../generated/openapi.json";
 

@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 
-import { AppBindings } from "../types/types";
+import { AppBindings } from "../types/app-bindings";
 import { getProfile } from "../services/get-profile";
 import type { ProfileResponse } from "../types/profile";
 

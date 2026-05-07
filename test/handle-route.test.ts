@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { Hono } from "hono";
 
 import { createHandleRoute } from "../src/routes/handle-route";
-import type { AppBindings } from "../src/types/types";
+import type { AppBindings } from "../src/types/app-bindings";
 
 type SessionState = {
   userId: string;
@@ -114,4 +114,3 @@ describe("GET /handle/check", () => {
     expect(getRequestedHandle()).toBe("hello_world");
   });
 });
-

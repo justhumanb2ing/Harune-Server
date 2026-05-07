@@ -19,8 +19,8 @@
       "BETTER_AUTH_SECRET",
       "GOOGLE_CLIENT_ID",
       "GOOGLE_CLIENT_SECRET",
-      "UPSTASH_REDIS_REST_TOKEN"
-    ]
+      "UPSTASH_REDIS_REST_TOKEN",
+    ],
   },
   "placement": {
     "mode": "smart",
@@ -30,18 +30,21 @@
     "BETTER_AUTH_URL": "https://api.harune.me",
     "HARUNE_APP_ORIGIN": "https://harune.me",
     "R2_PUBLIC_BASE_URL": "https://pub-cdb24d695a3d4aa08aa10719325ca3bd.r2.dev",
-    "UPSTASH_REDIS_REST_URL": "https://accepted-midge-95805.upstash.io"
+    "UPSTASH_REDIS_REST_URL": "https://accepted-midge-95805.upstash.io",
+    "UMAMI_API_ENDPOINT": "https://api.umami.is/v1",
+    "UMAMI_WEBSITE_ID": "c6d6da3b-2144-4194-a7a8-397fb884026b",
+    "UMAMI_SCRIPT_SRC": "https://cloud.umami.is/script.js",
   },
   "hyperdrive": [
     {
       "binding": "HYPERDRIVE",
-      "id": "cf2cd4db500f4cd981219bd01b7d3a93"
-    }
+      "id": "cf2cd4db500f4cd981219bd01b7d3a93",
+    },
   ],
   "r2_buckets": [
     {
       "binding": "PROFILE_MEDIA_BUCKET",
       "bucket_name": "umbrella",
     },
-  ]
+  ],
 }

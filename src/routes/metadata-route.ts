@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { fetchMetadata } from "../services/fetch-metadata";
-import type { AppBindings } from '../types/types';
+import type { AppBindings } from '../types/app-bindings';
 import {
   metadataUrlValidationErrorResponse,
   missingUrl,

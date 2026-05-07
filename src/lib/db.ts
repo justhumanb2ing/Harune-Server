@@ -2,7 +2,7 @@ import { Context } from "hono";
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { baseSchema } from "../schemas/base";
-import { AppBindings } from "../types/types";
+import { AppBindings } from "../types/app-bindings";
 
 export type Database = NodePgDatabase<typeof baseSchema>;
 

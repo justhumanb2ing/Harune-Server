@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 import type { Context } from "hono";
-import { AppBindings } from "../types/types";
+import { AppBindings } from "../types/app-bindings";
 import { hasedPassword } from "./password";
 import { jwt, openAPI } from "better-auth/plugins";
 import { jwtOptions } from "./jwt";

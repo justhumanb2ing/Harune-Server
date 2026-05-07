@@ -3,7 +3,7 @@ import type { Context } from 'hono'
 import * as v from 'valibot'
 import { metadataErrorSchema, type MetadataErrorInput } from '../../schemas/metadata'
 import type { MetadataErrorCode } from '../../types/metadata'
-import type { AppBindings } from '../../types/types'
+import type { AppBindings } from '../../types/app-bindings'
 
 type MetadataContext = Pick<Context<AppBindings>, 'json'>
 type MetadataErrorBody = v.InferOutput<typeof metadataErrorSchema>

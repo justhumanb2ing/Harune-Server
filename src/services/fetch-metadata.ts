@@ -5,7 +5,7 @@ import type { NormalizedMetadata } from '../types/metadata'
 import * as v from 'valibot'
 import { metadataResponseSchema } from '../schemas/metadata'
 import { Context } from 'hono'
-import { AppBindings } from '../types/types'
+import { AppBindings } from '../types/app-bindings'
 
 export async function fetchMetadata(
   rawUrl: string,

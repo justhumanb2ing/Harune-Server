@@ -1,7 +1,7 @@
 import { Redis } from '@upstash/redis/cloudflare'
 import { HTTPException } from 'hono/http-exception'
 import type { NormalizedMetadata } from '../types/metadata'
-import type { AppBindings } from '../types/types'
+import type { AppBindings } from '../types/app-bindings'
 
 export interface MetadataCacheStore {
   get(key: string): Promise<string | null>

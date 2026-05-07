@@ -1,5 +1,5 @@
 import { createFactory } from "hono/factory"
-import { AppBindings } from "./types/types"
+import { AppBindings } from "./types/app-bindings"
 import { createAuth } from "./lib/auth";
 import { logger } from "hono/logger";
 import { prettyJSON } from "hono/pretty-json";

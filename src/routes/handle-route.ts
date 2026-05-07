@@ -4,7 +4,7 @@ import * as v from "valibot";
 import { validationError, unauthorized } from "../lib/api-response";
 import { findProfilePageByHandle as findProfilePageByHandleInDb } from "../repositories/profile-repository";
 import { isReservedHandle } from "../lib/handles";
-import { AppBindings } from "../types/types";
+import { AppBindings } from "../types/app-bindings";
 import { Database } from "../lib/db";
 
 type HandlePageRecord = {
