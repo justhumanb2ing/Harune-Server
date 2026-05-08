@@ -306,6 +306,23 @@ function parseOptionalNullableTextField(value: unknown) {
 	return parseTrimmedString(value);
 }
 
+function parseOptionalNullableEmptyTextField(value: unknown) {
+	if (value === undefined || value === null) {
+		return value === null ? null : undefined;
+	}
+
+	if (typeof value !== "string") {
+		return null;
+	}
+
+	const trimmed = value.trim();
+	return trimmed.length > 0 ? trimmed : null;
+}
+
+function isBlankTextField(value: unknown) {
+	return typeof value === "string" && value.trim().length === 0;
+}
+
 function parseOptionalNullableUrlField(value: unknown) {
 	const parsed = parseOptionalNullableTextField(value);
 
@@ -413,16 +430,20 @@ function parseProfilePagePatch(body: unknown): ProfilePagePatch | null {
 	}
 
 	if ("location" in body) {
-		const value = parseOptionalNullableTextField(body.location);
-		if (value === null && body.location !== null) {
+		const value = parseOptionalNullableEmptyTextField(body.location);
+		if (
+			value === null &&
+			body.location !== null &&
+			!isBlankTextField(body.location)
+		) {
 			return null;
 		}
 		patch.location = value;
 	}
 
 	if ("role" in body) {
-		const value = parseOptionalNullableTextField(body.role);
-		if (value === null && body.role !== null) {
+		const value = parseOptionalNullableEmptyTextField(body.role);
+		if (value === null && body.role !== null && !isBlankTextField(body.role)) {
 			return null;
 		}
 		patch.role = value;
@@ -539,13 +560,16 @@ function parseCreateProfilePageBody(body: unknown) {
 		return null;
 	}
 
-	const role = parseOptionalCreateTextField(body.role, 80);
-	if (role === null) {
+	const role = parseOptionalNullableEmptyTextField(body.role);
+	if (body.role === null || (role === null && !isBlankTextField(body.role))) {
 		return null;
 	}
 
-	const location = parseOptionalCreateTextField(body.location, 80);
-	if (location === null) {
+	const location = parseOptionalNullableEmptyTextField(body.location);
+	if (
+		body.location === null ||
+		(location === null && !isBlankTextField(body.location))
+	) {
 		return null;
 	}
 

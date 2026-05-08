@@ -2569,7 +2569,7 @@ if (!profileMePost) {
 
 profileMePost.summary = "Create my profile page";
 profileMePost.description =
-	"Creates the authenticated user's first profile page. The server normalizes the submitted handle to lowercase, rejects reserved or malformed handles, returns 409 when a profile page already exists or the handle is already taken, and returns only the committed page snapshot on success.";
+	"Creates the authenticated user's first profile page. The server normalizes the submitted handle to lowercase, rejects reserved or malformed handles, trims text fields, treats empty `role` and `location` strings as null, returns 409 when a profile page already exists or the handle is already taken, and returns only the committed page snapshot on success.";
 profileMePost.operationId = "createProfilePage";
 profileMePost.tags = ["Profile API"];
 profileMePost.requestBody = {
@@ -2587,6 +2587,15 @@ profileMePost.requestBody = {
 						role: "Creator",
 						location: "Seoul",
 						image: "https://cdn.harune.me/avatar.png",
+					},
+				},
+				emptyOptionalFields: {
+					summary: "Leave optional text fields blank",
+					value: {
+						handle: "harune",
+						name: "Harune",
+						role: "   ",
+						location: "   ",
 					},
 				},
 			},
@@ -2742,7 +2751,7 @@ if (!profileMePut) {
 
 profileMePut.summary = "Update my profile page";
 profileMePut.description =
-	"Partially updates the authenticated user's profile page. The server trims text fields, allows null to clear fields, validates image/backgroundImage as absolute http or https URLs when provided, and returns the committed profile snapshot with no-store headers on success.";
+	"Partially updates the authenticated user's profile page. The server trims text fields, allows null to clear fields, treats empty `role` and `location` strings as null, validates image/backgroundImage as absolute http or https URLs when provided, and returns the committed profile snapshot with no-store headers on success.";
 profileMePut.operationId = "updateProfilePage";
 profileMePut.tags = ["Profile API"];
 profileMePut.requestBody = {
@@ -2763,6 +2772,13 @@ profileMePut.requestBody = {
 					value: {
 						image: null,
 						backgroundImage: null,
+					},
+				},
+				blankOptionalFields: {
+					summary: "Clear optional text fields with blanks",
+					value: {
+						role: "   ",
+						location: "   ",
 					},
 				},
 			},

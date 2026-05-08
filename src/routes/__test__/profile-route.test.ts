@@ -1154,8 +1154,8 @@ describe("POST /profile/me", () => {
 				handle: "  Maker_One  ",
 				name: "  Maker One  ",
 				bio: "  Bio  ",
-				role: "  Creator  ",
-				location: "  Seoul  ",
+				role: "   ",
+				location: "   ",
 				image: "https://cdn.harune.me/avatar.png",
 			}),
 			headers: {
@@ -1173,11 +1173,11 @@ describe("POST /profile/me", () => {
 				userId: "user-1",
 				handle: "maker_one",
 				name: "Maker One",
-				role: "Creator",
+				role: null,
 				bio: "Bio",
 				image: "https://cdn.harune.me/avatar.png",
 				backgroundImage: null,
-				location: "Seoul",
+				location: null,
 				updatedAt: "2026-05-08T01:00:00.000Z",
 			},
 		});
@@ -1186,8 +1186,8 @@ describe("POST /profile/me", () => {
 			handle: "maker_one",
 			name: "Maker One",
 			bio: "Bio",
-			role: "Creator",
-			location: "Seoul",
+			role: null,
+			location: null,
 			image: "https://cdn.harune.me/avatar.png",
 		});
 		expect(getCurrentPage()?.handle).toBe("maker_one");
@@ -1359,11 +1359,11 @@ describe("PUT /profile/me", () => {
 				userId: "user-1",
 				handle: "maker",
 				name: "Updated Maker",
-				role: "creator",
+				role: null,
 				bio: "Updated bio",
 				image: null,
 				backgroundImage: null,
-				location: "Seoul",
+				location: null,
 				updatedAt: "2026-05-08T01:00:00.000Z",
 			},
 			bento: [],
@@ -1393,6 +1393,8 @@ describe("PUT /profile/me", () => {
 			body: JSON.stringify({
 				name: "Updated Maker",
 				bio: "Updated bio",
+				role: "   ",
+				location: "   ",
 			}),
 			headers: {
 				"content-type": "application/json",
@@ -1406,6 +1408,8 @@ describe("PUT /profile/me", () => {
 		expect(getLastPatch()).toEqual({
 			name: "Updated Maker",
 			bio: "Updated bio",
+			role: null,
+			location: null,
 		});
 	});
 
