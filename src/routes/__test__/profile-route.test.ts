@@ -412,26 +412,7 @@ describe("GET /profile/pages", () => {
 		vi.restoreAllMocks();
 	});
 
-	it("returns 401 when no session exists", async () => {
-		const bucket = createMockBucket();
-		const { app } = createTestApp({
-			session: null,
-			bucket,
-		});
-
-		const response = await app.request("/profile/pages");
-
-		expect(response.status).toBe(401);
-		expect(response.headers.get("Cache-Control")).toBe("no-store");
-		expect(await response.json()).toEqual({
-			error: {
-				code: "unauthorized",
-				message: "authentication required",
-			},
-		});
-	});
-
-	it("returns all profile page rows for the current user session", async () => {
+	it("returns all profile page rows without requiring a session", async () => {
 		const bucket = createMockBucket();
 		const pages = [
 			{
@@ -464,7 +445,7 @@ describe("GET /profile/pages", () => {
 			},
 		];
 		const { app } = createTestApp({
-			session: { userId: "user-1" },
+			session: null,
 			pages,
 			bucket,
 		});

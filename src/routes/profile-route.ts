@@ -1757,14 +1757,6 @@ export function createProfileRoute(
 		})
 		.get("/pages", async (c) => {
 			try {
-				const session = c.get("session");
-
-				if (!session?.userId) {
-					return withNoStore(
-						unauthorized(c, "unauthorized", "authentication required"),
-					);
-				}
-
 				const pages = await findPages(c.get("db"));
 				const response = c.json<ProfilePagesResponse>({
 					pages: pages.map(toProfilePageRecordResponse),

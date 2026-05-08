@@ -4,7 +4,7 @@
 
 Returns every row from the `profile_page` table.
 
-This endpoint is read-only and requires an authenticated session.
+This endpoint is read-only and does not require authentication.
 
 ### Response
 
@@ -35,19 +35,6 @@ type ProfilePagesResponse = {
 - Successful responses should be returned with `Cache-Control: no-store`.
 
 ### Error Responses
-
-#### `401 Unauthorized`
-
-Returned when the request does not have a valid session.
-
-```json
-{
-  "error": {
-    "code": "unauthorized",
-    "message": "authentication required"
-  }
-}
-```
 
 #### `500 Internal Server Error`
 

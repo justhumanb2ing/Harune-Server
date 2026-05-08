@@ -2006,7 +2006,7 @@ if (!profilePagesGet) {
 
 profilePagesGet.summary = "List profile page rows";
 profilePagesGet.description =
-	"Returns every row from the profile_page table. The endpoint requires a valid session, returns rows in updatedAt descending order then createdAt descending order, serializes timestamps as ISO strings, and returns no-store headers on success.";
+	"Returns every row from the profile_page table. The endpoint does not require authentication, returns rows in updatedAt descending order then createdAt descending order, serializes timestamps as ISO strings, and returns no-store headers on success.";
 profilePagesGet.operationId = "listProfilePages";
 profilePagesGet.tags = ["Profile API"];
 profilePagesGet.responses = {
@@ -2035,24 +2035,6 @@ profilePagesGet.responses = {
 									updatedAt: "2026-05-08T01:00:00.000Z",
 								},
 							],
-						},
-					},
-				},
-			},
-		},
-	},
-	401: {
-		description: "Authentication required.",
-		content: {
-			"application/json": {
-				schema: profileErrorSchema(["unauthorized"]),
-				examples: {
-					unauthorized: {
-						value: {
-							error: {
-								code: "unauthorized",
-								message: "authentication required",
-							},
 						},
 					},
 				},
