@@ -4,7 +4,7 @@ import { Hono } from "hono";
 import { corsMiddleware } from "../src/middlewares/cors-middlewares";
 
 describe("corsMiddleware", () => {
-  it("allows PATCH preflight for approved origins", async () => {
+  it("allows PUT preflight for approved origins", async () => {
     const app = new Hono();
     app.use("*", corsMiddleware);
 
@@ -12,7 +12,7 @@ describe("corsMiddleware", () => {
       method: "OPTIONS",
       headers: {
         Origin: "https://harune.me",
-        "Access-Control-Request-Method": "PATCH",
+        "Access-Control-Request-Method": "PUT",
         "Access-Control-Request-Headers": "content-type, authorization",
       },
     });
@@ -20,5 +20,7 @@ describe("corsMiddleware", () => {
     expect(response.status).toBe(204);
     expect(response.headers.get("access-control-allow-origin")).toBe("https://harune.me");
     expect(response.headers.get("access-control-allow-methods")).toContain("PATCH");
+    expect(response.headers.get("access-control-allow-methods")).toContain("PUT");
+    expect(response.headers.get("access-control-allow-methods")).toContain("DELETE");
   });
 });

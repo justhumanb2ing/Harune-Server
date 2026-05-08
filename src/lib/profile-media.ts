@@ -1,3 +1,5 @@
+import type { R2Bucket } from "@cloudflare/workers-types";
+
 export const MAX_PROFILE_IMAGE_BYTES = 5 * 1024 * 1024;
 export const MAX_PROFILE_MEDIA_BYTES = 5 * 1024 * 1024;
 
@@ -51,6 +53,80 @@ export function getProfileMediaTempObjectKey(
 
 export function getProfileMediaObjectKey(userId: string, bentoId: string) {
 	return `public/users/${userId}/profile-page/bento/${bentoId}/media`;
+}
+
+export function getProfileBentoMediaPublicUrl(
+	baseUrl: string,
+	objectKey: string,
+	contentHash: string,
+) {
+	return buildPublicObjectUrl(baseUrl, objectKey, contentHash);
+}
+
+export function isProfileBentoMediaObjectKeyForBento(
+	objectKey: string,
+	userId: string,
+	bentoId: string,
+) {
+	const parsed = parseProfileBentoMediaObjectKey(objectKey);
+
+	if (!parsed) {
+		return false;
+	}
+
+	return parsed.userId === userId && parsed.bentoId === bentoId;
+}
+
+export function parseProfileBentoMediaObjectKey(objectKey: string) {
+	const segments = objectKey.split("/");
+
+	if (segments.length === 7 && segments[0] === "tmp" && segments[1] === "users" && segments[3] === "profile-page" && segments[4] === "bento") {
+		return {
+			kind: "temp" as const,
+			userId: segments[2],
+			bentoId: segments[5],
+			objectId: segments[6],
+		};
+	}
+
+	if (segments.length === 7 && segments[0] === "public" && segments[1] === "users" && segments[3] === "profile-page" && segments[4] === "bento" && segments[6] === "media") {
+		return {
+			kind: "final" as const,
+			userId: segments[2],
+			bentoId: segments[5],
+			objectId: segments[6],
+		};
+	}
+
+	return null;
+}
+
+export async function copyProfileBentoMediaObject(
+	bucket: R2Bucket,
+	sourceObjectKey: string,
+	targetObjectKey: string,
+) {
+	const object = await bucket.get(sourceObjectKey);
+
+	if (!object) {
+		throw new Error("temporary bento media object not found");
+	}
+
+	const bytes = new Uint8Array(await object.arrayBuffer());
+	const contentType = object.httpMetadata?.contentType ?? "application/octet-stream";
+
+	await bucket.put(targetObjectKey, bytes, {
+		httpMetadata: {
+			contentType,
+		},
+	});
+}
+
+export async function deleteProfileBentoMediaObject(
+	bucket: R2Bucket,
+	objectKey: string,
+) {
+	await bucket.delete(objectKey);
 }
 
 export function buildPublicObjectUrl(

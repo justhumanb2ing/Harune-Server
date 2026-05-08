@@ -3,7 +3,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { R2Bucket } from "@cloudflare/workers-types";
 
 import { handleHonoError } from "../../lib/error-utils";
-import { buildPublicObjectUrl, getProfileImageObjectKey, sha256Hex } from "../../lib/profile-media";
+import {
+	buildPublicObjectUrl,
+	getProfileBentoMediaPublicUrl,
+	getProfileImageObjectKey,
+	getProfileMediaObjectKey,
+	sha256Hex,
+} from "../../lib/profile-media";
 import { createProfileRoute } from "../profile-route";
 import type { AppBindings } from "../../types/app-bindings";
 
@@ -20,6 +26,22 @@ function createMockBucket() {
 				contentType: options?.httpMetadata?.contentType ?? "",
 				bytes: body instanceof Uint8Array ? body : new Uint8Array(body),
 			});
+		}),
+		get: vi.fn(async (key: string) => {
+			const object = objects.get(key);
+
+			if (!object) {
+				return null;
+			}
+
+			return {
+				...object,
+				arrayBuffer: async () => object.bytes.slice().buffer,
+				// minimal shape for copy helper
+				httpMetadata: {
+					contentType: object.contentType,
+				},
+			} as never;
 		}),
 		head: vi.fn(async (key: string) => (objects.has(key) ? ({ key } as never) : null)),
 		delete: vi.fn(async (key: string) => {
@@ -103,6 +125,122 @@ function createTestApp({
 	return {
 		app,
 		getCurrentPage: () => currentPage,
+	};
+}
+
+function createEditorTestApp({
+	session,
+	page,
+	getProfile,
+	syncProfileBentoGraph,
+	bucket,
+}: {
+	session: SessionState;
+	page?: {
+		id: string;
+		userId: string;
+		handle: string;
+		name: string | null;
+		location: string | null;
+		role: string | null;
+		bio: string | null;
+		image: string | null;
+		backgroundImage: string | null;
+		updatedAt: Date;
+	} | null;
+	getProfile?: (db: never, handle: string, viewer: { userId: string | null }) => Promise<unknown>;
+	syncProfileBentoGraph?: (db: never, pageId: string, bentos: unknown[]) => Promise<void>;
+	bucket: ReturnType<typeof createMockBucket>;
+}) {
+	let currentPage =
+		page ??
+		{
+			id: "page-1",
+			userId: "user-1",
+			handle: "maker",
+			name: "Maker",
+			location: "Seoul",
+			role: "creator",
+			bio: "Bio",
+			image: null,
+			backgroundImage: null,
+			updatedAt: new Date("2026-05-08T00:00:00.000Z"),
+		};
+	let lastPatch: unknown = null;
+	let lastSyncedBentos: unknown[] | null = null;
+
+	const route = createProfileRoute({
+		findProfilePageByUserId: async (_db, userId) => {
+			if (!currentPage || currentPage.userId !== userId) {
+				return null;
+			}
+
+			return currentPage;
+		},
+		updateProfilePageByUserId: async (_db, userId, patch) => {
+			lastPatch = patch;
+
+			if (!currentPage || currentPage.userId !== userId) {
+				return;
+			}
+
+			currentPage = {
+				...currentPage,
+				updatedAt: new Date("2026-05-08T01:00:00.000Z"),
+				...patch,
+			};
+		},
+		syncProfileBentoGraph: async (_db, _pageId, bentos) => {
+			lastSyncedBentos = bentos as never[];
+			if (syncProfileBentoGraph) {
+				await syncProfileBentoGraph(_db, _pageId, bentos);
+			}
+		},
+		getProfile: async (_db, handle, viewer) => {
+			if (getProfile) {
+				return getProfile(_db, handle, viewer);
+			}
+
+			return {
+				page: currentPage
+					? {
+							id: currentPage.id,
+							userId: currentPage.userId,
+							handle: currentPage.handle,
+							name: currentPage.name,
+							role: currentPage.role,
+							bio: currentPage.bio,
+							image: currentPage.image,
+							backgroundImage: currentPage.backgroundImage,
+							location: currentPage.location,
+							updatedAt: currentPage.updatedAt.toISOString(),
+					  }
+					: null,
+				bento: [],
+				viewer: {
+					isAuthenticated: viewer.userId !== null,
+					userId: viewer.userId,
+					canEdit: viewer.userId === currentPage?.userId,
+				},
+			};
+		},
+	});
+
+	const app = new Hono<AppBindings>();
+	app.use("*", async (c, next) => {
+		c.set("db", {} as never);
+		c.set("session", session as never);
+		await next();
+	});
+	app.onError(handleHonoError);
+	app.route("/profile", route);
+
+	return {
+		app,
+		getCurrentPage: () => currentPage,
+		getLastPatch: () => lastPatch,
+		getLastSyncedBentos: () => lastSyncedBentos,
+		bucket,
 	};
 }
 
@@ -480,5 +618,234 @@ describe("profile mutation routes", () => {
 			},
 		});
 		expect(bucket.bucket.put).not.toHaveBeenCalled();
+	});
+});
+
+describe("PUT /profile/me", () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it("updates only the provided profile fields and returns the committed read model", async () => {
+		const bucket = createMockBucket();
+		const responseBody = {
+			page: {
+				id: "page-1",
+				userId: "user-1",
+				handle: "maker",
+				name: "Updated Maker",
+				role: "creator",
+				bio: "Updated bio",
+				image: null,
+				backgroundImage: null,
+				location: "Seoul",
+				updatedAt: "2026-05-08T01:00:00.000Z",
+			},
+			bento: [],
+			viewer: {
+				isAuthenticated: true,
+				userId: "user-1",
+				canEdit: true,
+			},
+		};
+
+		const { app, getLastPatch } = createEditorTestApp({
+			session: { userId: "user-1" },
+			getProfile: async () => responseBody,
+			bucket,
+		});
+
+		const response = await app.request("/profile/me", {
+			method: "PUT",
+			body: JSON.stringify({
+				name: "Updated Maker",
+				bio: "Updated bio",
+			}),
+			headers: {
+				"content-type": "application/json",
+			},
+		});
+		const json = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(response.headers.get("Cache-Control")).toBe("no-store");
+		expect(json).toEqual(responseBody);
+		expect(getLastPatch()).toEqual({
+			name: "Updated Maker",
+			bio: "Updated bio",
+		});
+	});
+
+	it("returns 400 for invalid profile patch fields", async () => {
+		const bucket = createMockBucket();
+		const { app } = createEditorTestApp({
+			session: { userId: "user-1" },
+			bucket,
+		});
+
+		const response = await app.request("/profile/me", {
+			method: "PUT",
+			body: JSON.stringify({
+				name: "",
+			}),
+			headers: {
+				"content-type": "application/json",
+			},
+		});
+
+		expect(response.status).toBe(400);
+		expect(await response.json()).toEqual({
+			error: {
+				code: "validation_error",
+				message: "invalid request",
+			},
+		});
+	});
+});
+
+describe("PUT /profile/me/bento", () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it("promotes temp media to the final object key and syncs the replacement graph", async () => {
+		const bucket = createMockBucket();
+		const tempBytes = new TextEncoder().encode("temp bento payload");
+		const tempObjectKey = `tmp/users/user-1/profile-page/bento/bento-1/${crypto.randomUUID()}`;
+		await bucket.bucket.put(tempObjectKey, tempBytes, {
+			httpMetadata: { contentType: "image/png" },
+		});
+
+		const responseBody = {
+			page: {
+				id: "page-1",
+				userId: "user-1",
+				handle: "maker",
+				name: "Maker",
+				role: "creator",
+				bio: "Bio",
+				image: null,
+				backgroundImage: null,
+				location: "Seoul",
+				updatedAt: "2026-05-08T01:00:00.000Z",
+			},
+			bento: [],
+			viewer: {
+				isAuthenticated: true,
+				userId: "user-1",
+				canEdit: true,
+			},
+		};
+
+		const { app, getLastSyncedBentos } = createEditorTestApp({
+			session: { userId: "user-1" },
+			getProfile: async () => responseBody,
+			bucket,
+		});
+		const response = await app.request("/profile/me/bento", {
+			method: "PUT",
+			body: JSON.stringify({
+				bento: [
+					{
+						id: "bento-1",
+						type: "media",
+						layout: {
+							desktop: { x: 0, y: 0, w: 4, h: 4 },
+							compact: { x: 0, y: 0, w: 4, h: 4 },
+						},
+						content: {
+							mediaType: "image",
+							url: "https://cdn.harune.me/placeholder?v=content-hash-123",
+							objectKey: "public/users/user-1/profile-page/bento/bento-1/media",
+							tempObjectKey,
+							contentHash: "content-hash-123",
+							contentType: "image/png",
+							alt: "Alt",
+							caption: "Caption",
+						},
+					},
+				],
+			}),
+			headers: {
+				"content-type": "application/json",
+			},
+		}, {
+			PROFILE_MEDIA_BUCKET: bucket.bucket,
+			R2_PUBLIC_BASE_URL: "https://cdn.harune.me",
+		} as never);
+		const json = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(response.headers.get("Cache-Control")).toBe("no-store");
+		expect(json).toEqual(responseBody);
+		expect(bucket.bucket.put).toHaveBeenCalledTimes(2);
+		expect(bucket.bucket.delete).toHaveBeenCalledWith(tempObjectKey);
+		expect(getLastSyncedBentos()).toEqual([
+			{
+				id: "bento-1",
+				type: "media",
+				layout: {
+					desktop: { x: 0, y: 0, w: 4, h: 4 },
+					compact: { x: 0, y: 0, w: 4, h: 4 },
+				},
+				content: {
+					mediaType: "image",
+					url: getProfileBentoMediaPublicUrl(
+						"https://cdn.harune.me",
+						getProfileMediaObjectKey("user-1", "bento-1"),
+						"content-hash-123",
+					),
+					objectKey: getProfileMediaObjectKey("user-1", "bento-1"),
+					href: null,
+					alt: "Alt",
+					caption: "Caption",
+				},
+			},
+		]);
+	});
+
+	it("returns 400 when temp media ownership does not match", async () => {
+		const bucket = createMockBucket();
+		const { app } = createEditorTestApp({
+			session: { userId: "user-1" },
+			bucket,
+		});
+
+		const response = await app.request("/profile/me/bento", {
+			method: "PUT",
+			body: JSON.stringify({
+				bento: [
+					{
+						id: "bento-1",
+						type: "media",
+						layout: {
+							desktop: { x: 0, y: 0, w: 4, h: 4 },
+							compact: { x: 0, y: 0, w: 4, h: 4 },
+						},
+						content: {
+							mediaType: "image",
+							url: "https://cdn.harune.me/placeholder?v=content-hash-123",
+							objectKey: "public/users/user-1/profile-page/bento/bento-1/media",
+							tempObjectKey: "tmp/users/user-2/profile-page/bento/bento-1/asset",
+							contentHash: "content-hash-123",
+							contentType: "image/png",
+							alt: "Alt",
+							caption: "Caption",
+						},
+					},
+				],
+			}),
+			headers: {
+				"content-type": "application/json",
+			},
+		});
+
+		expect(response.status).toBe(400);
+		expect(await response.json()).toEqual({
+			error: {
+				code: "invalid_media_upload_ownership",
+				message: "Invalid media upload ownership.",
+			},
+		});
 	});
 });
