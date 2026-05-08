@@ -4095,6 +4095,1034 @@
         "operationId": "getMeAnalytics"
       }
     },
+    "/profile/image": {
+      "post": {
+        "summary": "Upload a profile image slot object",
+        "responses": {
+          "200": {
+            "description": "Successful profile image upload.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "imageKind": {
+                      "type": "string",
+                      "enum": [
+                        "profile",
+                        "background"
+                      ]
+                    },
+                    "imageUrl": {
+                      "type": "string"
+                    },
+                    "objectKey": {
+                      "type": "string"
+                    },
+                    "contentType": {
+                      "type": "string"
+                    },
+                    "contentLength": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "imageKind",
+                    "imageUrl",
+                    "objectKey",
+                    "contentType",
+                    "contentLength"
+                  ]
+                },
+                "examples": {
+                  "default": {
+                    "value": {
+                      "imageKind": "profile",
+                      "imageUrl": "https://pub.example.com/public/users/user-1/profile/profile?v=abc123",
+                      "objectKey": "public/users/user-1/profile/profile",
+                      "contentType": "image/png",
+                      "contentLength": 12345
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid upload request. Returned when the session is missing, the multipart payload is malformed, the image kind is invalid, the hash is malformed, the file type is unsupported, the file is too large, or the uploaded bytes hash does not match `imageHash`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "validation_error",
+                            "profile_image_invalid_type",
+                            "profile_image_too_large",
+                            "profile_image_hash_mismatch"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                },
+                "examples": {
+                  "validation": {
+                    "value": {
+                      "error": {
+                        "code": "validation_error",
+                        "message": "invalid request"
+                      }
+                    }
+                  },
+                  "hashMismatch": {
+                    "value": {
+                      "error": {
+                        "code": "profile_image_hash_mismatch",
+                        "message": "uploaded bytes hash does not match imageHash"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "unauthorized"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                },
+                "examples": {
+                  "default": {
+                    "value": {
+                      "error": {
+                        "code": "unauthorized",
+                        "message": "authentication required"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal profile image upload failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "profile_image_upload_failed"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "description": "Uploads a profile image or background image into the authenticated user's stable slot.\n\nRules:\n- Requires a valid session\n- Accepts `multipart/form-data` with `file`, `imageKind`, and `imageHash`\n- `imageKind` must be `profile` or `background`\n- `imageHash` must be a 64-character SHA-256 hex string\n- File type must be JPEG, PNG, WebP, or AVIF\n- File size must be 5MB or smaller\n- The uploaded bytes hash must match `imageHash`\n- The response is `Cache-Control: no-store`\n- Upload only writes storage; DB finalize happens in `PATCH /profile/image`",
+        "tags": [
+          "Profile API"
+        ],
+        "operationId": "uploadProfileImage",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "imageKind": {
+                    "type": "string",
+                    "enum": [
+                      "profile",
+                      "background"
+                    ]
+                  },
+                  "imageHash": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "file",
+                  "imageKind",
+                  "imageHash"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Finalize a profile image slot in the database",
+        "responses": {
+          "200": {
+            "description": "Successful profile image finalize response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "imageKind": {
+                      "type": "string",
+                      "enum": [
+                        "profile",
+                        "background"
+                      ]
+                    },
+                    "imageUrl": {
+                      "type": "string"
+                    },
+                    "image": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "backgroundImage": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "imageKind",
+                    "imageUrl",
+                    "image",
+                    "backgroundImage",
+                    "updatedAt"
+                  ]
+                },
+                "examples": {
+                  "default": {
+                    "value": {
+                      "imageKind": "profile",
+                      "imageUrl": "https://pub.example.com/public/users/user-1/profile/profile?v=abc123",
+                      "image": "https://pub.example.com/public/users/user-1/profile/profile?v=abc123",
+                      "backgroundImage": null,
+                      "updatedAt": "2026-05-08T01:00:00.000Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid finalize request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "validation_error",
+                            "profile_image_url_invalid"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "unauthorized"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The target imageUrl does not belong to the authenticated user.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "profile_image_forbidden"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The profile page or image object does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "profile_page_not_found",
+                            "profile_image_not_found"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal profile image finalize failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "profile_image_finalize_failed"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "description": "Commits a previously uploaded profile image URL into the authenticated user's profile page row.\n\nRules:\n- Requires a valid session\n- Accepts JSON with `imageKind` and `imageUrl`\n- `imageKind` must be `profile` or `background`\n- `imageUrl` must point to the authenticated user's stable object key\n- The object must already exist in storage\n- Only the matching DB column is updated\n- The response returns the committed persisted row and is `Cache-Control: no-store`",
+        "tags": [
+          "Profile API"
+        ],
+        "operationId": "finalizeProfileImage",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "imageKind": {
+                    "type": "string",
+                    "enum": [
+                      "profile",
+                      "background"
+                    ]
+                  },
+                  "imageUrl": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "imageKind",
+                  "imageUrl"
+                ]
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "imageKind": "profile",
+                    "imageUrl": "https://pub.example.com/public/users/user-1/profile/profile?v=abc123"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a profile image slot object",
+        "responses": {
+          "200": {
+            "description": "Successful profile image deletion.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "deletedObjectKey": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "deletedObjectKey"
+                  ]
+                },
+                "examples": {
+                  "default": {
+                    "value": {
+                      "success": true,
+                      "deletedObjectKey": "public/users/user-1/profile/profile"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid delete request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "validation_error",
+                            "profile_image_url_invalid"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "unauthorized"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The target imageUrl does not belong to the authenticated user.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "profile_image_forbidden"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The profile image object does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "profile_image_not_found"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal profile image delete failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "profile_image_delete_failed"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "description": "Deletes a profile image or background image object from storage without mutating the row.\n\nRules:\n- Requires a valid session\n- Accepts JSON with `imageUrl`\n- `imageUrl` must resolve to the authenticated user's profile image namespace\n- The object must exist before deletion\n- The row is not modified\n- The response is `Cache-Control: no-store`",
+        "tags": [
+          "Profile API"
+        ],
+        "operationId": "deleteProfileImage",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "imageUrl": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "imageUrl"
+                ]
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "imageUrl": "https://pub.example.com/public/users/user-1/profile/profile?v=abc123"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/profile/bento/media/upload": {
+      "post": {
+        "summary": "Upload temporary bento media",
+        "responses": {
+          "200": {
+            "description": "Successful temporary bento media upload.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "bentoId": {
+                      "type": "string"
+                    },
+                    "contentHash": {
+                      "type": "string"
+                    },
+                    "contentType": {
+                      "type": "string"
+                    },
+                    "mediaType": {
+                      "type": "string",
+                      "enum": [
+                        "image",
+                        "video"
+                      ]
+                    },
+                    "tempObjectKey": {
+                      "type": "string"
+                    },
+                    "tempUrl": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "bentoId",
+                    "contentHash",
+                    "contentType",
+                    "mediaType",
+                    "tempObjectKey",
+                    "tempUrl"
+                  ]
+                },
+                "examples": {
+                  "default": {
+                    "value": {
+                      "bentoId": "bento_123",
+                      "contentHash": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                      "contentType": "video/mp4",
+                      "mediaType": "video",
+                      "tempObjectKey": "tmp/users/user-1/profile/bento/bento_123/123e4567-e89b-12d3-a456-426614174000",
+                      "tempUrl": "https://pub.example.com/tmp/users/user-1/profile/bento/bento_123/123e4567-e89b-12d3-a456-426614174000"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid bento upload request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "validation_error",
+                            "profile_media_invalid_type",
+                            "profile_media_too_large"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "unauthorized"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The target bento does not belong to the authenticated user.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "profile_bento_forbidden"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal bento media upload failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "profile_media_upload_failed"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "description": "Uploads temporary media for a bento block and returns metadata for later sync.\n\nRules:\n- Requires a valid session\n- Accepts `multipart/form-data` with `bentoId` and `file`\n- The bento must belong to the authenticated user\n- File type must be image or video\n- File size must be 5MB or smaller\n- A SHA-256 hash is computed before storage write\n- Temporary uploads only return metadata; no final DB write happens here\n- The response is `Cache-Control: no-store`",
+        "tags": [
+          "Profile API"
+        ],
+        "operationId": "uploadProfileBentoMedia",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "bentoId": {
+                    "type": "string"
+                  },
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "bentoId",
+                  "file"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
     "/profile/{handle}": {
       "get": {
         "summary": "Get a profile by handle",

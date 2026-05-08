@@ -1629,3 +1629,470 @@ function profileMapBentoSchema() {
 		required: ["id", "type", "layout", "content"],
 	};
 }
+
+function profileErrorSchema(codes: string[]) {
+	return {
+		type: "object",
+		properties: {
+			error: {
+				type: "object",
+				additionalProperties: false,
+				properties: {
+					code: { type: "string", enum: codes },
+					message: { type: "string" },
+					details: { type: "object", additionalProperties: true },
+				},
+				required: ["code", "message"],
+			},
+		},
+		required: ["error"],
+	};
+}
+
+function profileImageUploadSuccessSchema() {
+	return {
+		type: "object",
+		properties: {
+			imageKind: { type: "string", enum: ["profile", "background"] },
+			imageUrl: { type: "string" },
+			objectKey: { type: "string" },
+			contentType: { type: "string" },
+			contentLength: { type: "number" },
+		},
+		required: ["imageKind", "imageUrl", "objectKey", "contentType", "contentLength"],
+	};
+}
+
+function profileImageFinalizeSuccessSchema() {
+	return {
+		type: "object",
+		properties: {
+			imageKind: { type: "string", enum: ["profile", "background"] },
+			imageUrl: { type: "string" },
+			image: { type: "string", nullable: true },
+			backgroundImage: { type: "string", nullable: true },
+			updatedAt: { type: "string", format: "date-time" },
+		},
+		required: ["imageKind", "imageUrl", "image", "backgroundImage", "updatedAt"],
+	};
+}
+
+function profileImageDeleteSuccessSchema() {
+	return {
+		type: "object",
+		properties: {
+			success: { type: "boolean" },
+			deletedObjectKey: { type: "string" },
+		},
+		required: ["success", "deletedObjectKey"],
+	};
+}
+
+function profileBentoMediaUploadSuccessSchema() {
+	return {
+		type: "object",
+		properties: {
+			bentoId: { type: "string" },
+			contentHash: { type: "string" },
+			contentType: { type: "string" },
+			mediaType: { type: "string", enum: ["image", "video"] },
+			tempObjectKey: { type: "string" },
+			tempUrl: { type: "string" },
+		},
+		required: ["bentoId", "contentHash", "contentType", "mediaType", "tempObjectKey", "tempUrl"],
+	};
+}
+
+const profileImagePost = openApi.paths?.["/profile/image"]?.post as
+	| {
+			requestBody?: unknown;
+			responses?: Record<string, unknown>;
+			operationId?: string;
+	  }
+	| undefined;
+
+if (!profileImagePost) {
+	throw new Error("Could not find /profile/image POST operation in openapi.json");
+}
+
+profileImagePost.operationId = "uploadProfileImage";
+profileImagePost.requestBody = {
+	required: true,
+	content: {
+		"multipart/form-data": {
+			schema: {
+				type: "object",
+				additionalProperties: false,
+				properties: {
+					file: { type: "string", format: "binary" },
+					imageKind: { type: "string", enum: ["profile", "background"] },
+					imageHash: { type: "string" },
+				},
+				required: ["file", "imageKind", "imageHash"],
+			},
+		},
+	},
+};
+profileImagePost.responses ??= {};
+profileImagePost.responses["200"] = {
+	description: "Successful profile image upload.",
+	content: {
+		"application/json": {
+			schema: profileImageUploadSuccessSchema(),
+			examples: {
+				default: {
+					value: {
+						imageKind: "profile",
+						imageUrl: "https://pub.example.com/public/users/user-1/profile/profile?v=abc123",
+						objectKey: "public/users/user-1/profile/profile",
+						contentType: "image/png",
+						contentLength: 12345,
+					},
+				},
+			},
+		},
+	},
+};
+profileImagePost.responses["400"] = {
+	description:
+		"Invalid upload request. Returned when the session is missing, the multipart payload is malformed, the image kind is invalid, the hash is malformed, the file type is unsupported, the file is too large, or the uploaded bytes hash does not match `imageHash`.",
+	content: {
+		"application/json": {
+			schema: profileErrorSchema([
+				"validation_error",
+				"profile_image_invalid_type",
+				"profile_image_too_large",
+				"profile_image_hash_mismatch",
+			]),
+			examples: {
+				validation: {
+					value: {
+						error: {
+							code: "validation_error",
+							message: "invalid request",
+						},
+					},
+				},
+				hashMismatch: {
+					value: {
+						error: {
+							code: "profile_image_hash_mismatch",
+							message: "uploaded bytes hash does not match imageHash",
+						},
+					},
+				},
+			},
+		},
+	},
+};
+profileImagePost.responses["401"] = {
+	description: "Authentication required.",
+	content: {
+		"application/json": {
+			schema: profileErrorSchema(["unauthorized"]),
+			examples: {
+				default: {
+					value: {
+						error: {
+							code: "unauthorized",
+							message: "authentication required",
+						},
+					},
+				},
+			},
+		},
+	},
+};
+profileImagePost.responses["500"] = {
+	description: "Internal profile image upload failure.",
+	content: {
+		"application/json": {
+			schema: profileErrorSchema(["profile_image_upload_failed"]),
+		},
+	},
+};
+delete profileImagePost.responses.default;
+
+const profileImagePatch = openApi.paths?.["/profile/image"]?.patch as
+	| {
+			requestBody?: unknown;
+			responses?: Record<string, unknown>;
+			operationId?: string;
+	  }
+	| undefined;
+
+if (!profileImagePatch) {
+	throw new Error("Could not find /profile/image PATCH operation in openapi.json");
+}
+
+profileImagePatch.operationId = "finalizeProfileImage";
+profileImagePatch.requestBody = {
+	required: true,
+	content: {
+		"application/json": {
+			schema: {
+				type: "object",
+				additionalProperties: false,
+				properties: {
+					imageKind: { type: "string", enum: ["profile", "background"] },
+					imageUrl: { type: "string" },
+				},
+				required: ["imageKind", "imageUrl"],
+			},
+			examples: {
+				default: {
+					value: {
+						imageKind: "profile",
+						imageUrl: "https://pub.example.com/public/users/user-1/profile/profile?v=abc123",
+					},
+				},
+			},
+		},
+	},
+};
+profileImagePatch.responses ??= {};
+profileImagePatch.responses["200"] = {
+	description: "Successful profile image finalize response.",
+	content: {
+		"application/json": {
+			schema: profileImageFinalizeSuccessSchema(),
+			examples: {
+				default: {
+					value: {
+						imageKind: "profile",
+						imageUrl: "https://pub.example.com/public/users/user-1/profile/profile?v=abc123",
+						image: "https://pub.example.com/public/users/user-1/profile/profile?v=abc123",
+						backgroundImage: null,
+						updatedAt: "2026-05-08T01:00:00.000Z",
+					},
+				},
+			},
+		},
+	},
+};
+profileImagePatch.responses["400"] = {
+	description: "Invalid finalize request.",
+	content: {
+		"application/json": {
+			schema: profileErrorSchema(["validation_error", "profile_image_url_invalid"]),
+		},
+	},
+};
+profileImagePatch.responses["401"] = {
+	description: "Authentication required.",
+	content: {
+		"application/json": {
+			schema: profileErrorSchema(["unauthorized"]),
+		},
+	},
+};
+profileImagePatch.responses["403"] = {
+	description: "The target imageUrl does not belong to the authenticated user.",
+	content: {
+		"application/json": {
+			schema: profileErrorSchema(["profile_image_forbidden"]),
+		},
+	},
+};
+profileImagePatch.responses["404"] = {
+	description: "The profile page or image object does not exist.",
+	content: {
+		"application/json": {
+			schema: profileErrorSchema(["profile_page_not_found", "profile_image_not_found"]),
+		},
+	},
+};
+profileImagePatch.responses["500"] = {
+	description: "Internal profile image finalize failure.",
+	content: {
+		"application/json": {
+			schema: profileErrorSchema(["profile_image_finalize_failed"]),
+		},
+	},
+};
+delete profileImagePatch.responses.default;
+
+const profileImageDelete = openApi.paths?.["/profile/image"]?.delete as
+	| {
+			requestBody?: unknown;
+			responses?: Record<string, unknown>;
+			operationId?: string;
+	  }
+	| undefined;
+
+if (!profileImageDelete) {
+	throw new Error("Could not find /profile/image DELETE operation in openapi.json");
+}
+
+profileImageDelete.operationId = "deleteProfileImage";
+profileImageDelete.requestBody = {
+	required: true,
+	content: {
+		"application/json": {
+			schema: {
+				type: "object",
+				additionalProperties: false,
+				properties: {
+					imageUrl: { type: "string" },
+				},
+				required: ["imageUrl"],
+			},
+			examples: {
+				default: {
+					value: {
+						imageUrl: "https://pub.example.com/public/users/user-1/profile/profile?v=abc123",
+					},
+				},
+			},
+		},
+	},
+};
+profileImageDelete.responses ??= {};
+profileImageDelete.responses["200"] = {
+	description: "Successful profile image deletion.",
+	content: {
+		"application/json": {
+			schema: profileImageDeleteSuccessSchema(),
+			examples: {
+				default: {
+					value: {
+						success: true,
+						deletedObjectKey: "public/users/user-1/profile/profile",
+					},
+				},
+			},
+		},
+	},
+};
+profileImageDelete.responses["400"] = {
+	description: "Invalid delete request.",
+	content: {
+		"application/json": {
+			schema: profileErrorSchema(["validation_error", "profile_image_url_invalid"]),
+		},
+	},
+};
+profileImageDelete.responses["401"] = {
+	description: "Authentication required.",
+	content: {
+		"application/json": {
+			schema: profileErrorSchema(["unauthorized"]),
+		},
+	},
+};
+profileImageDelete.responses["403"] = {
+	description: "The target imageUrl does not belong to the authenticated user.",
+	content: {
+		"application/json": {
+			schema: profileErrorSchema(["profile_image_forbidden"]),
+		},
+	},
+};
+profileImageDelete.responses["404"] = {
+	description: "The profile image object does not exist.",
+	content: {
+		"application/json": {
+			schema: profileErrorSchema(["profile_image_not_found"]),
+		},
+	},
+};
+profileImageDelete.responses["500"] = {
+	description: "Internal profile image delete failure.",
+	content: {
+		"application/json": {
+			schema: profileErrorSchema(["profile_image_delete_failed"]),
+		},
+	},
+};
+delete profileImageDelete.responses.default;
+
+const profileBentoMediaUpload = openApi.paths?.["/profile/bento/media/upload"]?.post as
+	| {
+			requestBody?: unknown;
+			responses?: Record<string, unknown>;
+			operationId?: string;
+	  }
+	| undefined;
+
+if (!profileBentoMediaUpload) {
+	throw new Error("Could not find /profile/bento/media/upload POST operation in openapi.json");
+}
+
+profileBentoMediaUpload.operationId = "uploadProfileBentoMedia";
+profileBentoMediaUpload.requestBody = {
+	required: true,
+	content: {
+		"multipart/form-data": {
+			schema: {
+				type: "object",
+				additionalProperties: false,
+				properties: {
+					bentoId: { type: "string" },
+					file: { type: "string", format: "binary" },
+				},
+				required: ["bentoId", "file"],
+			},
+		},
+	},
+};
+profileBentoMediaUpload.responses ??= {};
+profileBentoMediaUpload.responses["200"] = {
+	description: "Successful temporary bento media upload.",
+	content: {
+		"application/json": {
+			schema: profileBentoMediaUploadSuccessSchema(),
+			examples: {
+				default: {
+					value: {
+						bentoId: "bento_123",
+						contentHash: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+						contentType: "video/mp4",
+						mediaType: "video",
+						tempObjectKey: "tmp/users/user-1/profile/bento/bento_123/123e4567-e89b-12d3-a456-426614174000",
+						tempUrl:
+							"https://pub.example.com/tmp/users/user-1/profile/bento/bento_123/123e4567-e89b-12d3-a456-426614174000",
+					},
+				},
+			},
+		},
+	},
+};
+profileBentoMediaUpload.responses["400"] = {
+	description: "Invalid bento upload request.",
+	content: {
+		"application/json": {
+			schema: profileErrorSchema([
+				"validation_error",
+				"profile_media_invalid_type",
+				"profile_media_too_large",
+			]),
+		},
+	},
+};
+profileBentoMediaUpload.responses["401"] = {
+	description: "Authentication required.",
+	content: {
+		"application/json": {
+			schema: profileErrorSchema(["unauthorized"]),
+		},
+	},
+};
+profileBentoMediaUpload.responses["403"] = {
+	description: "The target bento does not belong to the authenticated user.",
+	content: {
+		"application/json": {
+			schema: profileErrorSchema(["profile_bento_forbidden"]),
+		},
+	},
+};
+profileBentoMediaUpload.responses["500"] = {
+	description: "Internal bento media upload failure.",
+	content: {
+		"application/json": {
+			schema: profileErrorSchema(["profile_media_upload_failed"]),
+		},
+	},
+};
+delete profileBentoMediaUpload.responses.default;
+
+await writeFile(openApiPath, `${JSON.stringify(openApi, null, 2)}\n`);

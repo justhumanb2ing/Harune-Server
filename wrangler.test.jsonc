@@ -11,5 +11,11 @@
     "UMAMI_API_ENDPOINT": "https://api.umami.is/v1",
     "UMAMI_WEBSITE_ID": "c6d6da3b-2144-4194-a7a8-397fb884026b",
     "UMAMI_SCRIPT_SRC": "https://cloud.umami.is/script.js"
-  }
+  },
+  "r2_buckets": [
+    {
+      "binding": "PROFILE_MEDIA_BUCKET",
+      "bucket_name": "umbrella"
+    }
+  ]
 }

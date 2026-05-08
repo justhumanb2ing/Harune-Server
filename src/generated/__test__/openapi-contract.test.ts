@@ -41,6 +41,18 @@ describe("OpenAPI contract", () => {
 		expect(openApi.paths?.["/me/analytics"]?.get?.operationId).toBe(
 			"getMeAnalytics",
 		);
+		expect(openApi.paths?.["/profile/image"]?.post?.operationId).toBe(
+			"uploadProfileImage",
+		);
+		expect(openApi.paths?.["/profile/image"]?.patch?.operationId).toBe(
+			"finalizeProfileImage",
+		);
+		expect(openApi.paths?.["/profile/image"]?.delete?.operationId).toBe(
+			"deleteProfileImage",
+		);
+		expect(
+			openApi.paths?.["/profile/bento/media/upload"]?.post?.operationId,
+		).toBe("uploadProfileBentoMedia");
 		expect(openApi.paths?.["/profile/{handle}"]?.get?.operationId).toBe(
 			"getProfileByHandle",
 		);

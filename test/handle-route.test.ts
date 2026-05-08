@@ -16,8 +16,24 @@ function createTestApp({
 }: {
   session: SessionState;
   existingPage?: { userId: string; handle: string } | null;
-  ownedPage?: { id: string; userId: string; handle: string; name: string | null; image: string | null } | null;
-  updatedPage?: { id: string; userId: string; handle: string; name: string | null; image: string | null } | null;
+  ownedPage?: {
+    id: string;
+    userId: string;
+    handle: string;
+    name: string | null;
+    image: string | null;
+    backgroundImage: string | null;
+    updatedAt: Date;
+  } | null;
+  updatedPage?: {
+    id: string;
+    userId: string;
+    handle: string;
+    name: string | null;
+    image: string | null;
+    backgroundImage: string | null;
+    updatedAt: Date;
+  } | null;
 }) {
   let requestedHandle: string | null = null;
   let updatedHandleInput: { id: string; handle: string } | null = null;
@@ -212,6 +228,8 @@ describe("PATCH /handle", () => {
         handle: "current_handle",
         name: "Current",
         image: null,
+        backgroundImage: null,
+        updatedAt: new Date("2026-05-08T00:00:00.000Z"),
       },
     });
 
@@ -240,6 +258,8 @@ describe("PATCH /handle", () => {
         handle: "current_handle",
         name: "Current",
         image: null,
+        backgroundImage: null,
+        updatedAt: new Date("2026-05-08T00:00:00.000Z"),
       },
     });
 
@@ -275,6 +295,8 @@ describe("PATCH /handle", () => {
         handle: "current_handle",
         name: "Current",
         image: null,
+        backgroundImage: null,
+        updatedAt: new Date("2026-05-08T00:00:00.000Z"),
       },
       updatedPage: {
         id: "page-1",
@@ -282,6 +304,8 @@ describe("PATCH /handle", () => {
         handle: "new_handle",
         name: "Current",
         image: null,
+        backgroundImage: null,
+        updatedAt: new Date("2026-05-08T01:00:00.000Z"),
       },
     });
 

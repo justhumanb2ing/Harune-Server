@@ -22,6 +22,8 @@ export type ProfilePageSummary = {
   handle: string;
   name: string | null;
   image: string | null;
+  backgroundImage: string | null;
+  updatedAt: Date;
 };
 
 export async function findProfileRowsByHandle(db: Database, handle: string) {
@@ -137,6 +139,8 @@ export async function findProfilePageByUserId(db: Database, userId: string) {
       handle: profilePages.handle,
       name: profilePages.name,
       image: profilePages.image,
+      backgroundImage: profilePages.backgroundImage,
+      updatedAt: profilePages.updatedAt,
     })
     .from(profilePages)
     .where(eq(profilePages.userId, userId))
@@ -151,6 +155,23 @@ export async function findOwnedProfilePageByUserId(db: Database, userId: string)
   return page ? { id: page.id } : null;
 }
 
+export async function findOwnedProfileBentoById(
+  db: Database,
+  bentoId: string,
+  userId: string,
+) {
+  const rows = await db
+    .select({
+      id: profileBentos.id,
+    })
+    .from(profileBentos)
+    .innerJoin(profilePages, eq(profilePages.id, profileBentos.profilePageId))
+    .where(and(eq(profileBentos.id, bentoId), eq(profilePages.userId, userId)))
+    .limit(1);
+
+  return rows[0] ?? null;
+}
+
 export async function updateProfilePageHandleById(
   db: Database,
   profilePageId: string,
@@ -163,4 +184,21 @@ export async function updateProfilePageHandleById(
       updatedAt: new Date(),
     })
     .where(eq(profilePages.id, profilePageId));
+}
+
+export async function updateProfilePageImageByUserId(
+  db: Database,
+  userId: string,
+  imageKind: "profile" | "background",
+  imageUrl: string,
+) {
+  await db
+    .update(profilePages)
+    .set({
+      ...(imageKind === "profile"
+        ? { image: imageUrl }
+        : { backgroundImage: imageUrl }),
+      updatedAt: new Date(),
+    })
+    .where(eq(profilePages.userId, userId));
 }

@@ -11,12 +11,14 @@ export interface AppBindings extends Env {
 		BETTER_AUTH_SECRET: string;
 		BETTER_AUTH_URL?: string;
 		FRONTEND_URL?: string;
+		HARUNE_APP_ORIGIN?: string;
 		GOOGLE_CLIENT_ID: string;
 		GOOGLE_CLIENT_SECRET: string;
 		HYPERDRIVE: Hyperdrive;
 		UMAMI_SCRIPT_SRC?: string;
 		UMAMI_WEBSITE_ID?: string;
-		R2_BUCKET: R2Bucket;
+		PROFILE_MEDIA_BUCKET: R2Bucket;
+		R2_PUBLIC_BASE_URL: string;
 		UMAMI_API_ENDPOINT?: string;
 		UMAMI_API_KEY?: string;
 		UMAMI_API_TOKEN?: string;
