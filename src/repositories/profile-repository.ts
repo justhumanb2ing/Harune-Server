@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, notInArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 import type { Database } from "../lib/db";
@@ -133,6 +133,327 @@ export type ProfileBentoSnapshot =
 				url: string;
 			};
 	  };
+
+export type ProfileBentoRow = {
+	pageId: string;
+	bentoId: string | null;
+	bentoType: "link" | "text" | "section" | "media" | "map" | null;
+	desktopLayoutId: string | null;
+	desktopLayoutBreakdown?: "desktop" | "compact" | null;
+	desktopLayoutX: number | null;
+	desktopLayoutY: number | null;
+	desktopLayoutW: number | null;
+	desktopLayoutH: number | null;
+	compactLayoutId: string | null;
+	compactLayoutBreakdown?: "desktop" | "compact" | null;
+	compactLayoutX: number | null;
+	compactLayoutY: number | null;
+	compactLayoutW: number | null;
+	compactLayoutH: number | null;
+	linkBentoId: string | null;
+	linkTitle: string | null;
+	linkDescription: string | null;
+	linkFavicon: string | null;
+	linkThumbnail: string | null;
+	linkUrl: string | null;
+	textBentoId: string | null;
+	textContent: string | null;
+	sectionBentoId: string | null;
+	sectionTitle: string | null;
+	mediaBentoId: string | null;
+	mediaType: "image" | "video" | null;
+	mediaUrl: string | null;
+	mediaObjectKey: string | null;
+	mediaHref: string | null;
+	mediaAlt: string | null;
+	mediaCaption: string | null;
+	mapBentoId: string | null;
+	mapLatitude: number | null;
+	mapLongitude: number | null;
+	mapZoom: number | null;
+	mapCaption: string | null;
+	mapUrl: string | null;
+};
+
+type ProfileBentoIdMode = "public" | "canonical";
+
+function requireValue<T>(value: T | null | undefined, message: string): T {
+	if (value === null || value === undefined) {
+		throw new Error(message);
+	}
+
+	return value;
+}
+
+function profileInvariantError(code: string, message: string) {
+	return new Error(message, { cause: { error: code } });
+}
+
+function getProfileBentoSnapshotId(
+	row: ProfileBentoRow,
+	idMode: ProfileBentoIdMode,
+) {
+	if (idMode === "canonical") {
+		return row.bentoId;
+	}
+
+	switch (row.bentoType) {
+		case "link":
+			return row.linkBentoId;
+		case "text":
+			return row.textBentoId;
+		case "section":
+			return row.sectionBentoId;
+		case "media":
+			return row.mediaBentoId;
+		case "map":
+			return row.mapBentoId;
+		default:
+			return null;
+	}
+}
+
+function buildProfileBentoSnapshot(
+	row: ProfileBentoRow,
+	idMode: ProfileBentoIdMode = "public",
+): ProfileBentoSnapshot {
+	const id = getProfileBentoSnapshotId(row, idMode);
+
+	if (!row.desktopLayoutId || !row.compactLayoutId) {
+		throw profileInvariantError(
+			"profile_layout_missing",
+			`profile bento ${row.bentoId} is missing required layouts`,
+		);
+	}
+
+	const layout = {
+		desktop: {
+			x: requireValue(
+				row.desktopLayoutX,
+				`profile bento ${row.bentoId} is missing required layouts`,
+			),
+			y: requireValue(
+				row.desktopLayoutY,
+				`profile bento ${row.bentoId} is missing required layouts`,
+			),
+			w: requireValue(
+				row.desktopLayoutW,
+				`profile bento ${row.bentoId} is missing required layouts`,
+			),
+			h: requireValue(
+				row.desktopLayoutH,
+				`profile bento ${row.bentoId} is missing required layouts`,
+			),
+		},
+		compact: {
+			x: requireValue(
+				row.compactLayoutX,
+				`profile bento ${row.bentoId} is missing required layouts`,
+			),
+			y: requireValue(
+				row.compactLayoutY,
+				`profile bento ${row.bentoId} is missing required layouts`,
+			),
+			w: requireValue(
+				row.compactLayoutW,
+				`profile bento ${row.bentoId} is missing required layouts`,
+			),
+			h: requireValue(
+				row.compactLayoutH,
+				`profile bento ${row.bentoId} is missing required layouts`,
+			),
+		},
+	};
+
+	switch (row.bentoType) {
+		case "link":
+			if (!row.linkBentoId) {
+				throw profileInvariantError(
+					"profile_link_bento_missing",
+					`profile link bento ${row.bentoId} is missing content`,
+				);
+			}
+
+			return {
+				id: requireValue(id, `profile link bento ${row.bentoId} is missing id`),
+				type: "link",
+				layout,
+				content: {
+					title: requireValue(
+						row.linkTitle,
+						`profile link bento ${row.bentoId} is missing content`,
+					),
+					description: row.linkDescription,
+					favicon: row.linkFavicon,
+					thumbnail: row.linkThumbnail,
+					url: requireValue(
+						row.linkUrl,
+						`profile link bento ${row.bentoId} is missing content`,
+					),
+				},
+			};
+		case "text":
+			if (!row.textBentoId) {
+				throw profileInvariantError(
+					"profile_text_bento_missing",
+					`profile text bento ${row.bentoId} is missing content`,
+				);
+			}
+
+			return {
+				id: requireValue(id, `profile text bento ${row.bentoId} is missing id`),
+				type: "text",
+				layout,
+				content: {
+					content: requireValue(
+						row.textContent,
+						`profile text bento ${row.bentoId} is missing content`,
+					),
+				},
+			};
+		case "section":
+			if (!row.sectionBentoId) {
+				throw profileInvariantError(
+					"profile_section_bento_missing",
+					`profile section bento ${row.bentoId} is missing content`,
+				);
+			}
+
+			return {
+				id: requireValue(
+					id,
+					`profile section bento ${row.bentoId} is missing id`,
+				),
+				type: "section",
+				layout,
+				content: {
+					title: requireValue(
+						row.sectionTitle,
+						`profile section bento ${row.bentoId} is missing content`,
+					),
+				},
+			};
+		case "media":
+			if (!row.mediaBentoId) {
+				throw profileInvariantError(
+					"profile_media_bento_missing",
+					`profile media bento ${row.bentoId} is missing content`,
+				);
+			}
+
+			return {
+				id: requireValue(
+					id,
+					`profile media bento ${row.bentoId} is missing id`,
+				),
+				type: "media",
+				layout,
+				content: {
+					mediaType: requireValue(
+						row.mediaType,
+						`profile media bento ${row.bentoId} is missing content`,
+					),
+					url: requireValue(
+						row.mediaUrl,
+						`profile media bento ${row.bentoId} is missing content`,
+					),
+					objectKey: requireValue(
+						row.mediaObjectKey,
+						`profile media bento ${row.bentoId} is missing content`,
+					),
+					href: row.mediaHref,
+					alt: requireValue(
+						row.mediaAlt,
+						`profile media bento ${row.bentoId} is missing content`,
+					),
+					caption: requireValue(
+						row.mediaCaption,
+						`profile media bento ${row.bentoId} is missing content`,
+					),
+				},
+			};
+		case "map":
+			if (!row.mapBentoId) {
+				throw profileInvariantError(
+					"profile_map_bento_missing",
+					`profile map bento ${row.bentoId} is missing content`,
+				);
+			}
+
+			return {
+				id: requireValue(id, `profile map bento ${row.bentoId} is missing id`),
+				type: "map",
+				layout,
+				content: {
+					latitude: requireValue(
+						row.mapLatitude,
+						`profile map bento ${row.bentoId} is missing content`,
+					),
+					longitude: requireValue(
+						row.mapLongitude,
+						`profile map bento ${row.bentoId} is missing content`,
+					),
+					zoom: requireValue(
+						row.mapZoom,
+						`profile map bento ${row.bentoId} is missing content`,
+					),
+					caption: requireValue(
+						row.mapCaption,
+						`profile map bento ${row.bentoId} is missing content`,
+					),
+					url: requireValue(
+						row.mapUrl,
+						`profile map bento ${row.bentoId} is missing content`,
+					),
+				},
+			};
+		default:
+			throw profileInvariantError(
+				"profile_bento_type_invalid",
+				`profile bento ${row.bentoId} has unsupported type`,
+			);
+	}
+}
+
+export function buildProfileBentosFromRows(
+	rows: ProfileBentoRow[],
+	idMode: ProfileBentoIdMode = "public",
+) {
+	const bentos = new Map<string, ProfileBentoSnapshot>();
+
+	for (const row of rows) {
+		if (!row.bentoId) {
+			continue;
+		}
+
+		if (!bentos.has(row.bentoId)) {
+			bentos.set(row.bentoId, buildProfileBentoSnapshot(row, idMode));
+		}
+	}
+
+	return Array.from(bentos.values());
+}
+
+function buildProfileBentoGraphSignature(bentos: ProfileBentoSnapshot[]) {
+	return JSON.stringify(
+		[...bentos]
+			.sort((left, right) => left.id.localeCompare(right.id))
+			.map((bento) => ({
+				id: bento.id,
+				type: bento.type,
+				layout: bento.layout,
+				content: bento.content,
+			})),
+	);
+}
+
+export async function findProfileBentoSnapshotsByPageId(
+	db: Database,
+	pageId: string,
+) {
+	const rows = await findProfileRowsByPageId(db, pageId);
+	return buildProfileBentosFromRows(rows);
+}
 
 export async function findProfileRowsByHandle(db: Database, handle: string) {
 	return db
@@ -505,116 +826,258 @@ export async function syncProfileBentoGraph(
 ) {
 	await db.transaction(async (tx) => {
 		const now = new Date();
-		const bentoIds = bentos.map((bento) => bento.id);
+		const existingRows = await findProfileRowsByPageId(tx, pageId);
+		const publicIdToCanonicalId = new Map<string, string>();
+		const existingBentos = buildProfileBentosFromRows(
+			existingRows,
+			"canonical",
+		);
 
-		if (bentoIds.length === 0) {
-			await tx
-				.delete(profileBentos)
-				.where(eq(profileBentos.profilePageId, pageId));
+		for (const row of existingRows) {
+			if (!row.bentoId) {
+				continue;
+			}
+
+			const publicId = buildProfileBentoSnapshot(row).id;
+			publicIdToCanonicalId.set(publicId, row.bentoId);
+		}
+
+		const normalizedIncomingBentos = bentos.map((bento) => ({
+			...bento,
+			id: publicIdToCanonicalId.get(bento.id) ?? bento.id,
+		}));
+
+		if (
+			buildProfileBentoGraphSignature(existingBentos) ===
+			buildProfileBentoGraphSignature(normalizedIncomingBentos)
+		) {
 			return;
 		}
 
-		await tx
-			.delete(profileBentos)
-			.where(
-				and(
-					eq(profileBentos.profilePageId, pageId),
-					notInArray(profileBentos.id, bentoIds),
-				),
-			);
+		const existingById = new Map(
+			existingBentos.map((bento) => [bento.id, bento]),
+		);
+		const incomingById = new Map(
+			normalizedIncomingBentos.map((bento) => [bento.id, bento]),
+		);
+		const deletedBentoIds = existingBentos
+			.map((bento) => bento.id)
+			.filter((bentoId) => !incomingById.has(bentoId));
+		const typeChangedBentoIds = normalizedIncomingBentos
+			.filter((bento) => {
+				const existing = existingById.get(bento.id);
+				return existing !== undefined && existing.type !== bento.type;
+			})
+			.map((bento) => bento.id);
+		const bentoIdsToRemove = Array.from(
+			new Set([...deletedBentoIds, ...typeChangedBentoIds]),
+		);
 
-		await tx
-			.insert(profileBentos)
-			.values(
-				bentos.map((bento) => ({
+		if (bentoIdsToRemove.length > 0) {
+			await tx
+				.delete(profileLinkBentos)
+				.where(inArray(profileLinkBentos.bentoId, bentoIdsToRemove));
+			await tx
+				.delete(profileTextBentos)
+				.where(inArray(profileTextBentos.bentoId, bentoIdsToRemove));
+			await tx
+				.delete(profileSectionBentos)
+				.where(inArray(profileSectionBentos.bentoId, bentoIdsToRemove));
+			await tx
+				.delete(profileMediaBentos)
+				.where(inArray(profileMediaBentos.bentoId, bentoIdsToRemove));
+			await tx
+				.delete(profileMapBentos)
+				.where(inArray(profileMapBentos.bentoId, bentoIdsToRemove));
+		}
+
+		if (deletedBentoIds.length > 0) {
+			await tx
+				.delete(profileBentos)
+				.where(
+					and(
+						eq(profileBentos.profilePageId, pageId),
+						inArray(profileBentos.id, deletedBentoIds),
+					),
+				);
+		}
+
+		const bentoRowsToUpsert: Array<{
+			id: string;
+			profilePageId: string;
+			type: ProfileBentoSnapshot["type"];
+			updatedAt: Date;
+		}> = [];
+		const bentoIdsToRecreate = new Set(typeChangedBentoIds);
+		const layoutRows: Array<{
+			bentoId: string;
+			breakpoint: "desktop" | "compact";
+			x: number;
+			y: number;
+			w: number;
+			h: number;
+			updatedAt: Date;
+		}> = [];
+		const linkRows: Array<{
+			bentoId: string;
+			title: string;
+			description: string | null;
+			favicon: string | null;
+			thumbnail: string | null;
+			url: string;
+		}> = [];
+		const textRows: Array<{
+			bentoId: string;
+			content: string;
+		}> = [];
+		const sectionRows: Array<{
+			bentoId: string;
+			title: string;
+		}> = [];
+		const mediaRows: Array<{
+			bentoId: string;
+			mediaType: "image" | "video";
+			url: string;
+			objectKey: string;
+			href: string | null;
+			alt: string;
+			caption: string;
+		}> = [];
+		const mapRows: Array<{
+			bentoId: string;
+			latitude: number;
+			longitude: number;
+			zoom: number;
+			caption: string;
+			url: string;
+		}> = [];
+
+		for (const bento of normalizedIncomingBentos) {
+			const existing = existingById.get(bento.id);
+			const bentoSignature = buildProfileBentoGraphSignature([bento]);
+
+			if (!existing) {
+				bentoRowsToUpsert.push({
 					id: bento.id,
 					profilePageId: pageId,
 					type: bento.type,
 					updatedAt: now,
-				})),
-			)
-			.onConflictDoUpdate({
-				target: profileBentos.id,
-				set: {
+				});
+			} else if (
+				buildProfileBentoGraphSignature([existing]) === bentoSignature
+			) {
+				continue;
+			} else if (existing.type !== bento.type) {
+				bentoIdsToRecreate.add(bento.id);
+				bentoRowsToUpsert.push({
+					id: bento.id,
 					profilePageId: pageId,
-					type: sql`excluded."type"`,
+					type: bento.type,
 					updatedAt: now,
-				},
-			});
+				});
+			} else {
+				bentoRowsToUpsert.push({
+					id: bento.id,
+					profilePageId: pageId,
+					type: bento.type,
+					updatedAt: now,
+				});
+			}
 
-		await tx
-			.insert(profileBentoLayouts)
-			.values(
-				bentos.flatMap((bento) =>
-					Object.entries(bento.layout).map(([breakpoint, layout]) => ({
+			layoutRows.push(
+				...Object.entries(bento.layout).map(([breakpoint, layout]) => ({
+					bentoId: bento.id,
+					breakpoint: breakpoint as "desktop" | "compact",
+					x: layout.x,
+					y: layout.y,
+					w: layout.w,
+					h: layout.h,
+					updatedAt: now,
+				})),
+			);
+
+			switch (bento.type) {
+				case "link":
+					linkRows.push({
 						bentoId: bento.id,
-						breakpoint: breakpoint as "desktop" | "compact",
-						x: layout.x,
-						y: layout.y,
-						w: layout.w,
-						h: layout.h,
+						title: bento.content.title,
+						description: bento.content.description,
+						favicon: bento.content.favicon,
+						thumbnail: bento.content.thumbnail,
+						url: bento.content.url,
+					});
+					break;
+				case "text":
+					textRows.push({
+						bentoId: bento.id,
+						content: bento.content.content,
+					});
+					break;
+				case "section":
+					sectionRows.push({
+						bentoId: bento.id,
+						title: bento.content.title,
+					});
+					break;
+				case "media":
+					mediaRows.push({
+						bentoId: bento.id,
+						mediaType: bento.content.mediaType,
+						url: bento.content.url,
+						objectKey: bento.content.objectKey,
+						href: bento.content.href,
+						alt: bento.content.alt,
+						caption: bento.content.caption,
+					});
+					break;
+				case "map":
+					mapRows.push({
+						bentoId: bento.id,
+						latitude: bento.content.latitude,
+						longitude: bento.content.longitude,
+						zoom: bento.content.zoom,
+						caption: bento.content.caption,
+						url: bento.content.url,
+					});
+					break;
+			}
+		}
+
+		if (bentoIdsToRecreate.size > 0) {
+			await tx
+				.delete(profileBentos)
+				.where(inArray(profileBentos.id, Array.from(bentoIdsToRecreate)));
+		}
+
+		if (bentoRowsToUpsert.length > 0) {
+			await tx
+				.insert(profileBentos)
+				.values(bentoRowsToUpsert)
+				.onConflictDoUpdate({
+					target: profileBentos.id,
+					set: {
+						profilePageId: pageId,
+						type: sql`excluded."type"`,
 						updatedAt: now,
-					})),
-				),
-			)
-			.onConflictDoUpdate({
-				target: [profileBentoLayouts.bentoId, profileBentoLayouts.breakpoint],
-				set: {
-					x: sql`excluded."x"`,
-					y: sql`excluded."y"`,
-					w: sql`excluded."w"`,
-					h: sql`excluded."h"`,
-					updatedAt: now,
-				},
-			});
+					},
+				});
+		}
 
-		const linkRows = bentos
-			.filter((bento) => bento.type === "link")
-			.map((bento) => ({
-				bentoId: bento.id,
-				title: bento.content.title,
-				description: bento.content.description,
-				favicon: bento.content.favicon,
-				thumbnail: bento.content.thumbnail,
-				url: bento.content.url,
-			}));
-
-		const textRows = bentos
-			.filter((bento) => bento.type === "text")
-			.map((bento) => ({
-				bentoId: bento.id,
-				content: bento.content.content,
-			}));
-
-		const sectionRows = bentos
-			.filter((bento) => bento.type === "section")
-			.map((bento) => ({
-				bentoId: bento.id,
-				title: bento.content.title,
-			}));
-
-		const mediaRows = bentos
-			.filter((bento) => bento.type === "media")
-			.map((bento) => ({
-				bentoId: bento.id,
-				mediaType: bento.content.mediaType,
-				url: bento.content.url,
-				objectKey: bento.content.objectKey,
-				href: bento.content.href,
-				alt: bento.content.alt,
-				caption: bento.content.caption,
-			}));
-
-		const mapRows = bentos
-			.filter((bento) => bento.type === "map")
-			.map((bento) => ({
-				bentoId: bento.id,
-				latitude: bento.content.latitude,
-				longitude: bento.content.longitude,
-				zoom: bento.content.zoom,
-				caption: bento.content.caption,
-				url: bento.content.url,
-			}));
+		if (layoutRows.length > 0) {
+			await tx
+				.insert(profileBentoLayouts)
+				.values(layoutRows)
+				.onConflictDoUpdate({
+					target: [profileBentoLayouts.bentoId, profileBentoLayouts.breakpoint],
+					set: {
+						x: sql`excluded."x"`,
+						y: sql`excluded."y"`,
+						w: sql`excluded."w"`,
+						h: sql`excluded."h"`,
+						updatedAt: now,
+					},
+				});
+		}
 
 		if (linkRows.length > 0) {
 			await tx
