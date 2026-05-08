@@ -2,6 +2,7 @@ import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 import { Database } from "../lib/db";
+import { users } from "../schemas/base";
 import {
   profileBentoLayouts,
   profileBentos,
@@ -36,6 +37,16 @@ export type ProfilePagePatch = {
   bio?: string | null;
   image?: string | null;
   backgroundImage?: string | null;
+};
+
+export type ProfilePageCreateInput = {
+  userId: string;
+  handle: string;
+  name: string;
+  location?: string | null;
+  role?: string | null;
+  bio?: string | null;
+  image?: string | null;
 };
 
 export type ProfileBentoLayoutSnapshot = {
@@ -263,6 +274,18 @@ export async function findProfilePageByHandle(db: Database, handle: string) {
   return rows[0] ?? null;
 }
 
+export async function findUserById(db: Database, userId: string) {
+  const rows = await db
+    .select({
+      id: users.id,
+    })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  return rows[0] ?? null;
+}
+
 export async function findProfilePageByUserId(db: Database, userId: string) {
   const rows = await db
     .select({
@@ -407,6 +430,36 @@ export async function updateProfilePageByUserId(
     .update(profilePages)
     .set(nextValues)
     .where(eq(profilePages.userId, userId));
+}
+
+export async function createProfilePage(
+  db: Database,
+  input: ProfilePageCreateInput,
+) {
+  const values: typeof profilePages.$inferInsert = {
+    userId: input.userId,
+    handle: input.handle,
+    name: input.name,
+    updatedAt: new Date(),
+  };
+
+  if (input.location !== undefined) {
+    values.location = input.location;
+  }
+
+  if (input.role !== undefined) {
+    values.role = input.role;
+  }
+
+  if (input.bio !== undefined) {
+    values.bio = input.bio;
+  }
+
+  if (input.image !== undefined) {
+    values.image = input.image;
+  }
+
+  await db.insert(profilePages).values(values);
 }
 
 export async function syncProfileBentoGraph(

@@ -131,7 +131,7 @@ export const profilePages = pgTable(
   },
   (table) => [
     uniqueIndex("profile_page_handle_idx").on(table.handle),
-    index("profile_page_user_id_idx").on(table.userId),
+    uniqueIndex("profile_page_user_id_idx").on(table.userId),
     ...withRlsPolicies(
       "profile_page",
       sql`true`,

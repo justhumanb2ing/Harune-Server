@@ -102,3 +102,7 @@ export type ProfileResponse = {
     canEdit: boolean;
   };
 };
+
+export type ProfilePageResponse = {
+  page: ProfileResponse["page"];
+};

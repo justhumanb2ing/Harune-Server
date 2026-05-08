@@ -27,6 +27,18 @@ function createMockBucket() {
 				bytes: body instanceof Uint8Array ? body : new Uint8Array(body),
 			});
 		}),
+		list: vi.fn(async (options?: { prefix?: string; limit?: number }) => {
+			const prefix = options?.prefix ?? "";
+			const limit = options?.limit ?? Number.POSITIVE_INFINITY;
+			const objectsList = Array.from(objects.keys())
+				.filter((key) => key.startsWith(prefix))
+				.slice(0, limit)
+				.map((key) => ({ key } as never));
+
+			return {
+				objects: objectsList,
+			} as never;
+		}),
 		get: vi.fn(async (key: string) => {
 			const object = objects.get(key);
 
@@ -1153,5 +1165,99 @@ describe("PUT /profile/me/bento", () => {
 				message: "Invalid media upload ownership.",
 			},
 		});
+	});
+
+	it("promotes preview media by resolving the temp object under the preview prefix", async () => {
+		const bucket = createMockBucket();
+		const tempBytes = new TextEncoder().encode("preview bento payload");
+		const previewBentoId = `preview:${crypto.randomUUID()}`;
+		const tempObjectKey = `tmp/users/user-1/profile/bento/${previewBentoId}/${crypto.randomUUID()}`;
+		const contentHash = await sha256Hex(tempBytes);
+
+		await bucket.bucket.put(tempObjectKey, tempBytes, {
+			httpMetadata: { contentType: "image/png" },
+		});
+
+		const responseBody = {
+			page: {
+				id: "page-1",
+				userId: "user-1",
+				handle: "maker",
+				name: "Maker",
+				role: "creator",
+				bio: "Bio",
+				image: null,
+				backgroundImage: null,
+				location: "Seoul",
+				updatedAt: "2026-05-08T01:00:00.000Z",
+			},
+			bento: [],
+			viewer: {
+				isAuthenticated: true,
+				userId: "user-1",
+				canEdit: true,
+			},
+		};
+
+		const { app, getLastSyncedBentos } = createEditorTestApp({
+			session: { userId: "user-1" },
+			getProfile: async () => responseBody,
+			bucket,
+		});
+		const response = await app.request("/profile/me/bento", {
+			method: "PUT",
+			body: JSON.stringify({
+				bento: [
+					{
+						id: "bento-1",
+						type: "media",
+						layout: {
+							desktop: { x: 0, y: 0, w: 4, h: 4 },
+							compact: { x: 0, y: 0, w: 4, h: 4 },
+						},
+						content: {
+							mediaType: "image",
+							url: `https://cdn.harune.me/public/users/user-1/profile/bento/${previewBentoId}/media`,
+							objectKey: `public/users/user-1/profile/bento/${previewBentoId}/media`,
+							href: null,
+							alt: "Alt",
+							caption: "Caption",
+						},
+					},
+				],
+			}),
+			headers: {
+				"content-type": "application/json",
+			},
+		}, {
+			PROFILE_MEDIA_BUCKET: bucket.bucket,
+			R2_PUBLIC_BASE_URL: "https://cdn.harune.me",
+		} as never);
+
+		expect(response.status).toBe(200);
+		expect(bucket.bucket.put).toHaveBeenCalledTimes(2);
+		expect(bucket.bucket.delete).toHaveBeenCalledWith(tempObjectKey);
+		expect(getLastSyncedBentos()).toEqual([
+			{
+				id: "bento-1",
+				type: "media",
+				layout: {
+					desktop: { x: 0, y: 0, w: 4, h: 4 },
+					compact: { x: 0, y: 0, w: 4, h: 4 },
+				},
+				content: {
+					mediaType: "image",
+					url: getProfileBentoMediaPublicUrl(
+						"https://cdn.harune.me",
+						getProfileMediaObjectKey("user-1", "bento-1"),
+						contentHash,
+					),
+					objectKey: getProfileMediaObjectKey("user-1", "bento-1"),
+					href: null,
+					alt: "Alt",
+					caption: "Caption",
+				},
+			},
+		]);
 	});
 });
