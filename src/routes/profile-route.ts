@@ -164,6 +164,10 @@ function waitForProfileCleanup(
 	});
 }
 
+function logProfileBentoSaveTiming(metrics: Record<string, unknown>) {
+	console.info("profile_bento_save_timing", metrics);
+}
+
 async function deleteProfileBentoMediaObjects(
 	bucket: R2Bucket,
 	objectKeys: Iterable<string>,
@@ -1162,15 +1166,29 @@ export function createProfileRoute(
 					);
 				}
 
+				const requestStartedAt = Date.now();
+				const requestId = c.req.header("x-request-id") ?? crypto.randomUUID();
+				let bodyParseMs = 0;
+				let validationMs = 0;
+				let normalizationMs = 0;
+				let dbMs = 0;
+				let cleanupMs = 0;
+				let r2LookupMs = 0;
+				let r2CopyMs = 0;
+
 				let body: unknown;
 
 				try {
+					const bodyStartedAt = Date.now();
 					body = await c.req.json();
+					bodyParseMs = Date.now() - bodyStartedAt;
 				} catch {
 					return withNoStore(validationError(c));
 				}
 
+				const validationStartedAt = Date.now();
 				const bentos = parseProfileBentoItems(body);
+				validationMs = Date.now() - validationStartedAt;
 
 				if (!bentos) {
 					return withNoStore(validationError(c));
@@ -1184,6 +1202,7 @@ export function createProfileRoute(
 					);
 				}
 
+				const normalizationStartedAt = Date.now();
 				const normalizationResults = await Promise.all(
 					bentos.map(
 						async (
@@ -1256,11 +1275,13 @@ export function createProfileRoute(
 								}
 
 								if (parsedTempObjectKey?.kind === "final") {
+									const lookupStartedAt = Date.now();
 									const existingPreviewObjectKey =
 										await findExistingProfileMediaObjectKey(
 											c.env.PROFILE_MEDIA_BUCKET,
 											[tempObjectKey],
 										);
+									r2LookupMs += Date.now() - lookupStartedAt;
 
 									if (!existingPreviewObjectKey) {
 										return {
@@ -1386,6 +1407,7 @@ export function createProfileRoute(
 									parsedObjectKey.userId === session.userId &&
 									parsedObjectKey.bentoId.startsWith("preview:")
 								) {
+									const lookupStartedAt = Date.now();
 									const existingPreviewObjectKey =
 										await findExistingProfileMediaObjectKey(
 											c.env.PROFILE_MEDIA_BUCKET,
@@ -1395,6 +1417,7 @@ export function createProfileRoute(
 												publicObjectKey ?? "",
 											].filter((candidate) => candidate.length > 0),
 										);
+									r2LookupMs += Date.now() - lookupStartedAt;
 
 									if (existingPreviewObjectKey) {
 										return {
@@ -1418,12 +1441,14 @@ export function createProfileRoute(
 										};
 									}
 
+									const previewTempLookupStartedAt = Date.now();
 									const previewTempObjectKey =
 										await findSingleProfileMediaTempObjectKey(
 											c.env.PROFILE_MEDIA_BUCKET,
 											session.userId,
 											parsedObjectKey.bentoId,
 										);
+									r2LookupMs += Date.now() - previewTempLookupStartedAt;
 
 									if (!previewTempObjectKey) {
 										return {
@@ -1481,6 +1506,7 @@ export function createProfileRoute(
 						},
 					),
 				);
+				normalizationMs = Date.now() - normalizationStartedAt;
 
 				const invalidNormalization = normalizationResults.find(
 					(result) => result.response,
@@ -1491,9 +1517,11 @@ export function createProfileRoute(
 				}
 
 				const tempObjectKeysToDelete = new Set<string>();
+				const normalizedBentosStartedAt = Date.now();
 				const normalizedBentos = await Promise.all(
 					normalizationResults.map(async (result) => {
 						if (result.copy) {
+							const copyStartedAt = Date.now();
 							const copied = await copyProfileBentoMediaObject(
 								c.env.PROFILE_MEDIA_BUCKET,
 								result.copy.sourceObjectKey,
@@ -1502,6 +1530,7 @@ export function createProfileRoute(
 									contentHash: result.copy.contentHash,
 								},
 							);
+							r2CopyMs += Date.now() - copyStartedAt;
 
 							if (result.tempObjectKeyToDelete) {
 								tempObjectKeysToDelete.add(result.tempObjectKeyToDelete);
@@ -1517,10 +1546,14 @@ export function createProfileRoute(
 						return result.bento;
 					}),
 				);
+				normalizationMs += Date.now() - normalizedBentosStartedAt;
 
+				const dbStartedAt = Date.now();
 				await syncBentoGraph(c.get("db"), page.id, normalizedBentos);
+				dbMs = Date.now() - dbStartedAt;
 
 				if (tempObjectKeysToDelete.size > 0) {
+					const cleanupStartedAt = Date.now();
 					waitForProfileCleanup(
 						c,
 						deleteProfileBentoMediaObjects(
@@ -1528,7 +1561,24 @@ export function createProfileRoute(
 							tempObjectKeysToDelete,
 						),
 					);
+					cleanupMs = Date.now() - cleanupStartedAt;
 				}
+
+				logProfileBentoSaveTiming({
+					route: "PUT /profile/me/bento",
+					requestId,
+					bodyParseMs,
+					validationMs,
+					normalizationMs,
+					r2LookupMs,
+					r2CopyMs,
+					dbMs,
+					cleanupMs,
+					bentoCount: normalizedBentos.length,
+					mediaCount: normalizedBentos.filter((bento) => bento.type === "media")
+						.length,
+					totalMs: Date.now() - requestStartedAt,
+				});
 
 				const response = c.json<ProfileResponse>({
 					page: toProfilePageResponse(page),

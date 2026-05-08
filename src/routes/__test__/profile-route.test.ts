@@ -222,6 +222,10 @@ function createEditorTestApp({
 		handle: string,
 		viewer: { userId: string | null },
 	) => Promise<unknown>;
+	findProfileBentoSnapshotsByPageId?: (
+		db: never,
+		pageId: string,
+	) => Promise<unknown[]>;
 	syncProfileBentoGraph?: (
 		db: never,
 		pageId: string,
