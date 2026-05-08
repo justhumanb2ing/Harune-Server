@@ -31,7 +31,7 @@
   "vars": {
     "HARUNE_APP_ORIGIN": "https://harune.me",
     "PROFILE_MEDIA_BUCKET_NAME": "umbrella",
-    "R2_ACCOUNT_ID": "",
+    "R2_ACCOUNT_ID": "849b4ba384d03f3c7d2bea5ed1ab9a3c",
     "R2_PUBLIC_BASE_URL": "https://cdn.harune.me",
     "UPSTASH_REDIS_REST_URL": "https://accepted-midge-95805.upstash.io",
     "UMAMI_API_ENDPOINT": "https://api.umami.is/v1",

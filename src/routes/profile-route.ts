@@ -211,6 +211,58 @@ function parseSha256Hex(value: unknown) {
 	return parsed;
 }
 
+function parseRequiredEnvString(value: unknown) {
+	if (typeof value !== "string") {
+		return null;
+	}
+
+	const trimmed = value.trim();
+	return trimmed.length > 0 ? trimmed : null;
+}
+
+type ProfileMediaUploadConfig =
+	| {
+			kind: "missing";
+			missing: string[];
+	  }
+	| {
+			kind: "ready";
+			accountId: string;
+			accessKeyId: string;
+			secretAccessKey: string;
+			bucketName: string;
+			publicBaseUrl: string;
+	  };
+
+function getProfileMediaUploadConfig(env: AppBindings["Bindings"]) {
+	const accountId = parseRequiredEnvString(env.R2_ACCOUNT_ID);
+	const accessKeyId = parseRequiredEnvString(env.R2_ACCESS_KEY_ID);
+	const secretAccessKey = parseRequiredEnvString(env.R2_SECRET_ACCESS_KEY);
+	const bucketName = parseRequiredEnvString(env.PROFILE_MEDIA_BUCKET_NAME);
+	const publicBaseUrl = parseRequiredEnvString(env.R2_PUBLIC_BASE_URL);
+
+	const missing = [
+		accountId ? null : "R2_ACCOUNT_ID",
+		accessKeyId ? null : "R2_ACCESS_KEY_ID",
+		secretAccessKey ? null : "R2_SECRET_ACCESS_KEY",
+		bucketName ? null : "PROFILE_MEDIA_BUCKET_NAME",
+		publicBaseUrl ? null : "R2_PUBLIC_BASE_URL",
+	].filter((value): value is string => value !== null);
+
+	if (missing.length > 0) {
+		return { kind: "missing" as const, missing };
+	}
+
+	return {
+		kind: "ready" as const,
+		accountId: accountId as string,
+		accessKeyId: accessKeyId as string,
+		secretAccessKey: secretAccessKey as string,
+		bucketName: bucketName as string,
+		publicBaseUrl: publicBaseUrl as string,
+	};
+}
+
 function parseProfileImageTarget(baseUrl: string, imageUrl: string) {
 	const objectKey = parseObjectKeyFromPublicUrl(baseUrl, imageUrl);
 
@@ -1391,30 +1443,48 @@ export function createProfileRoute(
 					);
 				}
 
-				if (contentLength > MAX_PROFILE_IMAGE_BYTES) {
-					return withNoStore(
-						badRequest(c, "profile_image_too_large", "image file is too large"),
-					);
-				}
+					if (contentLength > MAX_PROFILE_IMAGE_BYTES) {
+						return withNoStore(
+							badRequest(c, "profile_image_too_large", "image file is too large"),
+						);
+					}
 
-				const objectKey = getProfileImageObjectKey(session.userId, imageKind);
-				const { uploadUrl, expiresAt } = await createPresignedPutUrl({
-					accountId: c.env.R2_ACCOUNT_ID,
-					accessKeyId: c.env.R2_ACCESS_KEY_ID,
-					secretAccessKey: c.env.R2_SECRET_ACCESS_KEY,
-					bucketName: c.env.PROFILE_MEDIA_BUCKET_NAME,
-					objectKey,
-					contentType,
-				});
+					const uploadConfig = getProfileMediaUploadConfig(c.env);
 
-				const response = c.json({
-					imageKind,
-					imageHash,
-					imageUrl: buildPublicObjectUrl(
-						c.env.R2_PUBLIC_BASE_URL,
+					const readyUploadConfig =
+						uploadConfig.kind === "ready" ? uploadConfig : null;
+
+					if (!readyUploadConfig) {
+						return withNoStore(
+							internalServerError(
+								c,
+								"profile_image_upload_failed",
+								"missing profile media upload configuration",
+								{
+									missing: uploadConfig.missing,
+								},
+							),
+						);
+					}
+
+					const objectKey = getProfileImageObjectKey(session.userId, imageKind);
+					const { uploadUrl, expiresAt } = await createPresignedPutUrl({
+						accountId: readyUploadConfig.accountId,
+						accessKeyId: readyUploadConfig.accessKeyId,
+						secretAccessKey: readyUploadConfig.secretAccessKey,
+						bucketName: readyUploadConfig.bucketName,
 						objectKey,
+						contentType,
+					});
+
+					const response = c.json({
+						imageKind,
 						imageHash,
-					),
+						imageUrl: buildPublicObjectUrl(
+							readyUploadConfig.publicBaseUrl,
+							objectKey,
+							imageHash,
+						),
 					objectKey,
 					contentType,
 					contentLength,
@@ -1722,44 +1792,62 @@ export function createProfileRoute(
 
 				const mediaType = getProfileMediaType(contentType);
 
-				if (!mediaType) {
-					return withNoStore(
-						badRequest(
-							c,
-							"profile_media_invalid_type",
-							"invalid media file type",
-						),
-					);
-				}
+					if (!mediaType) {
+						return withNoStore(
+							badRequest(
+								c,
+								"profile_media_invalid_type",
+								"invalid media file type",
+							),
+						);
+					}
 
-				const objectKey = isPreviewBentoId
-					? getProfileMediaObjectKey(session.userId, bentoId)
-					: getProfileMediaTempObjectKey(session.userId, bentoId);
+					const uploadConfig = getProfileMediaUploadConfig(c.env);
 
-				const { uploadUrl, expiresAt } = await createPresignedPutUrl({
-					accountId: c.env.R2_ACCOUNT_ID,
-					accessKeyId: c.env.R2_ACCESS_KEY_ID,
-					secretAccessKey: c.env.R2_SECRET_ACCESS_KEY,
-					bucketName: c.env.PROFILE_MEDIA_BUCKET_NAME,
-					objectKey,
-					contentType,
-				});
+					const readyUploadConfig =
+						uploadConfig.kind === "ready" ? uploadConfig : null;
 
-				const response = c.json({
-					bentoId,
-					contentHash,
-					contentType,
-					mediaType,
-					tempObjectKey: objectKey,
-					tempUrl: buildPublicObjectUrl(
-						c.env.R2_PUBLIC_BASE_URL,
+					if (!readyUploadConfig) {
+						return withNoStore(
+							internalServerError(
+								c,
+								"profile_media_upload_failed",
+								"missing profile media upload configuration",
+								{
+									missing: uploadConfig.missing,
+								},
+							),
+						);
+					}
+
+					const objectKey = isPreviewBentoId
+						? getProfileMediaObjectKey(session.userId, bentoId)
+						: getProfileMediaTempObjectKey(session.userId, bentoId);
+
+					const { uploadUrl, expiresAt } = await createPresignedPutUrl({
+						accountId: readyUploadConfig.accountId,
+						accessKeyId: readyUploadConfig.accessKeyId,
+						secretAccessKey: readyUploadConfig.secretAccessKey,
+						bucketName: readyUploadConfig.bucketName,
 						objectKey,
+						contentType,
+					});
+
+					const response = c.json({
+						bentoId,
 						contentHash,
-					),
-					uploadUrl,
-					expiresAt,
-					contentLength,
-				});
+						contentType,
+						mediaType,
+						tempObjectKey: objectKey,
+						tempUrl: buildPublicObjectUrl(
+							readyUploadConfig.publicBaseUrl,
+							objectKey,
+							contentHash,
+						),
+						uploadUrl,
+						expiresAt,
+						contentLength,
+					});
 
 				return withNoStore(response);
 			} catch (error) {

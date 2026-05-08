@@ -179,6 +179,17 @@ function createTestApp({
 	app.onError(handleHonoError);
 	app.route("/profile", route);
 
+	const rawRequest = app.request.bind(app);
+	app.request = ((input: RequestInfo | URL, init?: RequestInit, env?: never) =>
+		rawRequest(input, init, {
+			R2_ACCOUNT_ID: "test-account",
+			R2_ACCESS_KEY_ID: "test-access-key",
+			R2_SECRET_ACCESS_KEY: "test-secret-key",
+			PROFILE_MEDIA_BUCKET_NAME: "umbrella",
+			R2_PUBLIC_BASE_URL: "https://cdn.harune.me",
+			...(env as never),
+		} as never)) as typeof app.request;
+
 	return {
 		app,
 		getCurrentPage: () => currentPage,
@@ -890,6 +901,53 @@ describe("profile mutation routes", () => {
 			uploadUrl: expect.stringContaining("https://upload.example/"),
 			expiresAt: "2026-05-08T02:00:00.000Z",
 			contentLength: 23456,
+		});
+		expect(bucket.bucket.put).not.toHaveBeenCalled();
+	});
+
+	it("returns 500 when the R2 media upload config is missing", async () => {
+		const bucket = createMockBucket();
+		const { app } = createTestApp({
+			session: { userId: "user-1" },
+			ownedBento: { id: "bento-1" },
+			bucket,
+		});
+
+		const response = await app.request(
+			"/profile/bento/media/upload",
+			{
+				method: "POST",
+				body: JSON.stringify({
+					bentoId: "bento-1",
+					contentType: "video/mp4",
+					contentLength: 23456,
+					contentHash:
+						"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+				}),
+				headers: {
+					"content-type": "application/json",
+				},
+			},
+			{
+				R2_ACCESS_KEY_ID: "",
+				R2_SECRET_ACCESS_KEY: "",
+				R2_PUBLIC_BASE_URL: "",
+			} as never,
+		);
+
+		expect(response.status).toBe(500);
+		expect(await response.json()).toEqual({
+			error: {
+				code: "profile_media_upload_failed",
+				message: "missing profile media upload configuration",
+				details: {
+					missing: expect.arrayContaining([
+						"R2_ACCESS_KEY_ID",
+						"R2_SECRET_ACCESS_KEY",
+						"R2_PUBLIC_BASE_URL",
+					]),
+				},
+			},
 		});
 		expect(bucket.bucket.put).not.toHaveBeenCalled();
 	});

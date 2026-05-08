@@ -2197,7 +2197,8 @@ profileImagePost.responses["401"] = {
 	},
 };
 profileImagePost.responses["500"] = {
-	description: "Internal profile image presign failure.",
+	description:
+		"Internal profile image presign failure. Returned when R2 upload credentials or the public base URL are missing, invalid, or when presign generation fails for another unexpected reason.",
 	content: {
 		"application/json": {
 			schema: profileErrorSchema(["profile_image_upload_failed"]),
@@ -2499,7 +2500,8 @@ profileBentoMediaUpload.responses["403"] = {
 	},
 };
 profileBentoMediaUpload.responses["500"] = {
-	description: "Internal bento media presign failure.",
+	description:
+		"Internal bento media presign failure. Returned when R2 upload credentials or the public base URL are missing, invalid, or when presign generation fails for another unexpected reason.",
 	content: {
 		"application/json": {
 			schema: profileErrorSchema(["profile_media_upload_failed"]),
