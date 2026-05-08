@@ -41,6 +41,9 @@ describe("OpenAPI contract", () => {
 		expect(openApi.paths?.["/me/analytics"]?.get?.operationId).toBe(
 			"getMeAnalytics",
 		);
+		expect(openApi.paths?.["/profile/pages"]?.get?.operationId).toBe(
+			"listProfilePages",
+		);
 		expect(openApi.paths?.["/profile/me"]?.post?.operationId).toBe(
 			"createProfilePage",
 		);

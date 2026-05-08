@@ -1,5 +1,67 @@
 # Profile API
 
+## `GET /profile/pages`
+
+Returns every row from the `profile_page` table.
+
+This endpoint is read-only and requires an authenticated session.
+
+### Response
+
+```ts
+type ProfilePagesResponse = {
+  pages: {
+    id: string;
+    userId: string;
+    handle: string;
+    name: string | null;
+    location: string | null;
+    role: string | null;
+    bio: string | null;
+    image: string | null;
+    backgroundImage: string | null;
+    linkBlockPosition: number;
+    createdAt: string;
+    updatedAt: string;
+  }[];
+};
+```
+
+### Response Rules
+
+- The rows are returned in `updatedAt` descending order, then `createdAt` descending order.
+- `createdAt` and `updatedAt` are serialized as ISO-8601 strings.
+- The response includes every stored column from `profile_page`.
+- Successful responses should be returned with `Cache-Control: no-store`.
+
+### Error Responses
+
+#### `401 Unauthorized`
+
+Returned when the request does not have a valid session.
+
+```json
+{
+  "error": {
+    "code": "unauthorized",
+    "message": "authentication required"
+  }
+}
+```
+
+#### `500 Internal Server Error`
+
+Returned when the profile page list cannot be loaded.
+
+```json
+{
+  "error": {
+    "code": "profile_pages_failed",
+    "message": "failed to load profile pages"
+  }
+}
+```
+
 ## `GET /profile/:handle`
 
 Returns the profile page, bento blocks, and viewer state for the requested handle.
@@ -106,3 +168,15 @@ Returned when profile data is internally inconsistent, for example if a required
 - `viewer.canEdit` is `true` only when the authenticated session user owns the profile page.
 - The endpoint is safe to call anonymously.
 - The profile body is assembled from database joins rather than from a separate metadata cache.
+
+## `PUT /profile/me/bento`
+
+Replaces the authenticated user's bento graph with the provided snapshot.
+
+### Save Performance Contract
+
+- The response is returned after validation, required media promotion, and the database graph write complete.
+- The response body is assembled from the accepted payload after the write, not from an additional public profile re-read.
+- `preview:` bento media uploads may already live at a public preview object key. In that case the save accepts the public preview key in `tempObjectKey` and avoids a temp-to-final R2 copy.
+- Legacy temp media keys are still accepted. They are copied to the final object key before the DB write, then temp deletion is deferred as best-effort cleanup after the response.
+- Failed deferred temp deletion is logged but does not fail the completed save.

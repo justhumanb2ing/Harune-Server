@@ -5363,7 +5363,7 @@
         "summary": "Replace my bento graph",
         "responses": {
           "200": {
-            "description": "Successful bento graph replacement. Returns the committed profile snapshot.",
+            "description": "Successful bento graph replacement. Returns the saved profile graph after the database write without re-reading the public profile joins.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6165,7 +6165,7 @@
             }
           },
           "500": {
-            "description": "Failed to sync the committed bento graph or to load the committed profile snapshot after sync.",
+            "description": "Failed to sync the bento graph or promote required media before the response.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6213,7 +6213,7 @@
             }
           }
         },
-        "description": "Replaces the authenticated user's bento graph with the provided snapshot. The server validates each bento item, deletes bentos missing from the snapshot, promotes temporary media objects when tempObjectKey is present, accepts existing `public/.../preview:` media object keys as-is, and also resolves a preview draft media object when objectKey still points at a client-generated `preview:` bento id. It returns the committed profile snapshot with no-store headers on success.",
+        "description": "Replaces the authenticated user's bento graph with the provided snapshot. The server validates each bento item, deletes bentos missing from the snapshot, promotes legacy temporary media objects when tempObjectKey is present, accepts a public preview object key in tempObjectKey without copying, accepts existing `public/.../preview:` media object keys as-is, and also resolves a preview draft media object when objectKey still points at a client-generated `preview:` bento id. It returns the saved profile graph assembled from the accepted payload after the database write with no-store headers on success.",
         "tags": [
           "Profile API"
         ],
@@ -7571,7 +7571,7 @@
         "summary": "Upload temporary bento media",
         "responses": {
           "200": {
-            "description": "Successful temporary bento media upload for either a persisted bento owned by the authenticated user or a client-generated `preview:` draft id.",
+            "description": "Successful bento media upload for either a persisted bento owned by the authenticated user or a client-generated `preview:` draft id. Persisted bento uploads return a legacy temporary object key. `preview:` uploads return a public preview object key so the later save can avoid a temp-to-final copy.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7616,8 +7616,8 @@
                       "contentHash": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
                       "contentType": "video/mp4",
                       "mediaType": "video",
-                      "tempObjectKey": "tmp/users/user-1/profile/bento/bento_123/123e4567-e89b-12d3-a456-426614174000",
-                      "tempUrl": "https://pub.example.com/tmp/users/user-1/profile/bento/bento_123/123e4567-e89b-12d3-a456-426614174000"
+                      "tempObjectKey": "public/users/user-1/profile/bento/preview:123e4567-e89b-12d3-a456-426614174000/media",
+                      "tempUrl": "https://pub.example.com/public/users/user-1/profile/bento/preview:123e4567-e89b-12d3-a456-426614174000/media?v=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
                     }
                   }
                 }
@@ -7779,7 +7779,7 @@
             }
           }
         },
-        "description": "Uploads temporary media for a bento block and returns metadata for later sync.\n\nRules:\n- Requires a valid session\n- Accepts `multipart/form-data` with `bentoId` and `file`\n- The bento must belong to the authenticated user\n- File type must be image or video\n- File size must be 5MB or smaller\n- A SHA-256 hash is computed before storage write\n- Temporary uploads only return metadata; no final DB write happens here\n- The response is `Cache-Control: no-store`",
+        "description": "Uploads temporary media for a bento block and returns metadata for later sync.\n\nRules:\n- Requires a valid session\n- Accepts `multipart/form-data` with `bentoId` and `file`\n- The bento must belong to the authenticated user\n- `preview:` bento uploads are stored directly at a public preview object key so the later save can avoid temp-to-final copy work\n- File type must be image or video\n- File size must be 5MB or smaller\n- A SHA-256 hash is computed before storage write\n- Uploads only return media metadata; no final DB write happens here\n- The response is `Cache-Control: no-store`",
         "tags": [
           "Profile API"
         ],
@@ -7808,6 +7808,217 @@
             }
           }
         }
+      }
+    },
+    "/profile/pages": {
+      "get": {
+        "summary": "List profile page rows",
+        "responses": {
+          "200": {
+            "description": "Successful profile page list. Every row from profile_page is returned with all stored columns.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "pages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "userId": {
+                            "type": "string"
+                          },
+                          "handle": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "location": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "role": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "bio": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "image": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "backgroundImage": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "linkBlockPosition": {
+                            "type": "number"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "userId",
+                          "handle",
+                          "name",
+                          "location",
+                          "role",
+                          "bio",
+                          "image",
+                          "backgroundImage",
+                          "linkBlockPosition",
+                          "createdAt",
+                          "updatedAt"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "pages"
+                  ]
+                },
+                "examples": {
+                  "default": {
+                    "value": {
+                      "pages": [
+                        {
+                          "id": "page_123",
+                          "userId": "user_123",
+                          "handle": "harune",
+                          "name": "Harune",
+                          "location": "Seoul",
+                          "role": "creator",
+                          "bio": "Link in bio page",
+                          "image": "https://cdn.harune.me/avatar.png",
+                          "backgroundImage": null,
+                          "linkBlockPosition": 0,
+                          "createdAt": "2026-05-07T00:00:00.000Z",
+                          "updatedAt": "2026-05-08T01:00:00.000Z"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "unauthorized"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                },
+                "examples": {
+                  "unauthorized": {
+                    "value": {
+                      "error": {
+                        "code": "unauthorized",
+                        "message": "authentication required"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal profile page list failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "profile_pages_failed"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                },
+                "examples": {
+                  "failed": {
+                    "value": {
+                      "error": {
+                        "code": "profile_pages_failed",
+                        "message": "failed to load profile pages"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "description": "Returns every row from the profile_page table. The endpoint requires a valid session, returns rows in updatedAt descending order then createdAt descending order, serializes timestamps as ISO strings, and returns no-store headers on success.",
+        "tags": [
+          "Profile API"
+        ],
+        "operationId": "listProfilePages"
       }
     },
     "/profile/{handle}": {

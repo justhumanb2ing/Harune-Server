@@ -1660,6 +1660,40 @@ function profilePageSchema() {
 	};
 }
 
+function profilePageRecordSchema() {
+	return {
+		type: "object",
+		properties: {
+			id: { type: "string" },
+			userId: { type: "string" },
+			handle: { type: "string" },
+			name: { type: "string", nullable: true },
+			location: { type: "string", nullable: true },
+			role: { type: "string", nullable: true },
+			bio: { type: "string", nullable: true },
+			image: { type: "string", nullable: true },
+			backgroundImage: { type: "string", nullable: true },
+			linkBlockPosition: { type: "number" },
+			createdAt: { type: "string", format: "date-time" },
+			updatedAt: { type: "string", format: "date-time" },
+		},
+		required: [
+			"id",
+			"userId",
+			"handle",
+			"name",
+			"location",
+			"role",
+			"bio",
+			"image",
+			"backgroundImage",
+			"linkBlockPosition",
+			"createdAt",
+			"updatedAt",
+		],
+	};
+}
+
 function profileResponseSchema() {
 	return {
 		type: "object",
@@ -1688,6 +1722,19 @@ function profileResponseSchema() {
 			},
 		},
 		required: ["page", "bento", "viewer"],
+	};
+}
+
+function profilePagesResponseSchema() {
+	return {
+		type: "object",
+		properties: {
+			pages: {
+				type: "array",
+				items: profilePageRecordSchema(),
+			},
+		},
+		required: ["pages"],
 	};
 }
 
@@ -1942,6 +1989,96 @@ function profileBentoMediaUploadSuccessSchema() {
 		required: ["bentoId", "contentHash", "contentType", "mediaType", "tempObjectKey", "tempUrl"],
 	};
 }
+
+const profilePagesGet = openApi.paths?.["/profile/pages"]?.get as
+	| {
+			responses?: Record<string, unknown>;
+			summary?: string;
+			description?: string;
+			tags?: string[];
+			operationId?: string;
+	  }
+	| undefined;
+
+if (!profilePagesGet) {
+	throw new Error("Could not find /profile/pages GET operation in openapi.json");
+}
+
+profilePagesGet.summary = "List profile page rows";
+profilePagesGet.description =
+	"Returns every row from the profile_page table. The endpoint requires a valid session, returns rows in updatedAt descending order then createdAt descending order, serializes timestamps as ISO strings, and returns no-store headers on success.";
+profilePagesGet.operationId = "listProfilePages";
+profilePagesGet.tags = ["Profile API"];
+profilePagesGet.responses = {
+	200: {
+		description:
+			"Successful profile page list. Every row from profile_page is returned with all stored columns.",
+		content: {
+			"application/json": {
+				schema: profilePagesResponseSchema(),
+				examples: {
+					default: {
+						value: {
+							pages: [
+								{
+									id: "page_123",
+									userId: "user_123",
+									handle: "harune",
+									name: "Harune",
+									location: "Seoul",
+									role: "creator",
+									bio: "Link in bio page",
+									image: "https://cdn.harune.me/avatar.png",
+									backgroundImage: null,
+									linkBlockPosition: 0,
+									createdAt: "2026-05-07T00:00:00.000Z",
+									updatedAt: "2026-05-08T01:00:00.000Z",
+								},
+							],
+						},
+					},
+				},
+			},
+		},
+	},
+	401: {
+		description: "Authentication required.",
+		content: {
+			"application/json": {
+				schema: profileErrorSchema(["unauthorized"]),
+				examples: {
+					unauthorized: {
+						value: {
+							error: {
+								code: "unauthorized",
+								message: "authentication required",
+							},
+						},
+					},
+				},
+			},
+		},
+	},
+	500: {
+		description: "Internal profile page list failure.",
+		content: {
+			"application/json": {
+				schema: profileErrorSchema(["profile_pages_failed"]),
+				examples: {
+					failed: {
+						value: {
+							error: {
+								code: "profile_pages_failed",
+								message: "failed to load profile pages",
+							},
+						},
+					},
+				},
+			},
+		},
+	},
+};
+delete profilePagesGet.responses.default;
 
 const profileImagePost = openApi.paths?.["/profile/image"]?.post as
 	| {
@@ -2278,7 +2415,7 @@ profileBentoMediaUpload.requestBody = {
 profileBentoMediaUpload.responses ??= {};
 profileBentoMediaUpload.responses["200"] = {
 	description:
-		"Successful temporary bento media upload for either a persisted bento owned by the authenticated user or a client-generated `preview:` draft id.",
+		"Successful bento media upload for either a persisted bento owned by the authenticated user or a client-generated `preview:` draft id. Persisted bento uploads return a legacy temporary object key. `preview:` uploads return a public preview object key so the later save can avoid a temp-to-final copy.",
 	content: {
 		"application/json": {
 			schema: profileBentoMediaUploadSuccessSchema(),
@@ -2289,9 +2426,9 @@ profileBentoMediaUpload.responses["200"] = {
 						contentHash: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
 						contentType: "video/mp4",
 						mediaType: "video",
-						tempObjectKey: "tmp/users/user-1/profile/bento/bento_123/123e4567-e89b-12d3-a456-426614174000",
+						tempObjectKey: "public/users/user-1/profile/bento/preview:123e4567-e89b-12d3-a456-426614174000/media",
 						tempUrl:
-							"https://pub.example.com/tmp/users/user-1/profile/bento/bento_123/123e4567-e89b-12d3-a456-426614174000",
+							"https://pub.example.com/public/users/user-1/profile/bento/preview:123e4567-e89b-12d3-a456-426614174000/media?v=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
 					},
 				},
 			},
@@ -2679,7 +2816,7 @@ if (!profileMeBentoPut) {
 
 profileMeBentoPut.summary = "Replace my bento graph";
 profileMeBentoPut.description =
-	"Replaces the authenticated user's bento graph with the provided snapshot. The server validates each bento item, deletes bentos missing from the snapshot, promotes temporary media objects when tempObjectKey is present, accepts existing `public/.../preview:` media object keys as-is, and also resolves a preview draft media object when objectKey still points at a client-generated `preview:` bento id. It returns the committed profile snapshot with no-store headers on success.";
+	"Replaces the authenticated user's bento graph with the provided snapshot. The server validates each bento item, deletes bentos missing from the snapshot, promotes legacy temporary media objects when tempObjectKey is present, accepts a public preview object key in tempObjectKey without copying, accepts existing `public/.../preview:` media object keys as-is, and also resolves a preview draft media object when objectKey still points at a client-generated `preview:` bento id. It returns the saved profile graph assembled from the accepted payload after the database write with no-store headers on success.";
 profileMeBentoPut.operationId = "replaceProfileBentoGraph";
 profileMeBentoPut.tags = ["Profile API"];
 profileMeBentoPut.requestBody = {
@@ -2719,7 +2856,8 @@ profileMeBentoPut.requestBody = {
 };
 profileMeBentoPut.responses = {
 	200: {
-		description: "Successful bento graph replacement. Returns the committed profile snapshot.",
+		description:
+			"Successful bento graph replacement. Returns the saved profile graph after the database write without re-reading the public profile joins.",
 		content: {
 			"application/json": {
 				schema: profileResponseSchema(),
@@ -2845,7 +2983,7 @@ profileMeBentoPut.responses = {
 	},
 	500: {
 		description:
-			"Failed to sync the committed bento graph or to load the committed profile snapshot after sync.",
+			"Failed to sync the bento graph or promote required media before the response.",
 		content: {
 			"application/json": {
 				schema: profileErrorSchema(["profile_bento_sync_failed"]),
