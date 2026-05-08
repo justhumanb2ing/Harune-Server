@@ -1,7 +1,10 @@
 import type { R2Bucket } from "@cloudflare/workers-types";
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 export const MAX_PROFILE_IMAGE_BYTES = 5 * 1024 * 1024;
 export const MAX_PROFILE_MEDIA_BYTES = 5 * 1024 * 1024;
+export const PROFILE_MEDIA_UPLOAD_EXPIRES_IN_SECONDS = 15 * 60;
 
 const PROFILE_IMAGE_CONTENT_TYPES = new Set([
 	"image/avif",
@@ -249,6 +252,41 @@ export function buildPublicObjectUrl(
 	}
 
 	return url.toString();
+}
+
+export async function createR2PresignedPutUrl(input: {
+	accountId: string;
+	accessKeyId: string;
+	secretAccessKey: string;
+	bucketName: string;
+	objectKey: string;
+	contentType: string;
+	expiresInSeconds?: number;
+}) {
+	const expiresInSeconds =
+		input.expiresInSeconds ?? PROFILE_MEDIA_UPLOAD_EXPIRES_IN_SECONDS;
+	const client = new S3Client({
+		region: "auto",
+		endpoint: `https://${input.accountId}.r2.cloudflarestorage.com`,
+		forcePathStyle: true,
+		credentials: {
+			accessKeyId: input.accessKeyId,
+			secretAccessKey: input.secretAccessKey,
+		},
+	});
+	const command = new PutObjectCommand({
+		Bucket: input.bucketName,
+		Key: input.objectKey,
+		ContentType: input.contentType,
+	});
+	const uploadUrl = await getSignedUrl(client, command, {
+		expiresIn: expiresInSeconds,
+	});
+
+	return {
+		uploadUrl,
+		expiresAt: new Date(Date.now() + expiresInSeconds * 1000).toISOString(),
+	};
 }
 
 export function parseObjectKeyFromPublicUrl(

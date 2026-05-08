@@ -6784,10 +6784,10 @@
     },
     "/profile/image": {
       "post": {
-        "summary": "Upload a profile image slot object",
+        "summary": "Create a presigned profile image upload",
         "responses": {
           "200": {
-            "description": "Successful profile image upload.",
+            "description": "Successful profile image presign response. The server returns the stable object URL, the presigned PUT URL, and the metadata required for later finalize.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6800,6 +6800,9 @@
                         "background"
                       ]
                     },
+                    "imageHash": {
+                      "type": "string"
+                    },
                     "imageUrl": {
                       "type": "string"
                     },
@@ -6811,24 +6814,37 @@
                     },
                     "contentLength": {
                       "type": "number"
+                    },
+                    "uploadUrl": {
+                      "type": "string"
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
                     }
                   },
                   "required": [
                     "imageKind",
+                    "imageHash",
                     "imageUrl",
                     "objectKey",
                     "contentType",
-                    "contentLength"
+                    "contentLength",
+                    "uploadUrl",
+                    "expiresAt"
                   ]
                 },
                 "examples": {
                   "default": {
                     "value": {
                       "imageKind": "profile",
+                      "imageHash": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
                       "imageUrl": "https://pub.example.com/public/users/user-1/profile/profile?v=abc123",
                       "objectKey": "public/users/user-1/profile/profile",
                       "contentType": "image/png",
-                      "contentLength": 12345
+                      "contentLength": 12345,
+                      "uploadUrl": "https://upload.example/public%2Fusers%2Fuser-1%2Fprofile%2Fprofile?contentType=image%2Fpng",
+                      "expiresAt": "2026-05-08T02:00:00.000Z"
                     }
                   }
                 }
@@ -6836,7 +6852,7 @@
             }
           },
           "400": {
-            "description": "Invalid upload request. Returned when the session is missing, the multipart payload is malformed, the image kind is invalid, the hash is malformed, the file type is unsupported, the file is too large, or the uploaded bytes hash does not match `imageHash`.",
+            "description": "Invalid upload request. Returned when the JSON body is malformed, the image kind is invalid, the content type is unsupported, the content length is too large, or the hash is malformed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6851,8 +6867,7 @@
                           "enum": [
                             "validation_error",
                             "profile_image_invalid_type",
-                            "profile_image_too_large",
-                            "profile_image_hash_mismatch"
+                            "profile_image_too_large"
                           ]
                         },
                         "message": {
@@ -6879,14 +6894,6 @@
                       "error": {
                         "code": "validation_error",
                         "message": "invalid request"
-                      }
-                    }
-                  },
-                  "hashMismatch": {
-                    "value": {
-                      "error": {
-                        "code": "profile_image_hash_mismatch",
-                        "message": "uploaded bytes hash does not match imageHash"
                       }
                     }
                   }
@@ -6943,7 +6950,7 @@
             }
           },
           "500": {
-            "description": "Internal profile image upload failure.",
+            "description": "Internal profile image presign failure.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6981,7 +6988,7 @@
             }
           }
         },
-        "description": "Uploads a profile image or background image into the authenticated user's stable slot.\n\nRules:\n- Requires a valid session\n- Accepts `multipart/form-data` with `file`, `imageKind`, and `imageHash`\n- `imageKind` must be `profile` or `background`\n- `imageHash` must be a 64-character SHA-256 hex string\n- File type must be JPEG, PNG, WebP, or AVIF\n- File size must be 5MB or smaller\n- The uploaded bytes hash must match `imageHash`\n- The response is `Cache-Control: no-store`\n- Upload only writes storage; DB finalize happens in `PATCH /profile/image`",
+        "description": "Returns a presigned R2 upload URL for a profile image or background image.\n\nRules:\n- Requires a valid session\n- Accepts JSON with `imageKind`, `contentType`, `contentLength`, and `imageHash`\n- `imageKind` must be `profile` or `background`\n- `contentType` must be a supported image type\n- `contentLength` must be 5MB or smaller\n- `imageHash` must be a 64-character SHA-256 hex string\n- The response includes the stable `imageUrl` and presigned `uploadUrl`\n- The response is `Cache-Control: no-store`\n- The uploaded object is finalized later by `PATCH /profile/image`",
         "tags": [
           "Profile API"
         ],
@@ -6989,15 +6996,11 @@
         "requestBody": {
           "required": true,
           "content": {
-            "multipart/form-data": {
+            "application/json": {
               "schema": {
                 "type": "object",
                 "additionalProperties": false,
                 "properties": {
-                  "file": {
-                    "type": "string",
-                    "format": "binary"
-                  },
                   "imageKind": {
                     "type": "string",
                     "enum": [
@@ -7005,15 +7008,32 @@
                       "background"
                     ]
                   },
+                  "contentType": {
+                    "type": "string"
+                  },
+                  "contentLength": {
+                    "type": "number"
+                  },
                   "imageHash": {
                     "type": "string"
                   }
                 },
                 "required": [
-                  "file",
                   "imageKind",
+                  "contentType",
+                  "contentLength",
                   "imageHash"
                 ]
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "imageKind": "profile",
+                    "contentType": "image/png",
+                    "contentLength": 12345,
+                    "imageHash": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                  }
+                }
               }
             }
           }
@@ -7568,10 +7588,10 @@
     },
     "/profile/bento/media/upload": {
       "post": {
-        "summary": "Upload temporary bento media",
+        "summary": "Create a presigned bento media upload",
         "responses": {
           "200": {
-            "description": "Successful bento media upload for either a persisted bento owned by the authenticated user or a client-generated `preview:` draft id. Persisted bento uploads return a legacy temporary object key. `preview:` uploads return a public preview object key so the later save can avoid a temp-to-final copy.",
+            "description": "Successful bento media presign response for either a persisted bento owned by the authenticated user or a client-generated `preview:` draft id. Persisted bento uploads return a legacy temporary object key. `preview:` uploads return a public preview object key so the later save can avoid a temp-to-final copy.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7598,6 +7618,16 @@
                     },
                     "tempUrl": {
                       "type": "string"
+                    },
+                    "uploadUrl": {
+                      "type": "string"
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "contentLength": {
+                      "type": "number"
                     }
                   },
                   "required": [
@@ -7606,7 +7636,10 @@
                     "contentType",
                     "mediaType",
                     "tempObjectKey",
-                    "tempUrl"
+                    "tempUrl",
+                    "uploadUrl",
+                    "expiresAt",
+                    "contentLength"
                   ]
                 },
                 "examples": {
@@ -7617,7 +7650,10 @@
                       "contentType": "video/mp4",
                       "mediaType": "video",
                       "tempObjectKey": "public/users/user-1/profile/bento/preview:123e4567-e89b-12d3-a456-426614174000/media",
-                      "tempUrl": "https://pub.example.com/public/users/user-1/profile/bento/preview:123e4567-e89b-12d3-a456-426614174000/media?v=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      "tempUrl": "https://pub.example.com/public/users/user-1/profile/bento/preview:123e4567-e89b-12d3-a456-426614174000/media?v=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                      "uploadUrl": "https://upload.example/public%2Fusers%2Fuser-1%2Fprofile%2Fbento%2Fbento_123%2Fmedia?contentType=video%2Fmp4",
+                      "expiresAt": "2026-05-08T02:00:00.000Z",
+                      "contentLength": 23456
                     }
                   }
                 }
@@ -7625,7 +7661,7 @@
             }
           },
           "400": {
-            "description": "Invalid bento upload request. Returned when the multipart body is missing, the file is missing, the bentoId is empty, the file type is unsupported, or the file exceeds 5MB.",
+            "description": "Invalid bento upload request. Returned when the JSON body is missing, the bentoId is empty, the content type is unsupported, or the content length exceeds 5MB.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7741,7 +7777,7 @@
             }
           },
           "500": {
-            "description": "Internal bento media upload failure.",
+            "description": "Internal bento media presign failure.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7779,7 +7815,7 @@
             }
           }
         },
-        "description": "Uploads temporary media for a bento block and returns metadata for later sync.\n\nRules:\n- Requires a valid session\n- Accepts `multipart/form-data` with `bentoId` and `file`\n- The bento must belong to the authenticated user\n- `preview:` bento uploads are stored directly at a public preview object key so the later save can avoid temp-to-final copy work\n- File type must be image or video\n- File size must be 5MB or smaller\n- A SHA-256 hash is computed before storage write\n- Uploads only return media metadata; no final DB write happens here\n- The response is `Cache-Control: no-store`",
+        "description": "Returns a presigned R2 upload URL for temporary bento media.\n\nRules:\n- Requires a valid session\n- Accepts JSON with `bentoId`, `contentType`, `contentLength`, and `contentHash`\n- The bento must belong to the authenticated user\n- `preview:` bento uploads are presigned to the public preview object key so the later save can avoid temp-to-final copy work\n- `contentType` must be an image or video type\n- `contentLength` must be 5MB or smaller\n- `contentHash` must be a 64-character SHA-256 hex string\n- The response includes the stable object metadata and presigned `uploadUrl`\n- No final DB write happens here\n- The response is `Cache-Control: no-store`",
         "tags": [
           "Profile API"
         ],
@@ -7787,7 +7823,7 @@
         "requestBody": {
           "required": true,
           "content": {
-            "multipart/form-data": {
+            "application/json": {
               "schema": {
                 "type": "object",
                 "additionalProperties": false,
@@ -7795,15 +7831,32 @@
                   "bentoId": {
                     "type": "string"
                   },
-                  "file": {
-                    "type": "string",
-                    "format": "binary"
+                  "contentType": {
+                    "type": "string"
+                  },
+                  "contentLength": {
+                    "type": "number"
+                  },
+                  "contentHash": {
+                    "type": "string"
                   }
                 },
                 "required": [
                   "bentoId",
-                  "file"
+                  "contentType",
+                  "contentLength",
+                  "contentHash"
                 ]
+              },
+              "examples": {
+                "default": {
+                  "value": {
+                    "bentoId": "bento_123",
+                    "contentType": "video/mp4",
+                    "contentLength": 23456,
+                    "contentHash": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                  }
+                }
               }
             }
           }

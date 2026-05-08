@@ -9,6 +9,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1045.0",
+    "@aws-sdk/s3-request-presigner": "^3.1045.0",
     "@better-auth/drizzle-adapter": "^1.6.9",
     "@hono/standard-validator": "^0.2.2",
     "@scalar/hono-api-reference": "^0.10.14",

@@ -17,6 +17,10 @@ export interface AppBindings extends Env {
 		HYPERDRIVE: Hyperdrive;
 		UMAMI_SCRIPT_SRC?: string;
 		UMAMI_WEBSITE_ID?: string;
+		R2_ACCOUNT_ID: string;
+		R2_ACCESS_KEY_ID: string;
+		R2_SECRET_ACCESS_KEY: string;
+		PROFILE_MEDIA_BUCKET_NAME: string;
 		PROFILE_MEDIA_BUCKET: R2Bucket;
 		R2_PUBLIC_BASE_URL: string;
 		UMAMI_API_ENDPOINT?: string;

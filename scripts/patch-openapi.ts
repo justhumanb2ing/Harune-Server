@@ -1941,12 +1941,24 @@ function profileImageUploadSuccessSchema() {
 		type: "object",
 		properties: {
 			imageKind: { type: "string", enum: ["profile", "background"] },
+			imageHash: { type: "string" },
 			imageUrl: { type: "string" },
 			objectKey: { type: "string" },
 			contentType: { type: "string" },
 			contentLength: { type: "number" },
+			uploadUrl: { type: "string" },
+			expiresAt: { type: "string", format: "date-time" },
 		},
-		required: ["imageKind", "imageUrl", "objectKey", "contentType", "contentLength"],
+		required: [
+			"imageKind",
+			"imageHash",
+			"imageUrl",
+			"objectKey",
+			"contentType",
+			"contentLength",
+			"uploadUrl",
+			"expiresAt",
+		],
 	};
 }
 
@@ -1985,8 +1997,21 @@ function profileBentoMediaUploadSuccessSchema() {
 			mediaType: { type: "string", enum: ["image", "video"] },
 			tempObjectKey: { type: "string" },
 			tempUrl: { type: "string" },
+			uploadUrl: { type: "string" },
+			expiresAt: { type: "string", format: "date-time" },
+			contentLength: { type: "number" },
 		},
-		required: ["bentoId", "contentHash", "contentType", "mediaType", "tempObjectKey", "tempUrl"],
+		required: [
+			"bentoId",
+			"contentHash",
+			"contentType",
+			"mediaType",
+			"tempObjectKey",
+			"tempUrl",
+			"uploadUrl",
+			"expiresAt",
+			"contentLength",
+		],
 	};
 }
 
@@ -2078,23 +2103,36 @@ profileImagePost.operationId = "uploadProfileImage";
 profileImagePost.requestBody = {
 	required: true,
 	content: {
-		"multipart/form-data": {
+		"application/json": {
 			schema: {
 				type: "object",
 				additionalProperties: false,
 				properties: {
-					file: { type: "string", format: "binary" },
 					imageKind: { type: "string", enum: ["profile", "background"] },
+					contentType: { type: "string" },
+					contentLength: { type: "number" },
 					imageHash: { type: "string" },
 				},
-				required: ["file", "imageKind", "imageHash"],
+				required: ["imageKind", "contentType", "contentLength", "imageHash"],
+			},
+			examples: {
+				default: {
+					value: {
+						imageKind: "profile",
+						contentType: "image/png",
+						contentLength: 12345,
+						imageHash:
+							"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+					},
+				},
 			},
 		},
 	},
 };
 profileImagePost.responses ??= {};
 profileImagePost.responses["200"] = {
-	description: "Successful profile image upload.",
+	description:
+		"Successful profile image presign response. The server returns the stable object URL, the presigned PUT URL, and the metadata required for later finalize.",
 	content: {
 		"application/json": {
 			schema: profileImageUploadSuccessSchema(),
@@ -2102,10 +2140,15 @@ profileImagePost.responses["200"] = {
 				default: {
 					value: {
 						imageKind: "profile",
+						imageHash:
+							"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
 						imageUrl: "https://pub.example.com/public/users/user-1/profile/profile?v=abc123",
 						objectKey: "public/users/user-1/profile/profile",
 						contentType: "image/png",
 						contentLength: 12345,
+						uploadUrl:
+							"https://upload.example/public%2Fusers%2Fuser-1%2Fprofile%2Fprofile?contentType=image%2Fpng",
+						expiresAt: "2026-05-08T02:00:00.000Z",
 					},
 				},
 			},
@@ -2114,14 +2157,13 @@ profileImagePost.responses["200"] = {
 };
 profileImagePost.responses["400"] = {
 	description:
-		"Invalid upload request. Returned when the session is missing, the multipart payload is malformed, the image kind is invalid, the hash is malformed, the file type is unsupported, the file is too large, or the uploaded bytes hash does not match `imageHash`.",
+		"Invalid upload request. Returned when the JSON body is malformed, the image kind is invalid, the content type is unsupported, the content length is too large, or the hash is malformed.",
 	content: {
 		"application/json": {
 			schema: profileErrorSchema([
 				"validation_error",
 				"profile_image_invalid_type",
 				"profile_image_too_large",
-				"profile_image_hash_mismatch",
 			]),
 			examples: {
 				validation: {
@@ -2129,14 +2171,6 @@ profileImagePost.responses["400"] = {
 						error: {
 							code: "validation_error",
 							message: "invalid request",
-						},
-					},
-				},
-				hashMismatch: {
-					value: {
-						error: {
-							code: "profile_image_hash_mismatch",
-							message: "uploaded bytes hash does not match imageHash",
 						},
 					},
 				},
@@ -2163,7 +2197,7 @@ profileImagePost.responses["401"] = {
 	},
 };
 profileImagePost.responses["500"] = {
-	description: "Internal profile image upload failure.",
+	description: "Internal profile image presign failure.",
 	content: {
 		"application/json": {
 			schema: profileErrorSchema(["profile_image_upload_failed"]),
@@ -2381,15 +2415,28 @@ profileBentoMediaUpload.operationId = "uploadProfileBentoMedia";
 profileBentoMediaUpload.requestBody = {
 	required: true,
 	content: {
-		"multipart/form-data": {
+		"application/json": {
 			schema: {
 				type: "object",
 				additionalProperties: false,
 				properties: {
 					bentoId: { type: "string" },
-					file: { type: "string", format: "binary" },
+					contentType: { type: "string" },
+					contentLength: { type: "number" },
+					contentHash: { type: "string" },
 				},
-				required: ["bentoId", "file"],
+				required: ["bentoId", "contentType", "contentLength", "contentHash"],
+			},
+			examples: {
+				default: {
+					value: {
+						bentoId: "bento_123",
+						contentType: "video/mp4",
+						contentLength: 23456,
+						contentHash:
+							"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+					},
+				},
 			},
 		},
 	},
@@ -2397,7 +2444,7 @@ profileBentoMediaUpload.requestBody = {
 profileBentoMediaUpload.responses ??= {};
 profileBentoMediaUpload.responses["200"] = {
 	description:
-		"Successful bento media upload for either a persisted bento owned by the authenticated user or a client-generated `preview:` draft id. Persisted bento uploads return a legacy temporary object key. `preview:` uploads return a public preview object key so the later save can avoid a temp-to-final copy.",
+		"Successful bento media presign response for either a persisted bento owned by the authenticated user or a client-generated `preview:` draft id. Persisted bento uploads return a legacy temporary object key. `preview:` uploads return a public preview object key so the later save can avoid a temp-to-final copy.",
 	content: {
 		"application/json": {
 			schema: profileBentoMediaUploadSuccessSchema(),
@@ -2411,6 +2458,10 @@ profileBentoMediaUpload.responses["200"] = {
 						tempObjectKey: "public/users/user-1/profile/bento/preview:123e4567-e89b-12d3-a456-426614174000/media",
 						tempUrl:
 							"https://pub.example.com/public/users/user-1/profile/bento/preview:123e4567-e89b-12d3-a456-426614174000/media?v=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+						uploadUrl:
+							"https://upload.example/public%2Fusers%2Fuser-1%2Fprofile%2Fbento%2Fbento_123%2Fmedia?contentType=video%2Fmp4",
+						expiresAt: "2026-05-08T02:00:00.000Z",
+						contentLength: 23456,
 					},
 				},
 			},
@@ -2419,7 +2470,7 @@ profileBentoMediaUpload.responses["200"] = {
 };
 profileBentoMediaUpload.responses["400"] = {
 	description:
-		"Invalid bento upload request. Returned when the multipart body is missing, the file is missing, the bentoId is empty, the file type is unsupported, or the file exceeds 5MB.",
+		"Invalid bento upload request. Returned when the JSON body is missing, the bentoId is empty, the content type is unsupported, or the content length exceeds 5MB.",
 	content: {
 		"application/json": {
 			schema: profileErrorSchema([
@@ -2448,7 +2499,7 @@ profileBentoMediaUpload.responses["403"] = {
 	},
 };
 profileBentoMediaUpload.responses["500"] = {
-	description: "Internal bento media upload failure.",
+	description: "Internal bento media presign failure.",
 	content: {
 		"application/json": {
 			schema: profileErrorSchema(["profile_media_upload_failed"]),

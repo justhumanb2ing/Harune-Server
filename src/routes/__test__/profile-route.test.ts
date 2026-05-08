@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { handleHonoError } from "../../lib/error-utils";
 import {
 	buildPublicObjectUrl,
+	createR2PresignedPutUrl,
 	getProfileBentoMediaPublicUrl,
 	getProfileImageObjectKey,
 	getProfileMediaObjectKey,
@@ -79,6 +80,13 @@ function createTestApp({
 	findProfilePages,
 	ownedBento,
 	bucket: _bucket,
+	createPresignedPutUrl = async ({
+		objectKey,
+		contentType,
+	}: Parameters<typeof createR2PresignedPutUrl>[0]) => ({
+		uploadUrl: `https://upload.example/${encodeURIComponent(objectKey)}?contentType=${encodeURIComponent(contentType)}`,
+		expiresAt: "2026-05-08T02:00:00.000Z",
+	}),
 }: {
 	session: SessionState;
 	page?: {
@@ -107,6 +115,7 @@ function createTestApp({
 	findProfilePages?: () => Promise<unknown>;
 	ownedBento?: { id: string } | null;
 	bucket: ReturnType<typeof createMockBucket>;
+	createPresignedPutUrl?: typeof createR2PresignedPutUrl;
 }) {
 	let currentPage = page ?? {
 		id: "page-1",
@@ -119,6 +128,7 @@ function createTestApp({
 	};
 
 	const route = createProfileRoute({
+		createPresignedPutUrl,
 		findProfilePageByUserId: async (_db, userId) => {
 			if (!currentPage || currentPage.userId !== userId) {
 				return null;
@@ -517,26 +527,28 @@ describe("profile mutation routes", () => {
 		vi.restoreAllMocks();
 	});
 
-	it("uploads a profile image and returns stable metadata", async () => {
+	it("returns a presigned profile image upload url", async () => {
 		const bucket = createMockBucket();
 		const { app } = createTestApp({
 			session: { userId: "user-1" },
 			bucket,
 		});
-		const { file, hash } = await createImageFixture();
-		const formData = new FormData();
-		formData.append("file", file);
-		formData.append("imageHash", hash);
-		formData.append("imageKind", "profile");
 
 		const response = await app.request(
 			"/profile/image",
 			{
 				method: "POST",
-				body: formData,
+				body: JSON.stringify({
+					imageKind: "profile",
+					contentType: "image/png",
+					contentLength: 12345,
+					imageHash: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+				}),
+				headers: {
+					"content-type": "application/json",
+				},
 			},
 			{
-				PROFILE_MEDIA_BUCKET: bucket.bucket,
 				R2_PUBLIC_BASE_URL: "https://cdn.harune.me",
 			} as never,
 		);
@@ -547,38 +559,44 @@ describe("profile mutation routes", () => {
 		expect(response.headers.get("Pragma")).toBe("no-cache");
 		expect(json).toEqual({
 			imageKind: "profile",
+			imageHash:
+				"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
 			imageUrl: buildPublicObjectUrl(
 				"https://cdn.harune.me",
 				getProfileImageObjectKey("user-1", "profile"),
-				hash,
+				"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
 			),
 			objectKey: getProfileImageObjectKey("user-1", "profile"),
 			contentType: "image/png",
-			contentLength: file.size,
+			contentLength: 12345,
+			uploadUrl: expect.stringContaining("https://upload.example/"),
+			expiresAt: "2026-05-08T02:00:00.000Z",
 		});
-		expect(bucket.bucket.put).toHaveBeenCalledTimes(1);
+		expect(bucket.bucket.put).not.toHaveBeenCalled();
 	});
 
-	it("returns 400 when the uploaded file hash does not match", async () => {
+	it("returns 400 when the upload metadata is malformed", async () => {
 		const bucket = createMockBucket();
 		const { app } = createTestApp({
 			session: { userId: "user-1" },
 			bucket,
 		});
-		const { file } = await createImageFixture();
-		const formData = new FormData();
-		formData.append("file", file);
-		formData.append("imageHash", "0".repeat(64));
-		formData.append("imageKind", "profile");
 
 		const response = await app.request(
 			"/profile/image",
 			{
 				method: "POST",
-				body: formData,
+				body: JSON.stringify({
+					imageKind: "profile",
+					contentType: "image/gif",
+					contentLength: 12345,
+					imageHash: "0".repeat(64),
+				}),
+				headers: {
+					"content-type": "application/json",
+				},
 			},
 			{
-				PROFILE_MEDIA_BUCKET: bucket.bucket,
 				R2_PUBLIC_BASE_URL: "https://cdn.harune.me",
 			} as never,
 		);
@@ -586,8 +604,8 @@ describe("profile mutation routes", () => {
 		expect(response.status).toBe(400);
 		expect(await response.json()).toEqual({
 			error: {
-				code: "profile_image_hash_mismatch",
-				message: "uploaded bytes hash does not match imageHash",
+				code: "profile_image_invalid_type",
+				message: "invalid image file type",
 			},
 		});
 		expect(bucket.bucket.put).not.toHaveBeenCalled();
@@ -777,26 +795,30 @@ describe("profile mutation routes", () => {
 		expect(bucket.bucket.delete).not.toHaveBeenCalled();
 	});
 
-	it("uploads temporary bento media metadata only", async () => {
+	it("returns a presigned temporary bento media upload url", async () => {
 		const bucket = createMockBucket();
 		const { app } = createTestApp({
 			session: { userId: "user-1" },
 			ownedBento: { id: "bento-1" },
 			bucket,
 		});
-		const { file, hash } = await createVideoFixture();
-		const formData = new FormData();
-		formData.append("file", file);
-		formData.append("bentoId", "bento-1");
 
 		const response = await app.request(
 			"/profile/bento/media/upload",
 			{
 				method: "POST",
-				body: formData,
+				body: JSON.stringify({
+					bentoId: "bento-1",
+					contentType: "video/mp4",
+					contentLength: 23456,
+					contentHash:
+						"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+				}),
+				headers: {
+					"content-type": "application/json",
+				},
 			},
 			{
-				PROFILE_MEDIA_BUCKET: bucket.bucket,
 				R2_PUBLIC_BASE_URL: "https://cdn.harune.me",
 			} as never,
 		);
@@ -806,7 +828,8 @@ describe("profile mutation routes", () => {
 		expect(response.headers.get("Cache-Control")).toBe("no-store");
 		expect(json).toEqual({
 			bentoId: "bento-1",
-			contentHash: hash,
+			contentHash:
+				"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
 			contentType: "video/mp4",
 			mediaType: "video",
 			tempObjectKey: expect.stringMatching(
@@ -815,30 +838,37 @@ describe("profile mutation routes", () => {
 			tempUrl: expect.stringContaining(
 				"https://cdn.harune.me/tmp/users/user-1/profile/bento/bento-1/",
 			),
+			uploadUrl: expect.stringContaining("https://upload.example/"),
+			expiresAt: "2026-05-08T02:00:00.000Z",
+			contentLength: 23456,
 		});
-		expect(bucket.bucket.put).toHaveBeenCalledTimes(1);
+		expect(bucket.bucket.put).not.toHaveBeenCalled();
 	});
 
-	it("uploads preview bento media directly to a public preview object key", async () => {
+	it("returns a presigned preview bento media upload url", async () => {
 		const bucket = createMockBucket();
 		const { app } = createTestApp({
 			session: { userId: "user-1" },
 			bucket,
 		});
-		const { file, hash } = await createVideoFixture();
 		const previewBentoId = `preview:${crypto.randomUUID()}`;
-		const formData = new FormData();
-		formData.append("file", file);
-		formData.append("bentoId", previewBentoId);
 
 		const response = await app.request(
 			"/profile/bento/media/upload",
 			{
 				method: "POST",
-				body: formData,
+				body: JSON.stringify({
+					bentoId: previewBentoId,
+					contentType: "video/mp4",
+					contentLength: 23456,
+					contentHash:
+						"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+				}),
+				headers: {
+					"content-type": "application/json",
+				},
 			},
 			{
-				PROFILE_MEDIA_BUCKET: bucket.bucket,
 				R2_PUBLIC_BASE_URL: "https://cdn.harune.me",
 			} as never,
 		);
@@ -847,24 +877,21 @@ describe("profile mutation routes", () => {
 		expect(response.status).toBe(200);
 		expect(json).toEqual({
 			bentoId: previewBentoId,
-			contentHash: hash,
+			contentHash:
+				"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
 			contentType: "video/mp4",
 			mediaType: "video",
 			tempObjectKey: getProfileMediaObjectKey("user-1", previewBentoId),
 			tempUrl: getProfileBentoMediaPublicUrl(
 				"https://cdn.harune.me",
 				getProfileMediaObjectKey("user-1", previewBentoId),
-				hash,
+				"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
 			),
+			uploadUrl: expect.stringContaining("https://upload.example/"),
+			expiresAt: "2026-05-08T02:00:00.000Z",
+			contentLength: 23456,
 		});
-		expect(bucket.bucket.put).toHaveBeenCalledTimes(1);
-		expect(bucket.bucket.put).toHaveBeenCalledWith(
-			getProfileMediaObjectKey("user-1", previewBentoId),
-			expect.any(Uint8Array),
-			{
-				httpMetadata: { contentType: "video/mp4" },
-			},
-		);
+		expect(bucket.bucket.put).not.toHaveBeenCalled();
 	});
 
 	it("returns 403 when the bento does not belong to the current user", async () => {
@@ -874,19 +901,22 @@ describe("profile mutation routes", () => {
 			ownedBento: null,
 			bucket,
 		});
-		const { file } = await createVideoFixture();
-		const formData = new FormData();
-		formData.append("file", file);
-		formData.append("bentoId", "bento-1");
-
 		const response = await app.request(
 			"/profile/bento/media/upload",
 			{
 				method: "POST",
-				body: formData,
+				body: JSON.stringify({
+					bentoId: "bento-1",
+					contentType: "video/mp4",
+					contentLength: 23456,
+					contentHash:
+						"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+				}),
+				headers: {
+					"content-type": "application/json",
+				},
 			},
 			{
-				PROFILE_MEDIA_BUCKET: bucket.bucket,
 				R2_PUBLIC_BASE_URL: "https://cdn.harune.me",
 			} as never,
 		);

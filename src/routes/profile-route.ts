@@ -19,6 +19,7 @@ import {
 } from "../lib/handles";
 import {
 	buildPublicObjectUrl,
+	createR2PresignedPutUrl,
 	copyProfileBentoMediaObject,
 	deleteProfileBentoMediaObject,
 	getProfileBentoMediaPublicUrl,
@@ -131,6 +132,7 @@ type ProfileRouteDependencies = {
 	findOwnedProfileBentoById?: typeof findOwnedProfileBentoById;
 	syncProfileBentoGraph?: typeof syncProfileBentoGraph;
 	getProfile?: typeof getProfile;
+	createPresignedPutUrl?: typeof createR2PresignedPutUrl;
 };
 
 function withNoStore(response: Response) {
@@ -191,6 +193,22 @@ function parseFormValue(value: unknown) {
 
 function parseImageKind(value: string) {
 	return value === "profile" || value === "background" ? value : null;
+}
+
+function parseUploadContentLength(value: unknown) {
+	return typeof value === "number" && Number.isInteger(value) && value > 0
+		? value
+		: null;
+}
+
+function parseSha256Hex(value: unknown) {
+	const parsed = parseTrimmedString(value);
+
+	if (!parsed || !/^[a-f0-9]{64}$/i.test(parsed)) {
+		return null;
+	}
+
+	return parsed;
 }
 
 function parseProfileImageTarget(baseUrl: string, imageUrl: string) {
@@ -849,6 +867,8 @@ export function createProfileRoute(
 	const syncBentoGraph =
 		dependencies.syncProfileBentoGraph ?? syncProfileBentoGraph;
 	const getProfileForUser = dependencies.getProfile ?? getProfile;
+	const createPresignedPutUrl =
+		dependencies.createPresignedPutUrl ?? createR2PresignedPutUrl;
 
 	return new Hono<AppBindings>()
 		.post("/me", async (c) => {
@@ -1338,29 +1358,28 @@ export function createProfileRoute(
 					);
 				}
 
-				let formData: FormData;
+				let body: unknown;
 
 				try {
-					formData = await c.req.formData();
+					body = await c.req.json();
 				} catch {
 					return withNoStore(validationError(c));
 				}
 
-				const file: unknown = formData.get("file");
-				const imageHash = parseFormValue(formData.get("imageHash"));
-				const imageKind = parseImageKind(
-					parseFormValue(formData.get("imageKind")),
+				if (!isRecord(body)) {
+					return withNoStore(validationError(c));
+				}
+
+				const imageKind = parseImageKind(parseFormValue(body.imageKind));
+				const contentType = normalizeContentType(
+					parseFormValue(body.contentType),
 				);
+				const contentLength = parseUploadContentLength(body.contentLength);
+				const imageHash = parseSha256Hex(body.imageHash);
 
-				if (!(file instanceof File) || !imageHash || !imageKind) {
+				if (!imageKind || !contentType || !contentLength || !imageHash) {
 					return withNoStore(validationError(c));
 				}
-
-				if (!/^[a-f0-9]{64}$/i.test(imageHash)) {
-					return withNoStore(validationError(c));
-				}
-
-				const contentType = normalizeContentType(file.type);
 
 				if (!isAllowedProfileImageContentType(contentType)) {
 					return withNoStore(
@@ -1372,43 +1391,35 @@ export function createProfileRoute(
 					);
 				}
 
-				if (file.size > MAX_PROFILE_IMAGE_BYTES) {
+				if (contentLength > MAX_PROFILE_IMAGE_BYTES) {
 					return withNoStore(
 						badRequest(c, "profile_image_too_large", "image file is too large"),
 					);
 				}
 
-				const bytes = new Uint8Array(await file.arrayBuffer());
-				const contentHash = await sha256Hex(bytes);
-
-				if (contentHash !== imageHash) {
-					return withNoStore(
-						badRequest(
-							c,
-							"profile_image_hash_mismatch",
-							"uploaded bytes hash does not match imageHash",
-						),
-					);
-				}
-
 				const objectKey = getProfileImageObjectKey(session.userId, imageKind);
-				const bucket = c.env.PROFILE_MEDIA_BUCKET;
-				await bucket.put(objectKey, bytes, {
-					httpMetadata: {
-						contentType,
-					},
+				const { uploadUrl, expiresAt } = await createPresignedPutUrl({
+					accountId: c.env.R2_ACCOUNT_ID,
+					accessKeyId: c.env.R2_ACCESS_KEY_ID,
+					secretAccessKey: c.env.R2_SECRET_ACCESS_KEY,
+					bucketName: c.env.PROFILE_MEDIA_BUCKET_NAME,
+					objectKey,
+					contentType,
 				});
 
 				const response = c.json({
 					imageKind,
+					imageHash,
 					imageUrl: buildPublicObjectUrl(
 						c.env.R2_PUBLIC_BASE_URL,
 						objectKey,
-						contentHash,
+						imageHash,
 					),
 					objectKey,
 					contentType,
-					contentLength: file.size,
+					contentLength,
+					uploadUrl,
+					expiresAt,
 				});
 
 				return withNoStore(response);
@@ -1421,7 +1432,7 @@ export function createProfileRoute(
 					internalServerError(
 						c,
 						"profile_image_upload_failed",
-						"failed to upload profile image",
+						"failed to create presigned profile image upload",
 					),
 				);
 			}
@@ -1655,18 +1666,26 @@ export function createProfileRoute(
 					);
 				}
 
-				let formData: FormData;
+				let body: unknown;
 
 				try {
-					formData = await c.req.formData();
+					body = await c.req.json();
 				} catch {
 					return withNoStore(validationError(c));
 				}
 
-				const file: unknown = formData.get("file");
-				const bentoId = parseFormValue(formData.get("bentoId"));
+				if (!isRecord(body)) {
+					return withNoStore(validationError(c));
+				}
 
-				if (!(file instanceof File) || !bentoId) {
+				const bentoId = parseFormValue(body.bentoId);
+				const contentType = normalizeContentType(
+					parseFormValue(body.contentType),
+				);
+				const contentLength = parseUploadContentLength(body.contentLength);
+				const contentHash = parseSha256Hex(body.contentHash);
+
+				if (!bentoId || !contentType || !contentLength || !contentHash) {
 					return withNoStore(validationError(c));
 				}
 
@@ -1685,13 +1704,11 @@ export function createProfileRoute(
 					);
 				}
 
-				if (file.size > MAX_PROFILE_MEDIA_BYTES) {
+				if (contentLength > MAX_PROFILE_MEDIA_BYTES) {
 					return withNoStore(
 						badRequest(c, "profile_media_too_large", "media file is too large"),
 					);
 				}
-
-				const contentType = normalizeContentType(file.type);
 
 				if (!isAllowedProfileMediaContentType(contentType)) {
 					return withNoStore(
@@ -1715,16 +1732,17 @@ export function createProfileRoute(
 					);
 				}
 
-				const bytes = new Uint8Array(await file.arrayBuffer());
-				const contentHash = await sha256Hex(bytes);
 				const objectKey = isPreviewBentoId
 					? getProfileMediaObjectKey(session.userId, bentoId)
 					: getProfileMediaTempObjectKey(session.userId, bentoId);
 
-				await c.env.PROFILE_MEDIA_BUCKET.put(objectKey, bytes, {
-					httpMetadata: {
-						contentType,
-					},
+				const { uploadUrl, expiresAt } = await createPresignedPutUrl({
+					accountId: c.env.R2_ACCOUNT_ID,
+					accessKeyId: c.env.R2_ACCESS_KEY_ID,
+					secretAccessKey: c.env.R2_SECRET_ACCESS_KEY,
+					bucketName: c.env.PROFILE_MEDIA_BUCKET_NAME,
+					objectKey,
+					contentType,
 				});
 
 				const response = c.json({
@@ -1736,8 +1754,11 @@ export function createProfileRoute(
 					tempUrl: buildPublicObjectUrl(
 						c.env.R2_PUBLIC_BASE_URL,
 						objectKey,
-						isPreviewBentoId ? contentHash : undefined,
+						contentHash,
 					),
+					uploadUrl,
+					expiresAt,
+					contentLength,
 				});
 
 				return withNoStore(response);
@@ -1750,7 +1771,7 @@ export function createProfileRoute(
 					internalServerError(
 						c,
 						"profile_media_upload_failed",
-						"failed to upload profile media",
+						"failed to create presigned profile media upload",
 					),
 				);
 			}

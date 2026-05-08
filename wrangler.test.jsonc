@@ -6,6 +6,8 @@
   "compatibility_flags": ["nodejs_compat"],
   "vars": {
     "HARUNE_APP_ORIGIN": "https://harune.me",
+    "PROFILE_MEDIA_BUCKET_NAME": "umbrella",
+    "R2_ACCOUNT_ID": "test-account",
     "R2_PUBLIC_BASE_URL": "https://cdn.harune.me",
     "UPSTASH_REDIS_REST_URL": "https://accepted-midge-95805.upstash.io",
     "UMAMI_API_ENDPOINT": "https://api.umami.is/v1",
