@@ -2679,7 +2679,7 @@ if (!profileMeBentoPut) {
 
 profileMeBentoPut.summary = "Replace my bento graph";
 profileMeBentoPut.description =
-	"Replaces the authenticated user's bento graph with the provided snapshot. The server validates each bento item, deletes bentos missing from the snapshot, promotes temporary media objects when tempObjectKey is present, and returns the committed profile snapshot with no-store headers on success.";
+	"Replaces the authenticated user's bento graph with the provided snapshot. The server validates each bento item, deletes bentos missing from the snapshot, promotes temporary media objects when tempObjectKey is present, accepts existing `public/.../preview:` media object keys as-is, and also resolves a preview draft media object when objectKey still points at a client-generated `preview:` bento id. It returns the committed profile snapshot with no-store headers on success.";
 profileMeBentoPut.operationId = "replaceProfileBentoGraph";
 profileMeBentoPut.tags = ["Profile API"];
 profileMeBentoPut.requestBody = {

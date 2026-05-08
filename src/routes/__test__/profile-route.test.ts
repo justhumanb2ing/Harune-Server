@@ -1,6 +1,6 @@
+import type { R2Bucket } from "@cloudflare/workers-types";
 import { Hono } from "hono";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { R2Bucket } from "@cloudflare/workers-types";
 
 import { handleHonoError } from "../../lib/error-utils";
 import {
@@ -10,8 +10,8 @@ import {
 	getProfileMediaObjectKey,
 	sha256Hex,
 } from "../../lib/profile-media";
-import { createProfileRoute } from "../profile-route";
 import type { AppBindings } from "../../types/app-bindings";
+import { createProfileRoute } from "../profile-route";
 
 type SessionState = {
 	userId: string;
@@ -21,19 +21,25 @@ function createMockBucket() {
 	const objects = new Map<string, { contentType: string; bytes: Uint8Array }>();
 
 	const bucket = {
-		put: vi.fn(async (key: string, body: Uint8Array, options?: { httpMetadata?: { contentType?: string } }) => {
-			objects.set(key, {
-				contentType: options?.httpMetadata?.contentType ?? "",
-				bytes: body instanceof Uint8Array ? body : new Uint8Array(body),
-			});
-		}),
+		put: vi.fn(
+			async (
+				key: string,
+				body: Uint8Array,
+				options?: { httpMetadata?: { contentType?: string } },
+			) => {
+				objects.set(key, {
+					contentType: options?.httpMetadata?.contentType ?? "",
+					bytes: body instanceof Uint8Array ? body : new Uint8Array(body),
+				});
+			},
+		),
 		list: vi.fn(async (options?: { prefix?: string; limit?: number }) => {
 			const prefix = options?.prefix ?? "";
 			const limit = options?.limit ?? Number.POSITIVE_INFINITY;
 			const objectsList = Array.from(objects.keys())
 				.filter((key) => key.startsWith(prefix))
 				.slice(0, limit)
-				.map((key) => ({ key } as never));
+				.map((key) => ({ key }) as never);
 
 			return {
 				objects: objectsList,
@@ -55,7 +61,9 @@ function createMockBucket() {
 				},
 			} as never;
 		}),
-		head: vi.fn(async (key: string) => (objects.has(key) ? ({ key } as never) : null)),
+		head: vi.fn(async (key: string) =>
+			objects.has(key) ? ({ key } as never) : null,
+		),
 		delete: vi.fn(async (key: string) => {
 			objects.delete(key);
 		}),
@@ -68,7 +76,7 @@ function createTestApp({
 	session,
 	page,
 	ownedBento,
-	bucket,
+	bucket: _bucket,
 }: {
 	session: SessionState;
 	page?: {
@@ -83,17 +91,15 @@ function createTestApp({
 	ownedBento?: { id: string } | null;
 	bucket: ReturnType<typeof createMockBucket>;
 }) {
-	let currentPage =
-		page ??
-		{
-			id: "page-1",
-			userId: "user-1",
-			handle: "maker",
-			name: "Maker",
-			image: null,
-			backgroundImage: null,
-			updatedAt: new Date("2026-05-08T00:00:00.000Z"),
-		};
+	let currentPage = page ?? {
+		id: "page-1",
+		userId: "user-1",
+		handle: "maker",
+		name: "Maker",
+		image: null,
+		backgroundImage: null,
+		updatedAt: new Date("2026-05-08T00:00:00.000Z"),
+	};
 
 	const route = createProfileRoute({
 		findProfilePageByUserId: async (_db, userId) => {
@@ -103,7 +109,12 @@ function createTestApp({
 
 			return currentPage;
 		},
-		updateProfilePageImageByUserId: async (_db, userId, imageKind, imageUrl) => {
+		updateProfilePageImageByUserId: async (
+			_db,
+			userId,
+			imageKind,
+			imageUrl,
+		) => {
 			if (!currentPage || currentPage.userId !== userId) {
 				return;
 			}
@@ -160,24 +171,30 @@ function createEditorTestApp({
 		backgroundImage: string | null;
 		updatedAt: Date;
 	} | null;
-	getProfile?: (db: never, handle: string, viewer: { userId: string | null }) => Promise<unknown>;
-	syncProfileBentoGraph?: (db: never, pageId: string, bentos: unknown[]) => Promise<void>;
+	getProfile?: (
+		db: never,
+		handle: string,
+		viewer: { userId: string | null },
+	) => Promise<unknown>;
+	syncProfileBentoGraph?: (
+		db: never,
+		pageId: string,
+		bentos: unknown[],
+	) => Promise<void>;
 	bucket: ReturnType<typeof createMockBucket>;
 }) {
-	let currentPage =
-		page ??
-		{
-			id: "page-1",
-			userId: "user-1",
-			handle: "maker",
-			name: "Maker",
-			location: "Seoul",
-			role: "creator",
-			bio: "Bio",
-			image: null,
-			backgroundImage: null,
-			updatedAt: new Date("2026-05-08T00:00:00.000Z"),
-		};
+	let currentPage = page ?? {
+		id: "page-1",
+		userId: "user-1",
+		handle: "maker",
+		name: "Maker",
+		location: "Seoul",
+		role: "creator",
+		bio: "Bio",
+		image: null,
+		backgroundImage: null,
+		updatedAt: new Date("2026-05-08T00:00:00.000Z"),
+	};
 	let lastPatch: unknown = null;
 	let lastSyncedBentos: unknown[] | null = null;
 
@@ -226,7 +243,7 @@ function createEditorTestApp({
 							backgroundImage: currentPage.backgroundImage,
 							location: currentPage.location,
 							updatedAt: currentPage.updatedAt.toISOString(),
-					  }
+						}
 					: null,
 				bento: [],
 				viewer: {
@@ -283,9 +300,7 @@ function createCreateTestApp({
 	userExists?: boolean;
 	bucket: ReturnType<typeof createMockBucket>;
 }) {
-	let currentPage =
-		page ??
-		null;
+	let currentPage = page ?? null;
 	let lastCreatedInput: unknown = null;
 
 	const route = createProfileRoute({
@@ -401,11 +416,11 @@ describe("profile mutation routes", () => {
 		expect(response.status).toBe(200);
 		expect(response.headers.get("Cache-Control")).toBe("no-store");
 		expect(response.headers.get("Pragma")).toBe("no-cache");
-			expect(json).toEqual({
-				imageKind: "profile",
-				imageUrl: buildPublicObjectUrl(
-					"https://cdn.harune.me",
-					getProfileImageObjectKey("user-1", "profile"),
+		expect(json).toEqual({
+			imageKind: "profile",
+			imageUrl: buildPublicObjectUrl(
+				"https://cdn.harune.me",
+				getProfileImageObjectKey("user-1", "profile"),
 				hash,
 			),
 			objectKey: getProfileImageObjectKey("user-1", "profile"),
@@ -453,14 +468,22 @@ describe("profile mutation routes", () => {
 		const bucket = createMockBucket();
 		const imageFixture = await createImageFixture();
 		const objectKey = getProfileImageObjectKey("user-1", "profile");
-		await bucket.bucket.put(objectKey, new Uint8Array(await imageFixture.file.arrayBuffer()), {
-			httpMetadata: { contentType: "image/png" },
-		});
+		await bucket.bucket.put(
+			objectKey,
+			new Uint8Array(await imageFixture.file.arrayBuffer()),
+			{
+				httpMetadata: { contentType: "image/png" },
+			},
+		);
 		const { app, getCurrentPage } = createTestApp({
 			session: { userId: "user-1" },
 			bucket,
 		});
-		const imageUrl = buildPublicObjectUrl("https://cdn.harune.me", objectKey, imageFixture.hash);
+		const imageUrl = buildPublicObjectUrl(
+			"https://cdn.harune.me",
+			objectKey,
+			imageFixture.hash,
+		);
 
 		const response = await app.request(
 			"/profile/image",
@@ -497,9 +520,13 @@ describe("profile mutation routes", () => {
 		const bucket = createMockBucket();
 		const { file, hash } = await createImageFixture();
 		const objectKey = getProfileImageObjectKey("user-2", "profile");
-		await bucket.bucket.put(objectKey, new Uint8Array(await file.arrayBuffer()), {
-			httpMetadata: { contentType: "image/png" },
-		});
+		await bucket.bucket.put(
+			objectKey,
+			new Uint8Array(await file.arrayBuffer()),
+			{
+				httpMetadata: { contentType: "image/png" },
+			},
+		);
 		const { app } = createTestApp({
 			session: { userId: "user-1" },
 			bucket,
@@ -511,7 +538,11 @@ describe("profile mutation routes", () => {
 				method: "PATCH",
 				body: JSON.stringify({
 					imageKind: "profile",
-					imageUrl: buildPublicObjectUrl("https://cdn.harune.me", objectKey, hash),
+					imageUrl: buildPublicObjectUrl(
+						"https://cdn.harune.me",
+						objectKey,
+						hash,
+					),
 				}),
 				headers: {
 					"content-type": "application/json",
@@ -536,9 +567,13 @@ describe("profile mutation routes", () => {
 		const bucket = createMockBucket();
 		const imageFixture = await createImageFixture();
 		const objectKey = getProfileImageObjectKey("user-1", "background");
-		await bucket.bucket.put(objectKey, new Uint8Array(await imageFixture.file.arrayBuffer()), {
-			httpMetadata: { contentType: "image/png" },
-		});
+		await bucket.bucket.put(
+			objectKey,
+			new Uint8Array(await imageFixture.file.arrayBuffer()),
+			{
+				httpMetadata: { contentType: "image/png" },
+			},
+		);
 		const { app, getCurrentPage } = createTestApp({
 			session: { userId: "user-1" },
 			bucket,
@@ -549,7 +584,11 @@ describe("profile mutation routes", () => {
 			{
 				method: "DELETE",
 				body: JSON.stringify({
-					imageUrl: buildPublicObjectUrl("https://cdn.harune.me", objectKey, imageFixture.hash),
+					imageUrl: buildPublicObjectUrl(
+						"https://cdn.harune.me",
+						objectKey,
+						imageFixture.hash,
+					),
 				}),
 				headers: {
 					"content-type": "application/json",
@@ -636,18 +675,18 @@ describe("profile mutation routes", () => {
 
 		expect(response.status).toBe(200);
 		expect(response.headers.get("Cache-Control")).toBe("no-store");
-			expect(json).toEqual({
-				bentoId: "bento-1",
-				contentHash: hash,
-				contentType: "video/mp4",
-				mediaType: "video",
-				tempObjectKey: expect.stringMatching(
-					/^tmp\/users\/user-1\/profile\/bento\/bento-1\/[0-9a-f-]{36}$/,
-				),
-				tempUrl: expect.stringContaining(
-					"https://cdn.harune.me/tmp/users/user-1/profile/bento/bento-1/",
-				),
-			});
+		expect(json).toEqual({
+			bentoId: "bento-1",
+			contentHash: hash,
+			contentType: "video/mp4",
+			mediaType: "video",
+			tempObjectKey: expect.stringMatching(
+				/^tmp\/users\/user-1\/profile\/bento\/bento-1\/[0-9a-f-]{36}$/,
+			),
+			tempUrl: expect.stringContaining(
+				"https://cdn.harune.me/tmp/users/user-1/profile/bento/bento-1/",
+			),
+		});
 		expect(bucket.bucket.put).toHaveBeenCalledTimes(1);
 	});
 
@@ -682,15 +721,15 @@ describe("profile mutation routes", () => {
 			contentHash: hash,
 			contentType: "video/mp4",
 			mediaType: "video",
-				tempObjectKey: expect.stringMatching(
-					new RegExp(
-						`^tmp/users/user-1/profile/bento/${previewBentoId}/[0-9a-f-]{36}$`,
-					),
+			tempObjectKey: expect.stringMatching(
+				new RegExp(
+					`^tmp/users/user-1/profile/bento/${previewBentoId}/[0-9a-f-]{36}$`,
 				),
-				tempUrl: expect.stringContaining(
-					`https://cdn.harune.me/tmp/users/user-1/profile/bento/${previewBentoId}/`,
-				),
-			});
+			),
+			tempUrl: expect.stringContaining(
+				`https://cdn.harune.me/tmp/users/user-1/profile/bento/${previewBentoId}/`,
+			),
+		});
 		expect(bucket.bucket.put).toHaveBeenCalledTimes(1);
 	});
 
@@ -946,7 +985,7 @@ describe("PUT /profile/me", () => {
 
 	it("updates only the provided profile fields and returns the committed read model", async () => {
 		const bucket = createMockBucket();
-		const responseBody = {
+		const expectedResponse = {
 			page: {
 				id: "page-1",
 				userId: "user-1",
@@ -969,7 +1008,7 @@ describe("PUT /profile/me", () => {
 
 		const { app, getLastPatch } = createEditorTestApp({
 			session: { userId: "user-1" },
-			getProfile: async () => responseBody,
+			getProfile: async () => expectedResponse,
 			bucket,
 		});
 
@@ -987,7 +1026,7 @@ describe("PUT /profile/me", () => {
 
 		expect(response.status).toBe(200);
 		expect(response.headers.get("Cache-Control")).toBe("no-store");
-		expect(json).toEqual(responseBody);
+		expect(json).toEqual(expectedResponse);
 		expect(getLastPatch()).toEqual({
 			name: "Updated Maker",
 			bio: "Updated bio",
@@ -1029,12 +1068,12 @@ describe("PUT /profile/me/bento", () => {
 	it("promotes temp media to the final object key and syncs the replacement graph", async () => {
 		const bucket = createMockBucket();
 		const tempBytes = new TextEncoder().encode("temp bento payload");
-			const tempObjectKey = `tmp/users/user-1/profile/bento/bento-1/${crypto.randomUUID()}`;
+		const tempObjectKey = `tmp/users/user-1/profile/bento/bento-1/${crypto.randomUUID()}`;
 		await bucket.bucket.put(tempObjectKey, tempBytes, {
 			httpMetadata: { contentType: "image/png" },
 		});
 
-		const responseBody = {
+		const expectedResponse = {
 			page: {
 				id: "page-1",
 				userId: "user-1",
@@ -1045,7 +1084,7 @@ describe("PUT /profile/me/bento", () => {
 				image: null,
 				backgroundImage: null,
 				location: "Seoul",
-				updatedAt: "2026-05-08T01:00:00.000Z",
+				updatedAt: "2026-05-08T00:00:00.000Z",
 			},
 			bento: [],
 			viewer: {
@@ -1057,45 +1096,72 @@ describe("PUT /profile/me/bento", () => {
 
 		const { app, getLastSyncedBentos } = createEditorTestApp({
 			session: { userId: "user-1" },
-			getProfile: async () => responseBody,
 			bucket,
 		});
-		const response = await app.request("/profile/me/bento", {
-			method: "PUT",
-			body: JSON.stringify({
-				bento: [
-					{
-						id: "bento-1",
-						type: "media",
-						layout: {
-							desktop: { x: 0, y: 0, w: 4, h: 4 },
-							compact: { x: 0, y: 0, w: 4, h: 4 },
+		const response = await app.request(
+			"/profile/me/bento",
+			{
+				method: "PUT",
+				body: JSON.stringify({
+					bento: [
+						{
+							id: "bento-1",
+							type: "media",
+							layout: {
+								desktop: { x: 0, y: 0, w: 4, h: 4 },
+								compact: { x: 0, y: 0, w: 4, h: 4 },
+							},
+							content: {
+								mediaType: "image",
+								url: "https://cdn.harune.me/placeholder?v=content-hash-123",
+								objectKey: "public/users/user-1/profile/bento/bento-1/media",
+								tempObjectKey,
+								contentHash: "content-hash-123",
+								contentType: "image/png",
+								alt: "Alt",
+								caption: "Caption",
+							},
 						},
-						content: {
-							mediaType: "image",
-							url: "https://cdn.harune.me/placeholder?v=content-hash-123",
-						objectKey: "public/users/user-1/profile/bento/bento-1/media",
-							tempObjectKey,
-							contentHash: "content-hash-123",
-							contentType: "image/png",
-							alt: "Alt",
-							caption: "Caption",
-						},
-					},
-				],
-			}),
-			headers: {
-				"content-type": "application/json",
+					],
+				}),
+				headers: {
+					"content-type": "application/json",
+				},
 			},
-		}, {
-			PROFILE_MEDIA_BUCKET: bucket.bucket,
-			R2_PUBLIC_BASE_URL: "https://cdn.harune.me",
-		} as never);
+			{
+				PROFILE_MEDIA_BUCKET: bucket.bucket,
+				R2_PUBLIC_BASE_URL: "https://cdn.harune.me",
+			} as never,
+		);
 		const json = await response.json();
 
 		expect(response.status).toBe(200);
 		expect(response.headers.get("Cache-Control")).toBe("no-store");
-		expect(json).toEqual(responseBody);
+		expect(json).toEqual({
+			...expectedResponse,
+			bento: [
+				{
+					id: "bento-1",
+					type: "media",
+					layout: {
+						desktop: { x: 0, y: 0, w: 4, h: 4 },
+						compact: { x: 0, y: 0, w: 4, h: 4 },
+					},
+					content: {
+						mediaType: "image",
+						url: getProfileBentoMediaPublicUrl(
+							"https://cdn.harune.me",
+							getProfileMediaObjectKey("user-1", "bento-1"),
+							"content-hash-123",
+						),
+						objectKey: getProfileMediaObjectKey("user-1", "bento-1"),
+						href: null,
+						alt: "Alt",
+						caption: "Caption",
+					},
+				},
+			],
+		});
 		expect(bucket.bucket.put).toHaveBeenCalledTimes(2);
 		expect(bucket.bucket.delete).toHaveBeenCalledWith(tempObjectKey);
 		expect(getLastSyncedBentos()).toEqual([
@@ -1143,8 +1209,8 @@ describe("PUT /profile/me/bento", () => {
 						content: {
 							mediaType: "image",
 							url: "https://cdn.harune.me/placeholder?v=content-hash-123",
-						objectKey: "public/users/user-1/profile/bento/bento-1/media",
-						tempObjectKey: "tmp/users/user-2/profile/bento/bento-1/asset",
+							objectKey: "public/users/user-1/profile/bento/bento-1/media",
+							tempObjectKey: "tmp/users/user-2/profile/bento/bento-1/asset",
 							contentHash: "content-hash-123",
 							contentType: "image/png",
 							alt: "Alt",
@@ -1171,6 +1237,7 @@ describe("PUT /profile/me/bento", () => {
 		const bucket = createMockBucket();
 		const tempBytes = new TextEncoder().encode("preview bento payload");
 		const previewBentoId = `preview:${crypto.randomUUID()}`;
+		const encodedPreviewBentoId = encodeURIComponent(previewBentoId);
 		const tempObjectKey = `tmp/users/user-1/profile/bento/${previewBentoId}/${crypto.randomUUID()}`;
 		const contentHash = await sha256Hex(tempBytes);
 
@@ -1178,7 +1245,132 @@ describe("PUT /profile/me/bento", () => {
 			httpMetadata: { contentType: "image/png" },
 		});
 
-		const responseBody = {
+		const { app, getLastSyncedBentos } = createEditorTestApp({
+			session: { userId: "user-1" },
+			bucket,
+		});
+		const response = await app.request(
+			"/profile/me/bento",
+			{
+				method: "PUT",
+				body: JSON.stringify({
+					bento: [
+						{
+							id: "bento-1",
+							type: "media",
+							layout: {
+								desktop: { x: 0, y: 0, w: 4, h: 4 },
+								compact: { x: 0, y: 0, w: 4, h: 4 },
+							},
+							content: {
+								mediaType: "image",
+								url: `https://cdn.harune.me/public/users/user-1/profile/bento/${encodedPreviewBentoId}/media`,
+								objectKey: `public/users/user-1/profile/bento/${encodedPreviewBentoId}/media`,
+								href: null,
+								alt: "Alt",
+								caption: "Caption",
+							},
+						},
+					],
+				}),
+				headers: {
+					"content-type": "application/json",
+				},
+			},
+			{
+				PROFILE_MEDIA_BUCKET: bucket.bucket,
+				R2_PUBLIC_BASE_URL: "https://cdn.harune.me",
+			} as never,
+		);
+
+		expect(response.status).toBe(200);
+		expect(bucket.bucket.put).toHaveBeenCalledTimes(2);
+		expect(bucket.bucket.delete).toHaveBeenCalledWith(tempObjectKey);
+		expect(getLastSyncedBentos()).toEqual([
+			{
+				id: "bento-1",
+				type: "media",
+				layout: {
+					desktop: { x: 0, y: 0, w: 4, h: 4 },
+					compact: { x: 0, y: 0, w: 4, h: 4 },
+				},
+				content: {
+					mediaType: "image",
+					url: getProfileBentoMediaPublicUrl(
+						"https://cdn.harune.me",
+						getProfileMediaObjectKey("user-1", "bento-1"),
+						contentHash,
+					),
+					objectKey: getProfileMediaObjectKey("user-1", "bento-1"),
+					href: null,
+					alt: "Alt",
+					caption: "Caption",
+				},
+			},
+		]);
+	});
+
+	it("accepts a preview public object key without temp promotion", async () => {
+		const bucket = createMockBucket();
+		const previewBentoId = `preview:${crypto.randomUUID()}`;
+		const previewObjectKey = `public/users/user-1/profile/bento/${previewBentoId}/media`;
+		const previewBytes = new TextEncoder().encode("preview public payload");
+		const contentHash = await sha256Hex(previewBytes);
+
+		await bucket.bucket.put(previewObjectKey, previewBytes, {
+			httpMetadata: { contentType: "image/png" },
+		});
+
+		const { app, getLastSyncedBentos } = createEditorTestApp({
+			session: { userId: "user-1" },
+			bucket,
+		});
+		const response = await app.request(
+			"/profile/me/bento",
+			{
+				method: "PUT",
+				body: JSON.stringify({
+					bento: [
+						{
+							id: "bento-1",
+							type: "media",
+							layout: {
+								desktop: { x: 0, y: 0, w: 4, h: 4 },
+								compact: { x: 0, y: 0, w: 4, h: 4 },
+							},
+							content: {
+								mediaType: "image",
+								url: getProfileBentoMediaPublicUrl(
+									"https://cdn.harune.me",
+									previewObjectKey,
+									contentHash,
+								),
+								objectKey: previewObjectKey,
+								contentHash,
+								contentType: "image/png",
+								href: null,
+								alt: "Alt",
+								caption: "Caption",
+							},
+						},
+					],
+				}),
+				headers: {
+					"content-type": "application/json",
+				},
+			},
+			{
+				PROFILE_MEDIA_BUCKET: bucket.bucket,
+				R2_PUBLIC_BASE_URL: "https://cdn.harune.me",
+			} as never,
+		);
+		const json = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(response.headers.get("Cache-Control")).toBe("no-store");
+		expect(bucket.bucket.put).toHaveBeenCalledTimes(1);
+		expect(bucket.bucket.delete).not.toHaveBeenCalled();
+		expect(json).toEqual({
 			page: {
 				id: "page-1",
 				userId: "user-1",
@@ -1189,52 +1381,156 @@ describe("PUT /profile/me/bento", () => {
 				image: null,
 				backgroundImage: null,
 				location: "Seoul",
-				updatedAt: "2026-05-08T01:00:00.000Z",
+				updatedAt: "2026-05-08T00:00:00.000Z",
 			},
-			bento: [],
+			bento: [
+				{
+					id: "bento-1",
+					type: "media",
+					layout: {
+						desktop: { x: 0, y: 0, w: 4, h: 4 },
+						compact: { x: 0, y: 0, w: 4, h: 4 },
+					},
+					content: {
+						mediaType: "image",
+						url: getProfileBentoMediaPublicUrl(
+							"https://cdn.harune.me",
+							previewObjectKey,
+							contentHash,
+						),
+						objectKey: previewObjectKey,
+						href: null,
+						alt: "Alt",
+						caption: "Caption",
+					},
+				},
+			],
 			viewer: {
 				isAuthenticated: true,
 				userId: "user-1",
 				canEdit: true,
 			},
-		};
+		});
+		expect(getLastSyncedBentos()).toEqual([
+			{
+				id: "bento-1",
+				type: "media",
+				layout: {
+					desktop: { x: 0, y: 0, w: 4, h: 4 },
+					compact: { x: 0, y: 0, w: 4, h: 4 },
+				},
+				content: {
+					mediaType: "image",
+					url: getProfileBentoMediaPublicUrl(
+						"https://cdn.harune.me",
+						previewObjectKey,
+						contentHash,
+					),
+					objectKey: previewObjectKey,
+					href: null,
+					alt: "Alt",
+					caption: "Caption",
+				},
+			},
+		]);
+	});
+
+	it("promotes preview media when tempObjectKey is provided", async () => {
+		const bucket = createMockBucket();
+		const tempBytes = new TextEncoder().encode("preview bento payload");
+		const previewBentoId = `preview:${crypto.randomUUID()}`;
+		const tempObjectKey = `tmp/users/user-1/profile/bento/${previewBentoId}/${crypto.randomUUID()}`;
+		const contentHash = await sha256Hex(tempBytes);
+
+		await bucket.bucket.put(tempObjectKey, tempBytes, {
+			httpMetadata: { contentType: "image/png" },
+		});
 
 		const { app, getLastSyncedBentos } = createEditorTestApp({
 			session: { userId: "user-1" },
-			getProfile: async () => responseBody,
 			bucket,
 		});
-		const response = await app.request("/profile/me/bento", {
-			method: "PUT",
-			body: JSON.stringify({
-				bento: [
-					{
-						id: "bento-1",
-						type: "media",
-						layout: {
-							desktop: { x: 0, y: 0, w: 4, h: 4 },
-							compact: { x: 0, y: 0, w: 4, h: 4 },
+		const response = await app.request(
+			"/profile/me/bento",
+			{
+				method: "PUT",
+				body: JSON.stringify({
+					bento: [
+						{
+							id: "bento-1",
+							type: "media",
+							layout: {
+								desktop: { x: 0, y: 0, w: 4, h: 4 },
+								compact: { x: 0, y: 0, w: 4, h: 4 },
+							},
+							content: {
+								mediaType: "image",
+								url: `https://cdn.harune.me/public/users/user-1/profile/bento/${encodeURIComponent(previewBentoId)}/media`,
+								objectKey: `public/users/user-1/profile/bento/${encodeURIComponent(previewBentoId)}/media`,
+								tempObjectKey,
+								contentHash,
+								contentType: "image/png",
+								href: null,
+								alt: "Alt",
+								caption: "Caption",
+							},
 						},
-						content: {
-							mediaType: "image",
-							url: `https://cdn.harune.me/public/users/user-1/profile/bento/${previewBentoId}/media`,
-							objectKey: `public/users/user-1/profile/bento/${previewBentoId}/media`,
-							href: null,
-							alt: "Alt",
-							caption: "Caption",
-						},
-					},
-				],
-			}),
-			headers: {
-				"content-type": "application/json",
+					],
+				}),
+				headers: {
+					"content-type": "application/json",
+				},
 			},
-		}, {
-			PROFILE_MEDIA_BUCKET: bucket.bucket,
-			R2_PUBLIC_BASE_URL: "https://cdn.harune.me",
-		} as never);
+			{
+				PROFILE_MEDIA_BUCKET: bucket.bucket,
+				R2_PUBLIC_BASE_URL: "https://cdn.harune.me",
+			} as never,
+		);
+		const json = await response.json();
 
 		expect(response.status).toBe(200);
+		expect(response.headers.get("Cache-Control")).toBe("no-store");
+		expect(json).toEqual({
+			page: {
+				id: "page-1",
+				userId: "user-1",
+				handle: "maker",
+				name: "Maker",
+				role: "creator",
+				bio: "Bio",
+				image: null,
+				backgroundImage: null,
+				location: "Seoul",
+				updatedAt: "2026-05-08T00:00:00.000Z",
+			},
+			bento: [
+				{
+					id: "bento-1",
+					type: "media",
+					layout: {
+						desktop: { x: 0, y: 0, w: 4, h: 4 },
+						compact: { x: 0, y: 0, w: 4, h: 4 },
+					},
+					content: {
+						mediaType: "image",
+						url: getProfileBentoMediaPublicUrl(
+							"https://cdn.harune.me",
+							getProfileMediaObjectKey("user-1", "bento-1"),
+							contentHash,
+						),
+						objectKey: getProfileMediaObjectKey("user-1", "bento-1"),
+						href: null,
+						alt: "Alt",
+						caption: "Caption",
+					},
+				},
+			],
+			viewer: {
+				isAuthenticated: true,
+				userId: "user-1",
+				canEdit: true,
+			},
+		});
 		expect(bucket.bucket.put).toHaveBeenCalledTimes(2);
 		expect(bucket.bucket.delete).toHaveBeenCalledWith(tempObjectKey);
 		expect(getLastSyncedBentos()).toEqual([
