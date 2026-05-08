@@ -2037,7 +2037,8 @@ profileBentoMediaUpload.requestBody = {
 };
 profileBentoMediaUpload.responses ??= {};
 profileBentoMediaUpload.responses["200"] = {
-	description: "Successful temporary bento media upload.",
+	description:
+		"Successful temporary bento media upload for either a persisted bento owned by the authenticated user or a client-generated `preview:` draft id.",
 	content: {
 		"application/json": {
 			schema: profileBentoMediaUploadSuccessSchema(),
@@ -2058,7 +2059,8 @@ profileBentoMediaUpload.responses["200"] = {
 	},
 };
 profileBentoMediaUpload.responses["400"] = {
-	description: "Invalid bento upload request.",
+	description:
+		"Invalid bento upload request. Returned when the multipart body is missing, the file is missing, the bentoId is empty, the file type is unsupported, or the file exceeds 5MB.",
 	content: {
 		"application/json": {
 			schema: profileErrorSchema([
@@ -2078,7 +2080,8 @@ profileBentoMediaUpload.responses["401"] = {
 	},
 };
 profileBentoMediaUpload.responses["403"] = {
-	description: "The target bento does not belong to the authenticated user.",
+	description:
+		"The target bento does not belong to the authenticated user. This still applies to persisted bento ids that are not owned by the current session.",
 	content: {
 		"application/json": {
 			schema: profileErrorSchema(["profile_bento_forbidden"]),

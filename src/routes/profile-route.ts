@@ -334,7 +334,10 @@ export function createProfileRoute(dependencies: ProfileRouteDependencies = {}) 
           return withNoStore(validationError(c));
         }
 
-        const ownedBento = await findOwnedBentoById(c.get("db"), bentoId, session.userId);
+        const isPreviewBentoId = bentoId.startsWith("preview:");
+        const ownedBento = isPreviewBentoId
+          ? { id: bentoId }
+          : await findOwnedBentoById(c.get("db"), bentoId, session.userId);
 
         if (!ownedBento) {
           return withNoStore(

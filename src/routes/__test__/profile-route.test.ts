@@ -403,6 +403,49 @@ describe("profile mutation routes", () => {
 		expect(bucket.bucket.put).toHaveBeenCalledTimes(1);
 	});
 
+	it("uploads temporary bento media metadata for preview bento ids without a stored row", async () => {
+		const bucket = createMockBucket();
+		const { app } = createTestApp({
+			session: { userId: "user-1" },
+			bucket,
+		});
+		const { file, hash } = await createVideoFixture();
+		const previewBentoId = `preview:${crypto.randomUUID()}`;
+		const formData = new FormData();
+		formData.append("file", file);
+		formData.append("bentoId", previewBentoId);
+
+		const response = await app.request(
+			"/profile/bento/media/upload",
+			{
+				method: "POST",
+				body: formData,
+			},
+			{
+				PROFILE_MEDIA_BUCKET: bucket.bucket,
+				R2_PUBLIC_BASE_URL: "https://cdn.example.com",
+			} as never,
+		);
+		const json = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(json).toEqual({
+			bentoId: previewBentoId,
+			contentHash: hash,
+			contentType: "video/mp4",
+			mediaType: "video",
+			tempObjectKey: expect.stringMatching(
+				new RegExp(
+					`^tmp/users/user-1/profile/bento/${previewBentoId}/[0-9a-f-]{36}$`,
+				),
+			),
+			tempUrl: expect.stringContaining(
+				`https://cdn.example.com/tmp/users/user-1/profile/bento/${previewBentoId}/`,
+			),
+		});
+		expect(bucket.bucket.put).toHaveBeenCalledTimes(1);
+	});
+
 	it("returns 403 when the bento does not belong to the current user", async () => {
 		const bucket = createMockBucket();
 		const { app } = createTestApp({
