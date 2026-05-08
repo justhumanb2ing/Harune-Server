@@ -907,6 +907,7 @@ async function findExistingProfileMediaObjectKey(
 	candidates: string[],
 ) {
 	const seen = new Set<string>();
+	const uniqueCandidates: string[] = [];
 
 	for (const candidate of candidates) {
 		if (seen.has(candidate)) {
@@ -914,11 +915,19 @@ async function findExistingProfileMediaObjectKey(
 		}
 
 		seen.add(candidate);
+		uniqueCandidates.push(candidate);
+	}
 
-		const object = await bucket.head(candidate);
+	const headResults = await Promise.allSettled(
+		uniqueCandidates.map(async (candidate) => ({
+			candidate,
+			object: await bucket.head(candidate),
+		})),
+	);
 
-		if (object) {
-			return candidate;
+	for (const result of headResults) {
+		if (result.status === "fulfilled" && result.value.object) {
+			return result.value.candidate;
 		}
 	}
 
@@ -1171,238 +1180,339 @@ export function createProfileRoute(
 					);
 				}
 
-				const normalizedBentos: ProfileBentoSnapshot[] = [];
-				const tempObjectKeysToDelete = new Set<string>();
-
-				for (const bento of bentos) {
-					if (bento.type !== "media") {
-						normalizedBentos.push(bento);
-						continue;
-					}
-
-					const tempObjectKey = bento.content.tempObjectKey;
-					const objectKey = bento.content.objectKey;
-					const finalObjectKey = getProfileMediaObjectKey(
-						session.userId,
-						bento.id,
-					);
-
-					if (tempObjectKey) {
-						const parsedTempObjectKey =
-							parseProfileBentoMediaObjectKey(tempObjectKey);
-						const ownsTempObjectKey =
-							parsedTempObjectKey !== null &&
-							parsedTempObjectKey.userId === session.userId &&
-							(parsedTempObjectKey.kind === "temp"
-								? parsedTempObjectKey.bentoId === bento.id ||
-									parsedTempObjectKey.bentoId.startsWith("preview:")
-								: parsedTempObjectKey.bentoId.startsWith("preview:"));
-
-						if (!ownsTempObjectKey) {
-							return withNoStore(
-								badRequest(
-									c,
-									"invalid_media_upload_ownership",
-									"Invalid media upload ownership.",
-								),
-							);
-						}
-
-						if (!bento.content.contentHash || !bento.content.contentType) {
-							return withNoStore(
-								badRequest(
-									c,
-									"missing_media_upload_metadata",
-									"Missing media upload metadata.",
-								),
-							);
-						}
-
-						if (parsedTempObjectKey?.kind === "final") {
-							const previewPublicObject =
-								await c.env.PROFILE_MEDIA_BUCKET.head(tempObjectKey);
-
-							if (!previewPublicObject) {
-								return withNoStore(
-									badRequest(
-										c,
-										"invalid_media_upload_ownership",
-										"Invalid media upload ownership.",
-									),
-								);
+				const normalizationResults = await Promise.all(
+					bentos.map(
+						async (
+							bento,
+						): Promise<{
+							bento: ProfileBentoSnapshot | null;
+							tempObjectKeyToDelete: string | null;
+							response: Response | null;
+							copy?: {
+								sourceObjectKey: string;
+								targetObjectKey: string;
+								contentHash?: string;
+								buildBento: (copied: {
+									contentHash: string;
+								}) => ProfileBentoSnapshot;
+							};
+						}> => {
+							if (bento.type !== "media") {
+								return {
+									bento,
+									tempObjectKeyToDelete: null,
+									response: null,
+								};
 							}
 
-							normalizedBentos.push({
-								...bento,
-								content: {
-									mediaType: bento.content.mediaType,
-									url: getProfileBentoMediaPublicUrl(
-										c.env.R2_PUBLIC_BASE_URL,
-										tempObjectKey,
-										bento.content.contentHash,
-									),
-									objectKey: tempObjectKey,
-									href: bento.content.href,
-									alt: bento.content.alt,
-									caption: bento.content.caption,
-								},
-							});
-
-							continue;
-						}
-
-						await copyProfileBentoMediaObject(
-							c.env.PROFILE_MEDIA_BUCKET,
-							tempObjectKey,
-							finalObjectKey,
-							{
-								contentHash: bento.content.contentHash ?? undefined,
-							},
-						);
-						tempObjectKeysToDelete.add(tempObjectKey);
-					} else {
-						const publicObjectKey =
-							parseObjectKeyFromPublicUrl(
-								c.env.R2_PUBLIC_BASE_URL,
-								bento.content.url,
-							) ?? parseProfileMediaObjectKeyFromUrlPath(bento.content.url);
-						const parsedObjectKey = parseProfileBentoMediaObjectKey(objectKey);
-						const normalizedObjectKey =
-							normalizeProfileMediaObjectKey(objectKey);
-						const normalizedPublicObjectKey = publicObjectKey
-							? normalizeProfileMediaObjectKey(publicObjectKey)
-							: null;
-
-						if (
-							!normalizedPublicObjectKey ||
-							!normalizedObjectKey ||
-							normalizedPublicObjectKey !== normalizedObjectKey
-						) {
-							return withNoStore(
-								badRequest(
-									c,
-									"profile_media_url_invalid",
-									"media url does not match objectKey",
-								),
-							);
-						}
-
-						if (
-							isProfileBentoMediaObjectKeyForBento(
-								objectKey,
+							const tempObjectKey = bento.content.tempObjectKey;
+							const objectKey = bento.content.objectKey;
+							const finalObjectKey = getProfileMediaObjectKey(
 								session.userId,
 								bento.id,
-							)
-						) {
-							// The object already lives at the final bento key.
-						} else if (
-							parsedObjectKey &&
-							parsedObjectKey.kind === "final" &&
-							parsedObjectKey.userId === session.userId &&
-							parsedObjectKey.bentoId.startsWith("preview:")
-						) {
-							const existingPreviewObjectKey =
-								await findExistingProfileMediaObjectKey(
-									c.env.PROFILE_MEDIA_BUCKET,
-									[
-										normalizedObjectKey,
-										objectKey,
-										publicObjectKey ?? "",
-									].filter((candidate) => candidate.length > 0),
-								);
+							);
 
-							if (existingPreviewObjectKey) {
-								normalizedBentos.push({
-									...bento,
-									content: {
-										mediaType: bento.content.mediaType,
-										url: getProfileBentoMediaPublicUrl(
-											c.env.R2_PUBLIC_BASE_URL,
-											existingPreviewObjectKey,
-											bento.content.contentHash ?? "",
+							if (tempObjectKey) {
+								const parsedTempObjectKey =
+									parseProfileBentoMediaObjectKey(tempObjectKey);
+								const ownsTempObjectKey =
+									parsedTempObjectKey !== null &&
+									parsedTempObjectKey.userId === session.userId &&
+									(parsedTempObjectKey.kind === "temp"
+										? parsedTempObjectKey.bentoId === bento.id ||
+											parsedTempObjectKey.bentoId.startsWith("preview:")
+										: parsedTempObjectKey.bentoId.startsWith("preview:"));
+
+								if (!ownsTempObjectKey) {
+									return {
+										bento: null,
+										tempObjectKeyToDelete: null,
+										response: withNoStore(
+											badRequest(
+												c,
+												"invalid_media_upload_ownership",
+												"Invalid media upload ownership.",
+											),
 										),
-										objectKey: existingPreviewObjectKey,
-										href: bento.content.href,
-										alt: bento.content.alt,
-										caption: bento.content.caption,
+									};
+								}
+
+								if (!bento.content.contentHash || !bento.content.contentType) {
+									return {
+										bento: null,
+										tempObjectKeyToDelete: null,
+										response: withNoStore(
+											badRequest(
+												c,
+												"missing_media_upload_metadata",
+												"Missing media upload metadata.",
+											),
+										),
+									};
+								}
+
+								if (parsedTempObjectKey?.kind === "final") {
+									const existingPreviewObjectKey =
+										await findExistingProfileMediaObjectKey(
+											c.env.PROFILE_MEDIA_BUCKET,
+											[tempObjectKey],
+										);
+
+									if (!existingPreviewObjectKey) {
+										return {
+											bento: null,
+											tempObjectKeyToDelete: null,
+											response: withNoStore(
+												badRequest(
+													c,
+													"invalid_media_upload_ownership",
+													"Invalid media upload ownership.",
+												),
+											),
+										};
+									}
+
+									return {
+										bento: {
+											...bento,
+											content: {
+												mediaType: bento.content.mediaType,
+												url: getProfileBentoMediaPublicUrl(
+													c.env.R2_PUBLIC_BASE_URL,
+													existingPreviewObjectKey,
+													bento.content.contentHash,
+												),
+												objectKey: existingPreviewObjectKey,
+												href: bento.content.href,
+												alt: bento.content.alt,
+												caption: bento.content.caption,
+											},
+										},
+										tempObjectKeyToDelete: null,
+										response: null,
+									};
+								}
+
+								return {
+									bento: null,
+									tempObjectKeyToDelete: tempObjectKey,
+									response: null,
+									copy: {
+										sourceObjectKey: tempObjectKey,
+										targetObjectKey: finalObjectKey,
+										contentHash: bento.content.contentHash ?? undefined,
+										buildBento: (copied) => ({
+											...bento,
+											content: {
+												mediaType: bento.content.mediaType,
+												url: getProfileBentoMediaPublicUrl(
+													c.env.R2_PUBLIC_BASE_URL,
+													finalObjectKey,
+													bento.content.contentHash ?? copied.contentHash,
+												),
+												objectKey: finalObjectKey,
+												href: bento.content.href,
+												alt: bento.content.alt,
+												caption: bento.content.caption,
+											},
+										}),
 									},
-								});
+								};
+							} else {
+								const publicObjectKey =
+									parseObjectKeyFromPublicUrl(
+										c.env.R2_PUBLIC_BASE_URL,
+										bento.content.url,
+									) ?? parseProfileMediaObjectKeyFromUrlPath(bento.content.url);
+								const parsedObjectKey =
+									parseProfileBentoMediaObjectKey(objectKey);
+								const normalizedObjectKey =
+									normalizeProfileMediaObjectKey(objectKey);
+								const normalizedPublicObjectKey = publicObjectKey
+									? normalizeProfileMediaObjectKey(publicObjectKey)
+									: null;
 
-								continue;
+								if (
+									!normalizedPublicObjectKey ||
+									!normalizedObjectKey ||
+									normalizedPublicObjectKey !== normalizedObjectKey
+								) {
+									return {
+										bento: null,
+										tempObjectKeyToDelete: null,
+										response: withNoStore(
+											badRequest(
+												c,
+												"profile_media_url_invalid",
+												"media url does not match objectKey",
+											),
+										),
+									};
+								}
+
+								if (
+									isProfileBentoMediaObjectKeyForBento(
+										objectKey,
+										session.userId,
+										bento.id,
+									)
+								) {
+									return {
+										bento: {
+											...bento,
+											content: {
+												mediaType: bento.content.mediaType,
+												url: getProfileBentoMediaPublicUrl(
+													c.env.R2_PUBLIC_BASE_URL,
+													finalObjectKey,
+													bento.content.contentHash ?? "",
+												),
+												objectKey: finalObjectKey,
+												href: bento.content.href,
+												alt: bento.content.alt,
+												caption: bento.content.caption,
+											},
+										},
+										tempObjectKeyToDelete: null,
+										response: null,
+									};
+								} else if (
+									parsedObjectKey &&
+									parsedObjectKey.kind === "final" &&
+									parsedObjectKey.userId === session.userId &&
+									parsedObjectKey.bentoId.startsWith("preview:")
+								) {
+									const existingPreviewObjectKey =
+										await findExistingProfileMediaObjectKey(
+											c.env.PROFILE_MEDIA_BUCKET,
+											[
+												normalizedObjectKey,
+												objectKey,
+												publicObjectKey ?? "",
+											].filter((candidate) => candidate.length > 0),
+										);
+
+									if (existingPreviewObjectKey) {
+										return {
+											bento: {
+												...bento,
+												content: {
+													mediaType: bento.content.mediaType,
+													url: getProfileBentoMediaPublicUrl(
+														c.env.R2_PUBLIC_BASE_URL,
+														existingPreviewObjectKey,
+														bento.content.contentHash ?? "",
+													),
+													objectKey: existingPreviewObjectKey,
+													href: bento.content.href,
+													alt: bento.content.alt,
+													caption: bento.content.caption,
+												},
+											},
+											tempObjectKeyToDelete: null,
+											response: null,
+										};
+									}
+
+									const previewTempObjectKey =
+										await findSingleProfileMediaTempObjectKey(
+											c.env.PROFILE_MEDIA_BUCKET,
+											session.userId,
+											parsedObjectKey.bentoId,
+										);
+
+									if (!previewTempObjectKey) {
+										return {
+											bento: null,
+											tempObjectKeyToDelete: null,
+											response: withNoStore(
+												badRequest(
+													c,
+													"invalid_media_upload_ownership",
+													"Invalid media upload ownership.",
+												),
+											),
+										};
+									}
+
+									return {
+										bento: null,
+										tempObjectKeyToDelete: previewTempObjectKey,
+										response: null,
+										copy: {
+											sourceObjectKey: previewTempObjectKey,
+											targetObjectKey: finalObjectKey,
+											contentHash: bento.content.contentHash ?? undefined,
+											buildBento: (copied) => ({
+												...bento,
+												content: {
+													mediaType: bento.content.mediaType,
+													url: getProfileBentoMediaPublicUrl(
+														c.env.R2_PUBLIC_BASE_URL,
+														finalObjectKey,
+														bento.content.contentHash ?? copied.contentHash,
+													),
+													objectKey: finalObjectKey,
+													href: bento.content.href,
+													alt: bento.content.alt,
+													caption: bento.content.caption,
+												},
+											}),
+										},
+									};
+								} else {
+									return {
+										bento: null,
+										tempObjectKeyToDelete: null,
+										response: withNoStore(
+											badRequest(
+												c,
+												"invalid_media_upload_ownership",
+												"Invalid media upload ownership.",
+											),
+										),
+									};
+								}
 							}
+						},
+					),
+				);
 
-							const previewTempObjectKey =
-								await findSingleProfileMediaTempObjectKey(
-									c.env.PROFILE_MEDIA_BUCKET,
-									session.userId,
-									parsedObjectKey.bentoId,
-								);
+				const invalidNormalization = normalizationResults.find(
+					(result) => result.response,
+				);
 
-							if (!previewTempObjectKey) {
-								return withNoStore(
-									badRequest(
-										c,
-										"invalid_media_upload_ownership",
-										"Invalid media upload ownership.",
-									),
-								);
-							}
+				if (invalidNormalization?.response) {
+					return invalidNormalization.response;
+				}
 
+				const tempObjectKeysToDelete = new Set<string>();
+				const normalizedBentos = await Promise.all(
+					normalizationResults.map(async (result) => {
+						if (result.copy) {
 							const copied = await copyProfileBentoMediaObject(
 								c.env.PROFILE_MEDIA_BUCKET,
-								previewTempObjectKey,
-								finalObjectKey,
+								result.copy.sourceObjectKey,
+								result.copy.targetObjectKey,
 								{
-									contentHash: bento.content.contentHash ?? undefined,
+									contentHash: result.copy.contentHash,
 								},
 							);
 
-							tempObjectKeysToDelete.add(previewTempObjectKey);
+							if (result.tempObjectKeyToDelete) {
+								tempObjectKeysToDelete.add(result.tempObjectKeyToDelete);
+							}
 
-							normalizedBentos.push({
-								...bento,
-								content: {
-									mediaType: bento.content.mediaType,
-									url: getProfileBentoMediaPublicUrl(
-										c.env.R2_PUBLIC_BASE_URL,
-										finalObjectKey,
-										bento.content.contentHash ?? copied.contentHash,
-									),
-									objectKey: finalObjectKey,
-									href: bento.content.href,
-									alt: bento.content.alt,
-									caption: bento.content.caption,
-								},
-							});
-
-							continue;
-						} else {
-							return withNoStore(
-								badRequest(
-									c,
-									"invalid_media_upload_ownership",
-									"Invalid media upload ownership.",
-								),
-							);
+							return result.copy.buildBento(copied);
 						}
-					}
 
-					normalizedBentos.push({
-						...bento,
-						content: {
-							mediaType: bento.content.mediaType,
-							url: getProfileBentoMediaPublicUrl(
-								c.env.R2_PUBLIC_BASE_URL,
-								finalObjectKey,
-								bento.content.contentHash ?? "",
-							),
-							objectKey: finalObjectKey,
-							href: bento.content.href,
-							alt: bento.content.alt,
-							caption: bento.content.caption,
-						},
-					});
-				}
+						if (!result.bento) {
+							throw new Error("missing normalized bento");
+						}
+
+						return result.bento;
+					}),
+				);
 
 				await syncBentoGraph(c.get("db"), page.id, normalizedBentos);
 

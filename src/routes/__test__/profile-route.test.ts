@@ -1822,6 +1822,88 @@ describe("PUT /profile/me/bento", () => {
 		expect(getLastSyncedBentos()).toEqual(json.bento);
 	});
 
+	it("checks preview public media object ownership concurrently", async () => {
+		const bucket = createMockBucket();
+		const previewBytes = new TextEncoder().encode("encoded preview payload");
+		const contentHash = await sha256Hex(previewBytes);
+		const encodedPreviewObjectKeys = await Promise.all(
+			Array.from({ length: 3 }, async (_, index) => {
+				const previewBentoId = `preview:${crypto.randomUUID()}`;
+				const encodedPreviewBentoId = encodeURIComponent(previewBentoId);
+				const encodedPreviewObjectKey = `public/users/user-1/profile/bento/${encodedPreviewBentoId}/media`;
+
+				await bucket.bucket.put(encodedPreviewObjectKey, previewBytes, {
+					httpMetadata: { contentType: "image/png" },
+				});
+
+				return {
+					id: `bento-${index + 1}`,
+					encodedPreviewBentoId,
+					encodedPreviewObjectKey,
+				};
+			}),
+		);
+		const originalHead = bucket.bucket.head.bind(bucket.bucket);
+		let activeHeadRequests = 0;
+		let maxActiveHeadRequests = 0;
+
+		bucket.bucket.head = vi.fn(async (key: string) => {
+			activeHeadRequests += 1;
+			maxActiveHeadRequests = Math.max(
+				maxActiveHeadRequests,
+				activeHeadRequests,
+			);
+			await new Promise((resolve) => setTimeout(resolve, 5));
+
+			try {
+				return await originalHead(key);
+			} finally {
+				activeHeadRequests -= 1;
+			}
+		}) as never;
+
+		const { app } = createEditorTestApp({
+			session: { userId: "user-1" },
+			bucket,
+		});
+		const response = await app.request(
+			"/profile/me/bento",
+			{
+				method: "PUT",
+				body: JSON.stringify({
+					bento: encodedPreviewObjectKeys.map(
+						({ id, encodedPreviewBentoId, encodedPreviewObjectKey }) => ({
+							id,
+							type: "media",
+							layout: {
+								desktop: { x: 0, y: 0, w: 4, h: 4 },
+								compact: { x: 0, y: 0, w: 4, h: 4 },
+							},
+							content: {
+								mediaType: "image",
+								url: `https://pub-cdb24d695a3d4aa08aa10719325ca3bd.r2.dev/public/users/user-1/profile/bento/${encodeURIComponent(encodedPreviewBentoId)}/media?v=${contentHash}`,
+								objectKey: encodedPreviewObjectKey,
+								href: null,
+								alt: "",
+								caption: "",
+							},
+						}),
+					),
+				}),
+				headers: {
+					"content-type": "application/json",
+				},
+			},
+			{
+				PROFILE_MEDIA_BUCKET: bucket.bucket,
+				R2_PUBLIC_BASE_URL: "https://cdn.harune.me",
+			} as never,
+		);
+
+		expect(response.status).toBe(200);
+		expect(maxActiveHeadRequests).toBeGreaterThan(1);
+	});
+
 	it("accepts a public preview object key in tempObjectKey without copying on save", async () => {
 		const bucket = createMockBucket();
 		const tempBytes = new TextEncoder().encode("preview bento payload");
