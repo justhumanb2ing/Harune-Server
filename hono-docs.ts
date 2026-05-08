@@ -38,6 +38,24 @@ export default defineConfig({
 			appTypePath: "src/routes/handle-route.ts",
 			api: [
 				{
+					api: "/",
+					method: "patch",
+					summary: "Change the current user's handle",
+					description: [
+						"Updates the authenticated user's canonical profile handle.",
+						"",
+						"Rules:",
+						"- Requires a valid session",
+						"- The server trims whitespace and lowercases the submitted handle",
+						"- Empty, malformed, and reserved handles are rejected with validation errors",
+						"- The current user must already own a profile page",
+						"- A handle owned by another user returns a conflict error",
+						"- Sending the current canonical handle again is treated as a no-op and returns the current profile page",
+						"- Successful responses are returned with `Cache-Control: no-store`",
+					].join("\n"),
+					tag: ["Handle API"],
+				},
+				{
 					api: "/check",
 					method: "get",
 					summary: "Check handle availability",

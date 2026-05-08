@@ -397,6 +397,310 @@ handleGet.parameters = [
 
 delete handleGet.responses.default;
 
+const handlePatch = openApi.paths?.["/handle"]?.patch as
+	| {
+			parameters?: unknown[];
+			requestBody?: unknown;
+			responses?: Record<string, unknown>;
+			operationId?: string;
+	  }
+	| undefined;
+
+if (!handlePatch) {
+	throw new Error("Could not find /handle PATCH operation in openapi.json");
+}
+
+handlePatch.operationId = "updateHandle";
+handlePatch.requestBody = {
+	required: true,
+	content: {
+		"application/json": {
+			schema: {
+				type: "object",
+				additionalProperties: false,
+				properties: {
+					handle: {
+						type: "string",
+					},
+				},
+				required: ["handle"],
+			},
+			examples: {
+				normal: {
+					summary: "Change handle",
+					value: {
+						handle: "new_handle",
+					},
+				},
+				trimmed: {
+					summary: "Whitespace is normalized",
+					value: {
+						handle: "  New_Handle  ",
+					},
+				},
+			},
+		},
+	},
+};
+handlePatch.responses ??= {};
+handlePatch.responses["200"] = {
+	description:
+		"Successful handle update. The server returns the committed profile page snapshot and the previous canonical handle. Same-handle requests are treated as no-ops and still return 200.",
+	content: {
+		"application/json": {
+			schema: {
+				type: "object",
+				properties: {
+					previousHandle: { type: "string" },
+					profilePage: {
+						type: "object",
+						properties: {
+							id: { type: "string" },
+							handle: { type: "string" },
+							name: { type: "string", nullable: true },
+							image: { type: "string", nullable: true },
+						},
+						required: ["id", "handle", "name", "image"],
+					},
+				},
+				required: ["previousHandle", "profilePage"],
+			},
+			examples: {
+				updated: {
+					summary: "Handle updated",
+					value: {
+						previousHandle: "current_handle",
+						profilePage: {
+							id: "page_123",
+							handle: "new_handle",
+							name: "Harune",
+							image: "https://cdn.example.com/avatar.png",
+						},
+					},
+				},
+				noOp: {
+					summary: "Handle already matched",
+					value: {
+						previousHandle: "current_handle",
+						profilePage: {
+							id: "page_123",
+							handle: "current_handle",
+							name: "Harune",
+							image: "https://cdn.example.com/avatar.png",
+						},
+					},
+				},
+			},
+		},
+	},
+};
+
+handlePatch.responses["400"] = {
+	description:
+		"Invalid request. Returned when the handle is missing, empty, malformed, or reserved.",
+	content: {
+		"application/json": {
+			schema: {
+				type: "object",
+				properties: {
+					error: {
+						type: "object",
+						additionalProperties: false,
+						properties: {
+							code: {
+								type: "string",
+								enum: ["validation_error"],
+							},
+							message: { type: "string" },
+							details: {
+								type: "array",
+								items: {
+									type: "object",
+									additionalProperties: false,
+									properties: {
+										reason: { type: "string" },
+										message: { type: "string" },
+										type: { type: "string" },
+									},
+									required: ["reason", "message", "type"],
+								},
+							},
+						},
+						required: ["code", "message"],
+					},
+				},
+				required: ["error"],
+			},
+			examples: {
+				missing: {
+					summary: "Missing handle",
+					value: {
+						error: {
+							code: "validation_error",
+							message: "invalid request",
+						},
+					},
+				},
+				reserved: {
+					summary: "Reserved handle",
+					value: {
+						error: {
+							code: "validation_error",
+							message: "invalid request",
+							details: [
+								{
+									reason: "reserved",
+									message: "handle is reserved",
+									type: "validation",
+								},
+							],
+						},
+					},
+				},
+			},
+		},
+	},
+};
+
+handlePatch.responses["401"] = {
+	description: "Authentication required.",
+	content: {
+		"application/json": {
+			schema: {
+				type: "object",
+				properties: {
+					error: {
+						type: "object",
+						properties: {
+							code: {
+								type: "string",
+								enum: ["unauthorized"],
+							},
+							message: { type: "string" },
+						},
+						required: ["code", "message"],
+					},
+				},
+				required: ["error"],
+			},
+			examples: {
+				unauthorized: {
+					summary: "No session",
+					value: {
+						error: {
+							code: "unauthorized",
+							message: "authentication required",
+						},
+					},
+				},
+			},
+		},
+	},
+};
+
+handlePatch.responses["404"] = {
+	description:
+		"Returned when the authenticated user does not own a profile page yet.",
+	content: {
+		"application/json": {
+			schema: {
+				type: "object",
+				properties: {
+					error: {
+						type: "object",
+						properties: {
+							code: { type: "string", enum: ["profile_not_found"] },
+							message: { type: "string" },
+						},
+						required: ["code", "message"],
+					},
+				},
+				required: ["error"],
+			},
+			examples: {
+				notFound: {
+					summary: "No profile page",
+					value: {
+						error: {
+							code: "profile_not_found",
+							message: "profile page not found",
+						},
+					},
+				},
+			},
+		},
+	},
+};
+
+handlePatch.responses["409"] = {
+	description:
+		"Returned when another user already owns the requested handle.",
+	content: {
+		"application/json": {
+			schema: {
+				type: "object",
+				properties: {
+					error: {
+						type: "object",
+						properties: {
+							code: { type: "string", enum: ["handle_taken"] },
+							message: { type: "string" },
+						},
+						required: ["code", "message"],
+					},
+				},
+				required: ["error"],
+			},
+			examples: {
+				taken: {
+					summary: "Handle already taken",
+					value: {
+						error: {
+							code: "handle_taken",
+							message: "handle already taken",
+						},
+					},
+				},
+			},
+		},
+	},
+};
+
+handlePatch.responses["500"] = {
+	description: "Returned when the updated profile page cannot be reloaded after the write.",
+	content: {
+		"application/json": {
+			schema: {
+				type: "object",
+				properties: {
+					error: {
+						type: "object",
+						properties: {
+							code: { type: "string", enum: ["handle_update_failed"] },
+							message: { type: "string" },
+						},
+						required: ["code", "message"],
+					},
+				},
+				required: ["error"],
+			},
+			examples: {
+				updateFailed: {
+					summary: "Failed to reload updated page",
+					value: {
+						error: {
+							code: "handle_update_failed",
+							message: "failed to load updated profile page",
+						},
+					},
+				},
+			},
+		},
+	},
+};
+
+delete handlePatch.responses.default;
+
 const meGet = openApi.paths?.["/me"]?.get as
 	| {
 			responses?: Record<string, unknown>;

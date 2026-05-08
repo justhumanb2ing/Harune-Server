@@ -1,8 +1,13 @@
 import { Hono } from "hono";
 import * as v from "valibot";
 
-import { validationError, unauthorized } from "../lib/api-response";
+import { conflict, internalServerError, notFound, unauthorized, validationError } from "../lib/api-response";
 import { findProfilePageByHandle as findProfilePageByHandleInDb } from "../repositories/profile-repository";
+import {
+  findProfilePageByUserId as findProfilePageByUserIdInDb,
+  updateProfilePageHandleById as updateProfilePageHandleByIdInDb,
+  type ProfilePageSummary,
+} from "../repositories/profile-repository";
 import { isReservedHandle } from "../lib/handles";
 import { AppBindings } from "../types/app-bindings";
 import { Database } from "../lib/db";
@@ -12,14 +17,25 @@ type HandlePageRecord = {
   handle: string;
 };
 
+type HandleProfilePageRecord = ProfilePageSummary;
+
 type HandleRouteDependencies = {
   findProfilePageByHandle?: (
     db: Database,
     handle: string,
   ) => Promise<HandlePageRecord | null>;
+  findProfilePageByUserId?: (
+    db: Database,
+    userId: string,
+  ) => Promise<HandleProfilePageRecord | null>;
+  updateProfilePageHandleById?: (
+    db: Database,
+    profilePageId: string,
+    handle: string,
+  ) => Promise<void>;
 };
 
-const handleCheckQuerySchema = v.object({
+const handleInputSchema = v.object({
   handle: v.pipe(
     v.string(),
     v.trim(),
@@ -33,39 +49,118 @@ const handleCheckQuerySchema = v.object({
   ),
 });
 
+const handleCheckQuerySchema = handleInputSchema;
+
+function toHandleProfilePage(page: HandleProfilePageRecord) {
+  return {
+    id: page.id,
+    handle: page.handle,
+    name: page.name,
+    image: page.image,
+  };
+}
+
 export function createHandleRoute(
   dependencies: HandleRouteDependencies = {},
 ) {
   const findProfilePageByHandle =
     dependencies.findProfilePageByHandle ?? findProfilePageByHandleInDb;
+  const findProfilePageByUserId =
+    dependencies.findProfilePageByUserId ?? findProfilePageByUserIdInDb;
+  const updateProfilePageHandleById =
+    dependencies.updateProfilePageHandleById ?? updateProfilePageHandleByIdInDb;
 
-  return new Hono<AppBindings>().get("/check", async (c) => {
-    const parsed = v.safeParse(handleCheckQuerySchema, {
-      handle: c.req.query("handle") ?? "",
+  return new Hono<AppBindings>()
+    .get("/check", async (c) => {
+      const parsed = v.safeParse(handleCheckQuerySchema, {
+        handle: c.req.query("handle") ?? "",
+      });
+
+      if (!parsed.success) {
+        return validationError(c, parsed.issues);
+      }
+
+      const handle = parsed.output.handle;
+      const session = c.get("session");
+
+      if (!session?.userId) {
+        return unauthorized(c, "unauthorized", "authentication required");
+      }
+
+      const db = c.get("db");
+      const page = await findProfilePageByHandle(db, handle);
+
+      if (!page) {
+        return c.json({ available: true });
+      }
+
+      return c.json({
+        available: page.userId === session.userId,
+      });
+    })
+    .patch("/", async (c) => {
+      const session = c.get("session");
+
+      if (!session?.userId) {
+        return unauthorized(c, "unauthorized", "authentication required");
+      }
+
+      let body: unknown;
+
+      try {
+        body = await c.req.json();
+      } catch {
+        return validationError(c);
+      }
+
+      const parsed = v.safeParse(handleInputSchema, body);
+
+      if (!parsed.success) {
+        return validationError(c, parsed.issues);
+      }
+
+      const db = c.get("db");
+      const requestedHandle = parsed.output.handle;
+      const currentPage = await findProfilePageByUserId(db, session.userId);
+
+      if (!currentPage) {
+        return notFound(c, "profile_not_found", "profile page not found");
+      }
+
+      if (currentPage.handle.trim().toLowerCase() === requestedHandle) {
+        const response = c.json({
+          previousHandle: currentPage.handle,
+          profilePage: toHandleProfilePage(currentPage),
+        });
+        response.headers.set("Cache-Control", "no-store");
+        return response;
+      }
+
+      const existingPage = await findProfilePageByHandle(db, requestedHandle);
+
+      if (existingPage && existingPage.userId !== session.userId) {
+        return conflict(c, "handle_taken", "handle already taken");
+      }
+
+      await updateProfilePageHandleById(db, currentPage.id, requestedHandle);
+
+      const committedPage = await findProfilePageByUserId(db, session.userId);
+
+      if (!committedPage) {
+        return internalServerError(
+          c,
+          "handle_update_failed",
+          "failed to load updated profile page",
+        );
+      }
+
+      const response = c.json({
+        previousHandle: currentPage.handle,
+        profilePage: toHandleProfilePage(committedPage),
+      });
+      response.headers.set("Cache-Control", "no-store");
+      return response;
     });
-
-    if (!parsed.success) {
-      return validationError(c, parsed.issues);
-    }
-
-    const handle = parsed.output.handle;
-    const session = c.get("session");
-
-    if (!session?.userId) {
-      return unauthorized(c, "unauthorized", "authentication required");
-    }
-
-    const db = c.get("db");
-    const page = await findProfilePageByHandle(db, handle);
-
-    if (!page) {
-      return c.json({ available: true });
-    }
-
-    return c.json({
-      available: page.userId === session.userId,
-    });
-  });
 }
 
 const handleRoute = createHandleRoute();

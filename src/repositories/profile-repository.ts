@@ -17,6 +17,14 @@ import {
 const desktopBentoLayout = alias(profileBentoLayouts, "desktop_bento_layout");
 const compactBentoLayout = alias(profileBentoLayouts, "compact_bento_layout");
 
+export type ProfilePageSummary = {
+  id: string;
+  userId: string;
+  handle: string;
+  name: string | null;
+  image: string | null;
+};
+
 export async function findProfileRowsByHandle(db: Database, handle: string) {
   return db
     .select({
@@ -134,10 +142,14 @@ export async function findProfilePageByHandle(db: Database, handle: string) {
   return rows[0] ?? null;
 }
 
-export async function findOwnedProfilePageByUserId(db: Database, userId: string) {
+export async function findProfilePageByUserId(db: Database, userId: string) {
   const rows = await db
     .select({
       id: profilePages.id,
+      userId: profilePages.userId,
+      handle: profilePages.handle,
+      name: profilePages.name,
+      image: profilePages.image,
     })
     .from(profilePages)
     .where(eq(profilePages.userId, userId))
@@ -145,4 +157,23 @@ export async function findOwnedProfilePageByUserId(db: Database, userId: string)
     .limit(1);
 
   return rows[0] ?? null;
+}
+
+export async function findOwnedProfilePageByUserId(db: Database, userId: string) {
+  const page = await findProfilePageByUserId(db, userId);
+  return page ? { id: page.id } : null;
+}
+
+export async function updateProfilePageHandleById(
+  db: Database,
+  profilePageId: string,
+  handle: string,
+) {
+  await db
+    .update(profilePages)
+    .set({
+      handle,
+      updatedAt: new Date(),
+    })
+    .where(eq(profilePages.id, profilePageId));
 }

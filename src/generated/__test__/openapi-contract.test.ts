@@ -35,6 +35,8 @@ describe("OpenAPI contract", () => {
 		expect(openApi.paths?.["/handle/check"]?.get?.operationId).toBe(
 			"checkHandleAvailability",
 		);
+		expect(openApi.paths?.["/handle"]?.patch?.operationId).toBe("updateHandle");
+		expect(openApi.paths?.["/handle"]?.patch?.requestBody).toBeDefined();
 		expect(openApi.paths?.["/me"]?.get?.operationId).toBe("getMe");
 		expect(openApi.paths?.["/me/analytics"]?.get?.operationId).toBe(
 			"getMeAnalytics",

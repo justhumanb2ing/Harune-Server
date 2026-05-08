@@ -9,7 +9,7 @@ export type ApiErrorBody = {
 }
 
 type JsonContext = Pick<Context, 'json'>
-type ErrorStatus = 400 | 401 | 403 | 404 | 500 | 502
+type ErrorStatus = 400 | 401 | 403 | 404 | 409 | 500 | 502
 
 export function errorResponse(
   c: JsonContext,
@@ -62,6 +62,15 @@ export function forbidden(
   details?: unknown,
 ) {
   return errorResponse(c, 403, code, message, details)
+}
+
+export function conflict(
+  c: JsonContext,
+  code: string,
+  message: string,
+  details?: unknown,
+) {
+  return errorResponse(c, 409, code, message, details)
 }
 
 export function notFound(
