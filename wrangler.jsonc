@@ -27,7 +27,6 @@
     // "region": "aws:ap-northeast-2",
   },
   "vars": {
-    "BETTER_AUTH_URL": "https://api.harune.me",
     "HARUNE_APP_ORIGIN": "https://harune.me",
     "R2_PUBLIC_BASE_URL": "https://pub-cdb24d695a3d4aa08aa10719325ca3bd.r2.dev",
     "UPSTASH_REDIS_REST_URL": "https://accepted-midge-95805.upstash.io",
