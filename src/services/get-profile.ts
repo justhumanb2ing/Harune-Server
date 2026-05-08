@@ -177,41 +177,6 @@ function buildBento(row: ProfileRow): ProfileBentoItem {
           ),
         },
       };
-    case "playlist":
-      if (!row.playlistBentoId) {
-        throw profileInvariantError(
-          "profile_playlist_bento_missing",
-          `profile playlist bento ${row.bentoId} is missing content`,
-        );
-      }
-
-      return {
-        id: row.playlistBentoId,
-        type: "playlist",
-        layout,
-        content: {
-          title: requireValue(
-            row.playlistTitle,
-            "profile_playlist_bento_missing",
-            `profile playlist bento ${row.bentoId} is missing content`,
-          ),
-          provider: requireValue(
-            row.playlistProvider,
-            "profile_playlist_bento_missing",
-            `profile playlist bento ${row.bentoId} is missing content`,
-          ),
-          url: requireValue(
-            row.playlistUrl,
-            "profile_playlist_bento_missing",
-            `profile playlist bento ${row.bentoId} is missing content`,
-          ),
-          content: requireValue(
-            row.playlistContent,
-            "profile_playlist_bento_missing",
-            `profile playlist bento ${row.bentoId} is missing content`,
-          ),
-        },
-      };
     case "section":
       if (!row.sectionBentoId) {
         throw profileInvariantError(

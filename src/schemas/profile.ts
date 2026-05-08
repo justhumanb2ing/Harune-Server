@@ -97,7 +97,6 @@ const withRlsPolicies = (
 export const profileBentoTypeEnum = pgEnum("profile_bento_type", [
   "link",
   "text",
-  "playlist",
   "section",
   "media",
   "map",
@@ -236,32 +235,6 @@ export const profileTextBentos = pgTable(
     uniqueIndex("profile_text_bento_bento_id_idx").on(table.bentoId),
     ...withRlsPolicies(
       "profile_text_bento",
-      hasProfileBento(table.bentoId),
-      isProfileBentoOwner(table.bentoId),
-    ),
-  ]
-).enableRLS();
-
-export const profilePlaylistBentos = pgTable(
-  "profile_playlist_bento",
-  {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    bentoId: text("bentoId")
-      .notNull()
-      .references(() => profileBentos.id, { onDelete: "cascade" }),
-    title: text("title").notNull(),
-    provider: text("provider").notNull(),
-    url: text("url").notNull(),
-    content: text("content").notNull(),
-    createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt", { mode: "date" }).defaultNow().notNull(),
-  },
-  (table) => [
-    uniqueIndex("profile_playlist_bento_bento_id_idx").on(table.bentoId),
-    ...withRlsPolicies(
-      "profile_playlist_bento",
       hasProfileBento(table.bentoId),
       isProfileBentoOwner(table.bentoId),
     ),

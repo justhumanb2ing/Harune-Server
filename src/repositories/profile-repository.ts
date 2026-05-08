@@ -9,7 +9,6 @@ import {
   profileMediaBentos,
   profileMapBentos,
   profilePages,
-  profilePlaylistBentos,
   profileSectionBentos,
   profileTextBentos,
 } from "../schemas/profile";
@@ -58,11 +57,6 @@ export async function findProfileRowsByHandle(db: Database, handle: string) {
       linkUrl: profileLinkBentos.url,
       textBentoId: profileTextBentos.id,
       textContent: profileTextBentos.content,
-      playlistBentoId: profilePlaylistBentos.id,
-      playlistTitle: profilePlaylistBentos.title,
-      playlistProvider: profilePlaylistBentos.provider,
-      playlistUrl: profilePlaylistBentos.url,
-      playlistContent: profilePlaylistBentos.content,
       sectionBentoId: profileSectionBentos.id,
       sectionTitle: profileSectionBentos.title,
       mediaBentoId: profileMediaBentos.id,
@@ -102,13 +96,6 @@ export async function findProfileRowsByHandle(db: Database, handle: string) {
     .leftJoin(
       profileTextBentos,
       and(eq(profileTextBentos.bentoId, profileBentos.id), eq(profileBentos.type, "text")),
-    )
-    .leftJoin(
-      profilePlaylistBentos,
-      and(
-        eq(profilePlaylistBentos.bentoId, profileBentos.id),
-        eq(profileBentos.type, "playlist"),
-      ),
     )
     .leftJoin(
       profileSectionBentos,

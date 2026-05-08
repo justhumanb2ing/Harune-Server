@@ -1390,7 +1390,6 @@ profileGet.responses = {
 								oneOf: [
 									profileLinkBentoSchema(),
 									profileTextBentoSchema(),
-									profilePlaylistBentoSchema(),
 									profileSectionBentoSchema(),
 									profileMediaBentoSchema(),
 									profileMapBentoSchema(),
@@ -1559,28 +1558,6 @@ function profileTextBentoSchema() {
 					content: { type: "string" },
 				},
 				required: ["content"],
-			},
-		},
-		required: ["id", "type", "layout", "content"],
-	};
-}
-
-function profilePlaylistBentoSchema() {
-	return {
-		type: "object",
-		properties: {
-			id: { type: "string" },
-			type: { type: "string", enum: ["playlist"] },
-			layout: profileLayoutSchema(),
-			content: {
-				type: "object",
-				properties: {
-					title: { type: "string" },
-					provider: { type: "string" },
-					url: { type: "string" },
-					content: { type: "string" },
-				},
-				required: ["title", "provider", "url", "content"],
 			},
 		},
 		required: ["id", "type", "layout", "content"],

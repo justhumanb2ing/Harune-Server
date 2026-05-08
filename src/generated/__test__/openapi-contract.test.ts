@@ -71,4 +71,15 @@ describe("OpenAPI contract", () => {
 		expect(schemaText).toContain('"percent":{"type":"number","nullable":true}');
 		expect(schemaText).toContain('"changePercent":{"type":"number","nullable":true}');
 	});
+
+	it("only exposes supported profile bento variants in the response contract", () => {
+		const profile = openApi.paths?.["/profile/{handle}"]?.get?.responses?.["200"];
+		const schema = (profile as {
+			content?: Record<string, { schema?: { properties?: { bento?: { items?: { oneOf?: Array<{ properties?: { type?: { enum?: string[] } } }> } } } } }>;
+		})?.content?.["application/json"]?.schema;
+		const types =
+			schema?.properties?.bento?.items?.oneOf?.flatMap((item) => item.properties?.type?.enum ?? []) ?? [];
+
+		expect(types).toEqual(["link", "text", "section", "media", "map"]);
+	});
 });

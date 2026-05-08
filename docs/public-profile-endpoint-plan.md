@@ -77,7 +77,6 @@ type ProfileResponse = {
 - `profile_bento_layout`
 - `profile_link_bento`
 - `profile_text_bento`
-- `profile_playlist_bento`
 - `profile_section_bento`
 - `profile_media_bento`
 - `profile_map_bento`
@@ -117,8 +116,6 @@ type ProfileResponse = {
   - `title`, `description`, `favicon`, `thumbnail`, `url`
 - `text`
   - `content`
-- `playlist`
-  - `title`, `provider`, `url`, `content`
 - `section`
   - `title`
 - `media`

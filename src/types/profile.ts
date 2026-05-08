@@ -39,18 +39,6 @@ export type ProfileTextBento = {
   };
 };
 
-export type ProfilePlaylistBento = {
-  id: string;
-  type: "playlist";
-  layout: ProfileBentoLayouts;
-  content: {
-    title: string;
-    provider: string;
-    url: string;
-    content: string;
-  };
-};
-
 export type ProfileSectionBento = {
   id: string;
   type: "section";
@@ -90,7 +78,6 @@ export type ProfileMapBento = {
 export type ProfileBentoItem =
   | ProfileLinkBento
   | ProfileTextBento
-  | ProfilePlaylistBento
   | ProfileSectionBento
   | ProfileMediaBento
   | ProfileMapBento;
