@@ -17,6 +17,31 @@ function normalizeContentType(contentType: string) {
 	return contentType.split(";")[0]?.trim().toLowerCase() ?? "";
 }
 
+function decodeObjectKeySegment(segment: string) {
+	try {
+		return decodeURIComponent(segment);
+	} catch {
+		return null;
+	}
+}
+
+export function normalizeProfileMediaObjectKey(objectKey: string) {
+	const segments = objectKey.split("/");
+	const normalizedSegments: string[] = [];
+
+	for (const segment of segments) {
+		const decoded = decodeObjectKeySegment(segment);
+
+		if (decoded === null) {
+			return null;
+		}
+
+		normalizedSegments.push(decoded);
+	}
+
+	return normalizedSegments.join("/");
+}
+
 export function isAllowedProfileImageContentType(contentType: string) {
 	return PROFILE_IMAGE_CONTENT_TYPES.has(normalizeContentType(contentType));
 }
@@ -51,6 +76,10 @@ export function getProfileMediaTempObjectKey(
 	return `tmp/users/${userId}/profile/bento/${bentoId}/${objectId}`;
 }
 
+export function getProfileMediaTempObjectPrefix(userId: string, bentoId: string) {
+	return `tmp/users/${userId}/profile/bento/${bentoId}/`;
+}
+
 export function getProfileMediaObjectKey(userId: string, bentoId: string) {
 	return `public/users/${userId}/profile/bento/${bentoId}/media`;
 }
@@ -78,23 +107,43 @@ export function isProfileBentoMediaObjectKeyForBento(
 }
 
 export function parseProfileBentoMediaObjectKey(objectKey: string) {
-	const segments = objectKey.split("/");
+	const normalizedObjectKey = normalizeProfileMediaObjectKey(objectKey);
+
+	if (!normalizedObjectKey) {
+		return null;
+	}
+
+	const segments = normalizedObjectKey.split("/");
 
 	if (segments.length === 7 && segments[0] === "tmp" && segments[1] === "users" && segments[3] === "profile" && segments[4] === "bento") {
+		const bentoId = decodeObjectKeySegment(segments[5] ?? "");
+		const objectId = decodeObjectKeySegment(segments[6] ?? "");
+
+		if (!bentoId || !objectId) {
+			return null;
+		}
+
 		return {
 			kind: "temp" as const,
 			userId: segments[2],
-			bentoId: segments[5],
-			objectId: segments[6],
+			bentoId,
+			objectId,
 		};
 	}
 
 	if (segments.length === 7 && segments[0] === "public" && segments[1] === "users" && segments[3] === "profile" && segments[4] === "bento" && segments[6] === "media") {
+		const bentoId = decodeObjectKeySegment(segments[5] ?? "");
+		const objectId = decodeObjectKeySegment(segments[6] ?? "");
+
+		if (!bentoId || !objectId) {
+			return null;
+		}
+
 		return {
 			kind: "final" as const,
 			userId: segments[2],
-			bentoId: segments[5],
-			objectId: segments[6],
+			bentoId,
+			objectId,
 		};
 	}
 
@@ -114,12 +163,18 @@ export async function copyProfileBentoMediaObject(
 
 	const bytes = new Uint8Array(await object.arrayBuffer());
 	const contentType = object.httpMetadata?.contentType ?? "application/octet-stream";
+	const contentHash = await sha256Hex(bytes);
 
 	await bucket.put(targetObjectKey, bytes, {
 		httpMetadata: {
 			contentType,
 		},
 	});
+
+	return {
+		contentHash,
+		contentType,
+	};
 }
 
 export async function deleteProfileBentoMediaObject(
@@ -163,7 +218,7 @@ export function parseObjectKeyFromPublicUrl(baseUrl: string, publicUrl: string) 
 			return null;
 		}
 
-		return url.pathname.slice(expectedPrefix.length);
+		return decodeObjectKeySegment(url.pathname.slice(expectedPrefix.length));
 	} catch {
 		return null;
 	}
