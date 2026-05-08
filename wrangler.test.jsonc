@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "server-test",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-05-07",
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "HARUNE_APP_ORIGIN": "https://harune.me",
+    "R2_PUBLIC_BASE_URL": "https://pub-cdb24d695a3d4aa08aa10719325ca3bd.r2.dev",
+    "UPSTASH_REDIS_REST_URL": "https://accepted-midge-95805.upstash.io",
+    "UMAMI_API_ENDPOINT": "https://api.umami.is/v1",
+    "UMAMI_WEBSITE_ID": "c6d6da3b-2144-4194-a7a8-397fb884026b",
+    "UMAMI_SCRIPT_SRC": "https://cloud.umami.is/script.js"
+  }
+}

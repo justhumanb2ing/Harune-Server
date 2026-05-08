@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it } from "vitest";
 
 import { getAnalytics } from "../src/services/get-analytics";
 import type { ProfileAnalyticsResponse } from "../src/types/analytics";

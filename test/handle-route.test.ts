@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
 
 import { createHandleRoute } from "../src/routes/handle-route";
