@@ -46,7 +46,9 @@ export function isAllowedProfileImageContentType(contentType: string) {
 	return PROFILE_IMAGE_CONTENT_TYPES.has(normalizeContentType(contentType));
 }
 
-export function getProfileMediaType(contentType: string): ProfileMediaType | null {
+export function getProfileMediaType(
+	contentType: string,
+): ProfileMediaType | null {
 	const normalized = normalizeContentType(contentType);
 
 	if (normalized.startsWith("image/")) {
@@ -64,7 +66,10 @@ export function isAllowedProfileMediaContentType(contentType: string) {
 	return getProfileMediaType(contentType) !== null;
 }
 
-export function getProfileImageObjectKey(userId: string, imageKind: ProfileImageKind) {
+export function getProfileImageObjectKey(
+	userId: string,
+	imageKind: ProfileImageKind,
+) {
 	return `public/users/${userId}/profile/${imageKind}`;
 }
 
@@ -76,7 +81,10 @@ export function getProfileMediaTempObjectKey(
 	return `tmp/users/${userId}/profile/bento/${bentoId}/${objectId}`;
 }
 
-export function getProfileMediaTempObjectPrefix(userId: string, bentoId: string) {
+export function getProfileMediaTempObjectPrefix(
+	userId: string,
+	bentoId: string,
+) {
 	return `tmp/users/${userId}/profile/bento/${bentoId}/`;
 }
 
@@ -115,7 +123,13 @@ export function parseProfileBentoMediaObjectKey(objectKey: string) {
 
 	const segments = normalizedObjectKey.split("/");
 
-	if (segments.length === 7 && segments[0] === "tmp" && segments[1] === "users" && segments[3] === "profile" && segments[4] === "bento") {
+	if (
+		segments.length === 7 &&
+		segments[0] === "tmp" &&
+		segments[1] === "users" &&
+		segments[3] === "profile" &&
+		segments[4] === "bento"
+	) {
 		const bentoId = decodeObjectKeySegment(segments[5] ?? "");
 		const objectId = decodeObjectKeySegment(segments[6] ?? "");
 
@@ -131,7 +145,14 @@ export function parseProfileBentoMediaObjectKey(objectKey: string) {
 		};
 	}
 
-	if (segments.length === 7 && segments[0] === "public" && segments[1] === "users" && segments[3] === "profile" && segments[4] === "bento" && segments[6] === "media") {
+	if (
+		segments.length === 7 &&
+		segments[0] === "public" &&
+		segments[1] === "users" &&
+		segments[3] === "profile" &&
+		segments[4] === "bento" &&
+		segments[6] === "media"
+	) {
 		const bentoId = decodeObjectKeySegment(segments[5] ?? "");
 		const objectId = decodeObjectKeySegment(segments[6] ?? "");
 
@@ -154,6 +175,9 @@ export async function copyProfileBentoMediaObject(
 	bucket: R2Bucket,
 	sourceObjectKey: string,
 	targetObjectKey: string,
+	options?: {
+		contentHash?: string;
+	},
 ) {
 	const object = await bucket.get(sourceObjectKey);
 
@@ -161,9 +185,34 @@ export async function copyProfileBentoMediaObject(
 		throw new Error("temporary bento media object not found");
 	}
 
+	const contentType =
+		object.httpMetadata?.contentType ?? "application/octet-stream";
+	const contentHash = options?.contentHash;
+
+	if (contentHash) {
+		if ("body" in object && object.body) {
+			await bucket.put(targetObjectKey, object.body, {
+				httpMetadata: {
+					contentType,
+				},
+			});
+		} else {
+			const bytes = new Uint8Array(await object.arrayBuffer());
+			await bucket.put(targetObjectKey, bytes, {
+				httpMetadata: {
+					contentType,
+				},
+			});
+		}
+
+		return {
+			contentHash,
+			contentType,
+		};
+	}
+
 	const bytes = new Uint8Array(await object.arrayBuffer());
-	const contentType = object.httpMetadata?.contentType ?? "application/octet-stream";
-	const contentHash = await sha256Hex(bytes);
+	const computedContentHash = await sha256Hex(bytes);
 
 	await bucket.put(targetObjectKey, bytes, {
 		httpMetadata: {
@@ -172,7 +221,7 @@ export async function copyProfileBentoMediaObject(
 	});
 
 	return {
-		contentHash,
+		contentHash: computedContentHash,
 		contentType,
 	};
 }
@@ -202,7 +251,10 @@ export function buildPublicObjectUrl(
 	return url.toString();
 }
 
-export function parseObjectKeyFromPublicUrl(baseUrl: string, publicUrl: string) {
+export function parseObjectKeyFromPublicUrl(
+	baseUrl: string,
+	publicUrl: string,
+) {
 	try {
 		const base = new URL(baseUrl);
 		const url = new URL(publicUrl);
