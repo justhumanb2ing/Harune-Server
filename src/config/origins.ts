@@ -6,9 +6,18 @@ export const BASE_ORIGINS = [
 ];
 
 type OriginEnv = {
+  HARUNE_APP_ORIGIN?: string;
   FRONTEND_URL?: string;
 };
 
 export function getAllowedOrigins(env?: OriginEnv) {
-  return [...new Set([...BASE_ORIGINS, env?.FRONTEND_URL].filter((origin): origin is string => Boolean(origin)))];
+  return [
+    ...new Set(
+      [
+        ...BASE_ORIGINS,
+        env?.HARUNE_APP_ORIGIN,
+        env?.FRONTEND_URL,
+      ].filter((origin): origin is string => Boolean(origin)),
+    ),
+  ];
 }
