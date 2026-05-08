@@ -38,7 +38,7 @@ export function isAllowedProfileMediaContentType(contentType: string) {
 }
 
 export function getProfileImageObjectKey(userId: string, imageKind: ProfileImageKind) {
-	return `public/users/${userId}/profile/${imageKind}`;
+	return `public/users/${userId}/profile-page/${imageKind}`;
 }
 
 export function getProfileMediaTempObjectKey(
@@ -46,11 +46,11 @@ export function getProfileMediaTempObjectKey(
 	bentoId: string,
 	objectId = crypto.randomUUID(),
 ) {
-	return `tmp/users/${userId}/profile/bento/${bentoId}/${objectId}`;
+	return `tmp/users/${userId}/profile-page/bento/${bentoId}/${objectId}`;
 }
 
 export function getProfileMediaObjectKey(userId: string, bentoId: string) {
-	return `public/users/${userId}/profile/bento/${bentoId}/media`;
+	return `public/users/${userId}/profile-page/bento/${bentoId}/media`;
 }
 
 export function buildPublicObjectUrl(

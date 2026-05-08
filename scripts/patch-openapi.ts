@@ -1743,8 +1743,8 @@ profileImagePost.responses["200"] = {
 				default: {
 					value: {
 						imageKind: "profile",
-						imageUrl: "https://pub.example.com/public/users/user-1/profile/profile?v=abc123",
-						objectKey: "public/users/user-1/profile/profile",
+						imageUrl: "https://pub.example.com/public/users/user-1/profile-page/profile?v=abc123",
+						objectKey: "public/users/user-1/profile-page/profile",
 						contentType: "image/png",
 						contentLength: 12345,
 					},
@@ -1843,7 +1843,7 @@ profileImagePatch.requestBody = {
 				default: {
 					value: {
 						imageKind: "profile",
-						imageUrl: "https://pub.example.com/public/users/user-1/profile/profile?v=abc123",
+						imageUrl: "https://pub.example.com/public/users/user-1/profile-page/profile?v=abc123",
 					},
 				},
 			},
@@ -1860,8 +1860,8 @@ profileImagePatch.responses["200"] = {
 				default: {
 					value: {
 						imageKind: "profile",
-						imageUrl: "https://pub.example.com/public/users/user-1/profile/profile?v=abc123",
-						image: "https://pub.example.com/public/users/user-1/profile/profile?v=abc123",
+						imageUrl: "https://pub.example.com/public/users/user-1/profile-page/profile?v=abc123",
+						image: "https://pub.example.com/public/users/user-1/profile-page/profile?v=abc123",
 						backgroundImage: null,
 						updatedAt: "2026-05-08T01:00:00.000Z",
 					},
@@ -1940,7 +1940,7 @@ profileImageDelete.requestBody = {
 			examples: {
 				default: {
 					value: {
-						imageUrl: "https://pub.example.com/public/users/user-1/profile/profile?v=abc123",
+						imageUrl: "https://pub.example.com/public/users/user-1/profile-page/profile?v=abc123",
 					},
 				},
 			},
@@ -1957,7 +1957,7 @@ profileImageDelete.responses["200"] = {
 				default: {
 					value: {
 						success: true,
-						deletedObjectKey: "public/users/user-1/profile/profile",
+						deletedObjectKey: "public/users/user-1/profile-page/profile",
 					},
 				},
 			},
@@ -2049,9 +2049,9 @@ profileBentoMediaUpload.responses["200"] = {
 						contentHash: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
 						contentType: "video/mp4",
 						mediaType: "video",
-						tempObjectKey: "tmp/users/user-1/profile/bento/bento_123/123e4567-e89b-12d3-a456-426614174000",
+						tempObjectKey: "tmp/users/user-1/profile-page/bento/bento_123/123e4567-e89b-12d3-a456-426614174000",
 						tempUrl:
-							"https://pub.example.com/tmp/users/user-1/profile/bento/bento_123/123e4567-e89b-12d3-a456-426614174000",
+							"https://pub.example.com/tmp/users/user-1/profile-page/bento/bento_123/123e4567-e89b-12d3-a456-426614174000",
 					},
 				},
 			},

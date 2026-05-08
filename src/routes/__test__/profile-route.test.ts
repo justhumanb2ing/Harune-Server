@@ -396,9 +396,11 @@ describe("profile mutation routes", () => {
 			contentType: "video/mp4",
 			mediaType: "video",
 			tempObjectKey: expect.stringMatching(
-				/^tmp\/users\/user-1\/profile\/bento\/bento-1\/[0-9a-f-]{36}$/,
+				/^tmp\/users\/user-1\/profile-page\/bento\/bento-1\/[0-9a-f-]{36}$/,
 			),
-			tempUrl: expect.stringContaining("https://cdn.harune.me/tmp/users/user-1/profile/bento/bento-1/"),
+			tempUrl: expect.stringContaining(
+				"https://cdn.harune.me/tmp/users/user-1/profile-page/bento/bento-1/",
+			),
 		});
 		expect(bucket.bucket.put).toHaveBeenCalledTimes(1);
 	});
@@ -436,11 +438,11 @@ describe("profile mutation routes", () => {
 			mediaType: "video",
 			tempObjectKey: expect.stringMatching(
 				new RegExp(
-					`^tmp/users/user-1/profile/bento/${previewBentoId}/[0-9a-f-]{36}$`,
+					`^tmp/users/user-1/profile-page/bento/${previewBentoId}/[0-9a-f-]{36}$`,
 				),
 			),
 			tempUrl: expect.stringContaining(
-				`https://cdn.harune.me/tmp/users/user-1/profile/bento/${previewBentoId}/`,
+				`https://cdn.harune.me/tmp/users/user-1/profile-page/bento/${previewBentoId}/`,
 			),
 		});
 		expect(bucket.bucket.put).toHaveBeenCalledTimes(1);

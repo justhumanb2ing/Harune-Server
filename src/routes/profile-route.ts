@@ -64,7 +64,12 @@ function parseProfileImageTarget(baseUrl: string, imageUrl: string) {
 
   const segments = objectKey.split("/");
 
-  if (segments.length !== 5 || segments[0] !== "public" || segments[1] !== "users" || segments[3] !== "profile") {
+  if (
+    segments.length !== 5 ||
+    segments[0] !== "public" ||
+    segments[1] !== "users" ||
+    segments[3] !== "profile-page"
+  ) {
     return null;
   }
 
