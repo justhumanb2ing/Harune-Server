@@ -1706,6 +1706,32 @@ function profilePageUpdateRequestSchema() {
 	};
 }
 
+function profilePageCreateRequestSchema() {
+	return {
+		type: "object",
+		additionalProperties: false,
+		properties: {
+			handle: { type: "string" },
+			name: { type: "string" },
+			bio: { type: "string" },
+			role: { type: "string" },
+			location: { type: "string" },
+			image: { type: "string" },
+		},
+		required: ["handle", "name"],
+	};
+}
+
+function profilePageCreateResponseSchema() {
+	return {
+		type: "object",
+		properties: {
+			page: profilePageSchema(),
+		},
+		required: ["page"],
+	};
+}
+
 function profileLinkBentoMutationSchema() {
 	return {
 		type: "object",
@@ -1957,8 +1983,8 @@ profileImagePost.responses["200"] = {
 				default: {
 					value: {
 						imageKind: "profile",
-						imageUrl: "https://pub.example.com/public/users/user-1/profile-page/profile?v=abc123",
-						objectKey: "public/users/user-1/profile-page/profile",
+						imageUrl: "https://pub.example.com/public/users/user-1/profile/profile?v=abc123",
+						objectKey: "public/users/user-1/profile/profile",
 						contentType: "image/png",
 						contentLength: 12345,
 					},
@@ -2057,7 +2083,7 @@ profileImagePatch.requestBody = {
 				default: {
 					value: {
 						imageKind: "profile",
-						imageUrl: "https://pub.example.com/public/users/user-1/profile-page/profile?v=abc123",
+						imageUrl: "https://pub.example.com/public/users/user-1/profile/profile?v=abc123",
 					},
 				},
 			},
@@ -2074,8 +2100,8 @@ profileImagePatch.responses["200"] = {
 				default: {
 					value: {
 						imageKind: "profile",
-						imageUrl: "https://pub.example.com/public/users/user-1/profile-page/profile?v=abc123",
-						image: "https://pub.example.com/public/users/user-1/profile-page/profile?v=abc123",
+						imageUrl: "https://pub.example.com/public/users/user-1/profile/profile?v=abc123",
+						image: "https://pub.example.com/public/users/user-1/profile/profile?v=abc123",
 						backgroundImage: null,
 						updatedAt: "2026-05-08T01:00:00.000Z",
 					},
@@ -2154,7 +2180,7 @@ profileImageDelete.requestBody = {
 			examples: {
 				default: {
 					value: {
-						imageUrl: "https://pub.example.com/public/users/user-1/profile-page/profile?v=abc123",
+						imageUrl: "https://pub.example.com/public/users/user-1/profile/profile?v=abc123",
 					},
 				},
 			},
@@ -2171,7 +2197,7 @@ profileImageDelete.responses["200"] = {
 				default: {
 					value: {
 						success: true,
-						deletedObjectKey: "public/users/user-1/profile-page/profile",
+						deletedObjectKey: "public/users/user-1/profile/profile",
 					},
 				},
 			},
@@ -2263,9 +2289,9 @@ profileBentoMediaUpload.responses["200"] = {
 						contentHash: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
 						contentType: "video/mp4",
 						mediaType: "video",
-						tempObjectKey: "tmp/users/user-1/profile-page/bento/bento_123/123e4567-e89b-12d3-a456-426614174000",
+						tempObjectKey: "tmp/users/user-1/profile/bento/bento_123/123e4567-e89b-12d3-a456-426614174000",
 						tempUrl:
-							"https://pub.example.com/tmp/users/user-1/profile-page/bento/bento_123/123e4567-e89b-12d3-a456-426614174000",
+							"https://pub.example.com/tmp/users/user-1/profile/bento/bento_123/123e4567-e89b-12d3-a456-426614174000",
 					},
 				},
 			},
@@ -2311,6 +2337,177 @@ profileBentoMediaUpload.responses["500"] = {
 	},
 };
 delete profileBentoMediaUpload.responses.default;
+
+const profileMePost = openApi.paths?.["/profile/me"]?.post as
+	| {
+			requestBody?: unknown;
+			responses?: Record<string, unknown>;
+			summary?: string;
+			description?: string;
+			tags?: string[];
+			operationId?: string;
+	  }
+	| undefined;
+
+if (!profileMePost) {
+	throw new Error("Could not find /profile/me POST operation in openapi.json");
+}
+
+profileMePost.summary = "Create my profile page";
+profileMePost.description =
+	"Creates the authenticated user's first profile page. The server normalizes the submitted handle to lowercase, rejects reserved or malformed handles, returns 409 when a profile page already exists or the handle is already taken, and returns only the committed page snapshot on success.";
+profileMePost.operationId = "createProfilePage";
+profileMePost.tags = ["Profile API"];
+profileMePost.requestBody = {
+	required: true,
+	content: {
+		"application/json": {
+			schema: profilePageCreateRequestSchema(),
+			examples: {
+				default: {
+					summary: "Create a new profile page",
+					value: {
+						handle: "maker_one",
+						name: "Maker One",
+						bio: "Bio",
+						role: "Creator",
+						location: "Seoul",
+						image: "https://cdn.harune.me/avatar.png",
+					},
+				},
+			},
+		},
+	},
+};
+profileMePost.responses = {
+	200: {
+		description: "Successful profile creation. Returns the committed page snapshot only.",
+		content: {
+			"application/json": {
+				schema: profilePageCreateResponseSchema(),
+				examples: {
+					default: {
+						value: {
+							page: {
+								id: "page_123",
+								userId: "user_123",
+								handle: "maker_one",
+								name: "Maker One",
+								role: "Creator",
+								bio: "Bio",
+								image: "https://cdn.harune.me/avatar.png",
+								backgroundImage: null,
+								location: "Seoul",
+								updatedAt: "2026-05-08T01:00:00.000Z",
+							},
+						},
+					},
+				},
+			},
+		},
+	},
+	400: {
+		description:
+			"Invalid profile creation request. Returned when the payload is malformed, the handle is missing, reserved, or invalid, or one of the optional text or URL fields cannot be normalized.",
+		content: {
+			"application/json": {
+				schema: profileErrorSchema(["validation_error"]),
+				examples: {
+					validation: {
+						value: {
+							error: {
+								code: "validation_error",
+								message: "invalid request",
+							},
+						},
+					},
+				},
+			},
+		},
+	},
+	401: {
+		description: "Authentication required.",
+		content: {
+			"application/json": {
+				schema: profileErrorSchema(["unauthorized"]),
+				examples: {
+					unauthorized: {
+						value: {
+							error: {
+								code: "unauthorized",
+								message: "authentication required",
+							},
+						},
+					},
+				},
+			},
+		},
+	},
+	404: {
+		description: "The authenticated user row does not exist.",
+		content: {
+			"application/json": {
+				schema: profileErrorSchema(["user_not_found"]),
+				examples: {
+					notFound: {
+						value: {
+							error: {
+								code: "user_not_found",
+								message: "user not found",
+							},
+						},
+					},
+				},
+			},
+		},
+	},
+	409: {
+		description:
+			"Returned when the authenticated user already owns a profile page or when another profile page already uses the requested handle.",
+		content: {
+			"application/json": {
+				schema: profileErrorSchema(["profile_page_exists", "handle_taken"]),
+				examples: {
+					existingPage: {
+						value: {
+							error: {
+								code: "profile_page_exists",
+								message: "profile page already exists",
+							},
+						},
+					},
+					takenHandle: {
+						value: {
+							error: {
+								code: "handle_taken",
+								message: "handle already taken",
+							},
+						},
+					},
+				},
+			},
+		},
+	},
+	500: {
+		description: "Failed to load the committed profile snapshot after creation.",
+		content: {
+			"application/json": {
+				schema: profileErrorSchema(["profile_page_create_failed"]),
+				examples: {
+					failed: {
+						value: {
+							error: {
+								code: "profile_page_create_failed",
+								message: "failed to create profile page",
+							},
+						},
+					},
+				},
+			},
+		},
+	},
+};
+delete profileMePost.responses.default;
 
 const profileMePut = openApi.paths?.["/profile/me"]?.put as
 	| {
@@ -2504,9 +2701,9 @@ profileMeBentoPut.requestBody = {
 								},
 								content: {
 									mediaType: "image",
-									url: "https://cdn.harune.me/public/users/user_123/profile-page/bento/bento_123/media?v=content-hash-123",
-									objectKey: "public/users/user_123/profile-page/bento/bento_123/media",
-									tempObjectKey: "tmp/users/user_123/profile-page/bento/bento_123/123e4567-e89b-12d3-a456-426614174000",
+									url: "https://cdn.harune.me/public/users/user_123/profile/bento/bento_123/media?v=content-hash-123",
+									objectKey: "public/users/user_123/profile/bento/bento_123/media",
+									tempObjectKey: "tmp/users/user_123/profile/bento/bento_123/123e4567-e89b-12d3-a456-426614174000",
 									contentHash: "content-hash-123",
 									contentType: "image/png",
 									alt: "Alt",
@@ -2551,8 +2748,8 @@ profileMeBentoPut.responses = {
 									},
 									content: {
 										mediaType: "image",
-										url: "https://cdn.harune.me/public/users/user_123/profile-page/bento/bento_123/media?v=content-hash-123",
-										objectKey: "public/users/user_123/profile-page/bento/bento_123/media",
+										url: "https://cdn.harune.me/public/users/user_123/profile/bento/bento_123/media?v=content-hash-123",
+										objectKey: "public/users/user_123/profile/bento/bento_123/media",
 										href: null,
 										alt: "Alt",
 										caption: "Caption",

@@ -4096,6 +4096,400 @@
       }
     },
     "/profile/me": {
+      "post": {
+        "summary": "Create my profile page",
+        "responses": {
+          "200": {
+            "description": "Successful profile creation. Returns the committed page snapshot only.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "page": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "userId": {
+                          "type": "string"
+                        },
+                        "handle": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "role": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "bio": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "image": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "backgroundImage": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "location": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "userId",
+                        "handle",
+                        "name",
+                        "role",
+                        "bio",
+                        "image",
+                        "backgroundImage",
+                        "location",
+                        "updatedAt"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "page"
+                  ]
+                },
+                "examples": {
+                  "default": {
+                    "value": {
+                      "page": {
+                        "id": "page_123",
+                        "userId": "user_123",
+                        "handle": "maker_one",
+                        "name": "Maker One",
+                        "role": "Creator",
+                        "bio": "Bio",
+                        "image": "https://cdn.harune.me/avatar.png",
+                        "backgroundImage": null,
+                        "location": "Seoul",
+                        "updatedAt": "2026-05-08T01:00:00.000Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid profile creation request. Returned when the payload is malformed, the handle is missing, reserved, or invalid, or one of the optional text or URL fields cannot be normalized.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "validation_error"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                },
+                "examples": {
+                  "validation": {
+                    "value": {
+                      "error": {
+                        "code": "validation_error",
+                        "message": "invalid request"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "unauthorized"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                },
+                "examples": {
+                  "unauthorized": {
+                    "value": {
+                      "error": {
+                        "code": "unauthorized",
+                        "message": "authentication required"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The authenticated user row does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "user_not_found"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                },
+                "examples": {
+                  "notFound": {
+                    "value": {
+                      "error": {
+                        "code": "user_not_found",
+                        "message": "user not found"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Returned when the authenticated user already owns a profile page or when another profile page already uses the requested handle.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "profile_page_exists",
+                            "handle_taken"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                },
+                "examples": {
+                  "existingPage": {
+                    "value": {
+                      "error": {
+                        "code": "profile_page_exists",
+                        "message": "profile page already exists"
+                      }
+                    }
+                  },
+                  "takenHandle": {
+                    "value": {
+                      "error": {
+                        "code": "handle_taken",
+                        "message": "handle already taken"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to load the committed profile snapshot after creation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "profile_page_create_failed"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                },
+                "examples": {
+                  "failed": {
+                    "value": {
+                      "error": {
+                        "code": "profile_page_create_failed",
+                        "message": "failed to create profile page"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Profile API"
+        ],
+        "description": "Creates the authenticated user's first profile page. The server normalizes the submitted handle to lowercase, rejects reserved or malformed handles, returns 409 when a profile page already exists or the handle is already taken, and returns only the committed page snapshot on success.",
+        "operationId": "createProfilePage",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "handle": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "bio": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string"
+                  },
+                  "location": {
+                    "type": "string"
+                  },
+                  "image": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "handle",
+                  "name"
+                ]
+              },
+              "examples": {
+                "default": {
+                  "summary": "Create a new profile page",
+                  "value": {
+                    "handle": "maker_one",
+                    "name": "Maker One",
+                    "bio": "Bio",
+                    "role": "Creator",
+                    "location": "Seoul",
+                    "image": "https://cdn.harune.me/avatar.png"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "put": {
         "summary": "Update my profile page",
         "responses": {
@@ -5588,8 +5982,8 @@
                           },
                           "content": {
                             "mediaType": "image",
-                            "url": "https://cdn.harune.me/public/users/user_123/profile-page/bento/bento_123/media?v=content-hash-123",
-                            "objectKey": "public/users/user_123/profile-page/bento/bento_123/media",
+                            "url": "https://cdn.harune.me/public/users/user_123/profile/bento/bento_123/media?v=content-hash-123",
+                            "objectKey": "public/users/user_123/profile/bento/bento_123/media",
                             "href": null,
                             "alt": "Alt",
                             "caption": "Caption"
@@ -6370,9 +6764,9 @@
                         },
                         "content": {
                           "mediaType": "image",
-                          "url": "https://cdn.harune.me/public/users/user_123/profile-page/bento/bento_123/media?v=content-hash-123",
-                          "objectKey": "public/users/user_123/profile-page/bento/bento_123/media",
-                          "tempObjectKey": "tmp/users/user_123/profile-page/bento/bento_123/123e4567-e89b-12d3-a456-426614174000",
+                          "url": "https://cdn.harune.me/public/users/user_123/profile/bento/bento_123/media?v=content-hash-123",
+                          "objectKey": "public/users/user_123/profile/bento/bento_123/media",
+                          "tempObjectKey": "tmp/users/user_123/profile/bento/bento_123/123e4567-e89b-12d3-a456-426614174000",
                           "contentHash": "content-hash-123",
                           "contentType": "image/png",
                           "alt": "Alt",
@@ -6431,8 +6825,8 @@
                   "default": {
                     "value": {
                       "imageKind": "profile",
-                      "imageUrl": "https://pub.example.com/public/users/user-1/profile-page/profile?v=abc123",
-                      "objectKey": "public/users/user-1/profile-page/profile",
+                      "imageUrl": "https://pub.example.com/public/users/user-1/profile/profile?v=abc123",
+                      "objectKey": "public/users/user-1/profile/profile",
                       "contentType": "image/png",
                       "contentLength": 12345
                     }
@@ -6670,8 +7064,8 @@
                   "default": {
                     "value": {
                       "imageKind": "profile",
-                      "imageUrl": "https://pub.example.com/public/users/user-1/profile-page/profile?v=abc123",
-                      "image": "https://pub.example.com/public/users/user-1/profile-page/profile?v=abc123",
+                      "imageUrl": "https://pub.example.com/public/users/user-1/profile/profile?v=abc123",
+                      "image": "https://pub.example.com/public/users/user-1/profile/profile?v=abc123",
                       "backgroundImage": null,
                       "updatedAt": "2026-05-08T01:00:00.000Z"
                     }
@@ -6906,7 +7300,7 @@
                 "default": {
                   "value": {
                     "imageKind": "profile",
-                    "imageUrl": "https://pub.example.com/public/users/user-1/profile-page/profile?v=abc123"
+                    "imageUrl": "https://pub.example.com/public/users/user-1/profile/profile?v=abc123"
                   }
                 }
               }
@@ -6940,7 +7334,7 @@
                   "default": {
                     "value": {
                       "success": true,
-                      "deletedObjectKey": "public/users/user-1/profile-page/profile"
+                      "deletedObjectKey": "public/users/user-1/profile/profile"
                     }
                   }
                 }
@@ -7163,7 +7557,7 @@
               "examples": {
                 "default": {
                   "value": {
-                    "imageUrl": "https://pub.example.com/public/users/user-1/profile-page/profile?v=abc123"
+                    "imageUrl": "https://pub.example.com/public/users/user-1/profile/profile?v=abc123"
                   }
                 }
               }
@@ -7222,8 +7616,8 @@
                       "contentHash": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
                       "contentType": "video/mp4",
                       "mediaType": "video",
-                      "tempObjectKey": "tmp/users/user-1/profile-page/bento/bento_123/123e4567-e89b-12d3-a456-426614174000",
-                      "tempUrl": "https://pub.example.com/tmp/users/user-1/profile-page/bento/bento_123/123e4567-e89b-12d3-a456-426614174000"
+                      "tempObjectKey": "tmp/users/user-1/profile/bento/bento_123/123e4567-e89b-12d3-a456-426614174000",
+                      "tempUrl": "https://pub.example.com/tmp/users/user-1/profile/bento/bento_123/123e4567-e89b-12d3-a456-426614174000"
                     }
                   }
                 }

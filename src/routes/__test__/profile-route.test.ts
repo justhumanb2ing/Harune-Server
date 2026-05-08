@@ -244,6 +244,102 @@ function createEditorTestApp({
 	};
 }
 
+function createCreateTestApp({
+	session,
+	page,
+	handlePage,
+	userExists = true,
+	bucket,
+}: {
+	session: SessionState;
+	page?: {
+		id: string;
+		userId: string;
+		handle: string;
+		name: string | null;
+		location: string | null;
+		role: string | null;
+		bio: string | null;
+		image: string | null;
+		backgroundImage: string | null;
+		updatedAt: Date;
+	} | null;
+	handlePage?: {
+		userId: string;
+		handle: string;
+	} | null;
+	userExists?: boolean;
+	bucket: ReturnType<typeof createMockBucket>;
+}) {
+	let currentPage =
+		page ??
+		null;
+	let lastCreatedInput: unknown = null;
+
+	const route = createProfileRoute({
+		findUserById: async (_db, userId) => {
+			if (!userExists || userId !== "user-1") {
+				return null;
+			}
+
+			return { id: userId };
+		},
+		findProfilePageByUserId: async (_db, userId) => {
+			if (!currentPage || currentPage.userId !== userId) {
+				return null;
+			}
+
+			return currentPage;
+		},
+		findProfilePageByHandle: async (_db, handle) => {
+			if (currentPage?.handle === handle) {
+				return {
+					userId: currentPage.userId,
+					handle: currentPage.handle,
+				};
+			}
+
+			if (handlePage?.handle === handle) {
+				return handlePage;
+			}
+
+			return null;
+		},
+		createProfilePage: async (_db, input) => {
+			lastCreatedInput = input;
+
+			currentPage = {
+				id: "page-1",
+				userId: input.userId,
+				handle: input.handle,
+				name: input.name,
+				location: input.location ?? null,
+				role: input.role ?? null,
+				bio: input.bio ?? null,
+				image: input.image ?? null,
+				backgroundImage: null,
+				updatedAt: new Date("2026-05-08T01:00:00.000Z"),
+			};
+		},
+	});
+
+	const app = new Hono<AppBindings>();
+	app.use("*", async (c, next) => {
+		c.set("db", {} as never);
+		c.set("session", session as never);
+		await next();
+	});
+	app.onError(handleHonoError);
+	app.route("/profile", route);
+
+	return {
+		app,
+		getCurrentPage: () => currentPage,
+		getLastCreatedInput: () => lastCreatedInput,
+		bucket,
+	};
+}
+
 async function createImageFixture() {
 	const bytes = new TextEncoder().encode("profile image payload");
 	return {
@@ -293,11 +389,11 @@ describe("profile mutation routes", () => {
 		expect(response.status).toBe(200);
 		expect(response.headers.get("Cache-Control")).toBe("no-store");
 		expect(response.headers.get("Pragma")).toBe("no-cache");
-		expect(json).toEqual({
-			imageKind: "profile",
-			imageUrl: buildPublicObjectUrl(
-				"https://cdn.harune.me",
-				getProfileImageObjectKey("user-1", "profile"),
+			expect(json).toEqual({
+				imageKind: "profile",
+				imageUrl: buildPublicObjectUrl(
+					"https://cdn.harune.me",
+					getProfileImageObjectKey("user-1", "profile"),
 				hash,
 			),
 			objectKey: getProfileImageObjectKey("user-1", "profile"),
@@ -528,18 +624,18 @@ describe("profile mutation routes", () => {
 
 		expect(response.status).toBe(200);
 		expect(response.headers.get("Cache-Control")).toBe("no-store");
-		expect(json).toEqual({
-			bentoId: "bento-1",
-			contentHash: hash,
-			contentType: "video/mp4",
-			mediaType: "video",
-			tempObjectKey: expect.stringMatching(
-				/^tmp\/users\/user-1\/profile-page\/bento\/bento-1\/[0-9a-f-]{36}$/,
-			),
-			tempUrl: expect.stringContaining(
-				"https://cdn.harune.me/tmp/users/user-1/profile-page/bento/bento-1/",
-			),
-		});
+			expect(json).toEqual({
+				bentoId: "bento-1",
+				contentHash: hash,
+				contentType: "video/mp4",
+				mediaType: "video",
+				tempObjectKey: expect.stringMatching(
+					/^tmp\/users\/user-1\/profile\/bento\/bento-1\/[0-9a-f-]{36}$/,
+				),
+				tempUrl: expect.stringContaining(
+					"https://cdn.harune.me/tmp/users/user-1/profile/bento/bento-1/",
+				),
+			});
 		expect(bucket.bucket.put).toHaveBeenCalledTimes(1);
 	});
 
@@ -574,15 +670,15 @@ describe("profile mutation routes", () => {
 			contentHash: hash,
 			contentType: "video/mp4",
 			mediaType: "video",
-			tempObjectKey: expect.stringMatching(
-				new RegExp(
-					`^tmp/users/user-1/profile-page/bento/${previewBentoId}/[0-9a-f-]{36}$`,
+				tempObjectKey: expect.stringMatching(
+					new RegExp(
+						`^tmp/users/user-1/profile/bento/${previewBentoId}/[0-9a-f-]{36}$`,
+					),
 				),
-			),
-			tempUrl: expect.stringContaining(
-				`https://cdn.harune.me/tmp/users/user-1/profile-page/bento/${previewBentoId}/`,
-			),
-		});
+				tempUrl: expect.stringContaining(
+					`https://cdn.harune.me/tmp/users/user-1/profile/bento/${previewBentoId}/`,
+				),
+			});
 		expect(bucket.bucket.put).toHaveBeenCalledTimes(1);
 	});
 
@@ -618,6 +714,216 @@ describe("profile mutation routes", () => {
 			},
 		});
 		expect(bucket.bucket.put).not.toHaveBeenCalled();
+	});
+});
+
+describe("POST /profile/me", () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it("creates a profile page and returns the committed page only", async () => {
+		const bucket = createMockBucket();
+		const { app, getCurrentPage, getLastCreatedInput } = createCreateTestApp({
+			session: { userId: "user-1" },
+			bucket,
+		});
+
+		const response = await app.request("/profile/me", {
+			method: "POST",
+			body: JSON.stringify({
+				handle: "  Maker_One  ",
+				name: "  Maker One  ",
+				bio: "  Bio  ",
+				role: "  Creator  ",
+				location: "  Seoul  ",
+				image: "https://cdn.harune.me/avatar.png",
+			}),
+			headers: {
+				"content-type": "application/json",
+			},
+		});
+		const json = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(response.headers.get("Cache-Control")).toBe("no-store");
+		expect(response.headers.get("Pragma")).toBe("no-cache");
+		expect(json).toEqual({
+			page: {
+				id: "page-1",
+				userId: "user-1",
+				handle: "maker_one",
+				name: "Maker One",
+				role: "Creator",
+				bio: "Bio",
+				image: "https://cdn.harune.me/avatar.png",
+				backgroundImage: null,
+				location: "Seoul",
+				updatedAt: "2026-05-08T01:00:00.000Z",
+			},
+		});
+		expect(getLastCreatedInput()).toEqual({
+			userId: "user-1",
+			handle: "maker_one",
+			name: "Maker One",
+			bio: "Bio",
+			role: "Creator",
+			location: "Seoul",
+			image: "https://cdn.harune.me/avatar.png",
+		});
+		expect(getCurrentPage()?.handle).toBe("maker_one");
+	});
+
+	it("returns 400 for invalid profile creation input", async () => {
+		const bucket = createMockBucket();
+		const { app } = createCreateTestApp({
+			session: { userId: "user-1" },
+			bucket,
+		});
+
+		const response = await app.request("/profile/me", {
+			method: "POST",
+			body: JSON.stringify({
+				handle: "app",
+				name: "",
+			}),
+			headers: {
+				"content-type": "application/json",
+			},
+		});
+
+		expect(response.status).toBe(400);
+		expect(await response.json()).toEqual({
+			error: {
+				code: "validation_error",
+				message: "invalid request",
+			},
+		});
+	});
+
+	it("returns 401 when the session is missing", async () => {
+		const bucket = createMockBucket();
+		const { app } = createCreateTestApp({
+			session: null,
+			bucket,
+		});
+
+		const response = await app.request("/profile/me", {
+			method: "POST",
+			body: JSON.stringify({
+				handle: "maker",
+				name: "Maker",
+			}),
+			headers: {
+				"content-type": "application/json",
+			},
+		});
+
+		expect(response.status).toBe(401);
+		expect(await response.json()).toEqual({
+			error: {
+				code: "unauthorized",
+				message: "authentication required",
+			},
+		});
+	});
+
+	it("returns 409 when the profile page already exists", async () => {
+		const bucket = createMockBucket();
+		const { app } = createCreateTestApp({
+			session: { userId: "user-1" },
+			page: {
+				id: "page-1",
+				userId: "user-1",
+				handle: "maker",
+				name: "Maker",
+				location: null,
+				role: null,
+				bio: null,
+				image: null,
+				backgroundImage: null,
+				updatedAt: new Date("2026-05-08T00:00:00.000Z"),
+			},
+			bucket,
+		});
+
+		const response = await app.request("/profile/me", {
+			method: "POST",
+			body: JSON.stringify({
+				handle: "maker_new",
+				name: "Maker",
+			}),
+			headers: {
+				"content-type": "application/json",
+			},
+		});
+
+		expect(response.status).toBe(409);
+		expect(await response.json()).toEqual({
+			error: {
+				code: "profile_page_exists",
+				message: "profile page already exists",
+			},
+		});
+	});
+
+	it("returns 409 when the handle is already taken", async () => {
+		const bucket = createMockBucket();
+		const { app } = createCreateTestApp({
+			session: { userId: "user-1" },
+			handlePage: {
+				userId: "user-2",
+				handle: "maker",
+			},
+			bucket,
+		});
+
+		const response = await app.request("/profile/me", {
+			method: "POST",
+			body: JSON.stringify({
+				handle: "maker",
+				name: "Maker",
+			}),
+			headers: {
+				"content-type": "application/json",
+			},
+		});
+
+		expect(response.status).toBe(409);
+		expect(await response.json()).toEqual({
+			error: {
+				code: "handle_taken",
+				message: "handle already taken",
+			},
+		});
+	});
+
+	it("returns 404 when the authenticated user row is missing", async () => {
+		const bucket = createMockBucket();
+		const { app } = createCreateTestApp({
+			session: { userId: "user-1" },
+			userExists: false,
+			bucket,
+		});
+
+		const response = await app.request("/profile/me", {
+			method: "POST",
+			body: JSON.stringify({
+				handle: "maker",
+				name: "Maker",
+			}),
+			headers: {
+				"content-type": "application/json",
+			},
+		});
+
+		expect(response.status).toBe(404);
+		expect(await response.json()).toEqual({
+			error: {
+				code: "user_not_found",
+				message: "user not found",
+			},
+		});
 	});
 });
 
@@ -711,7 +1017,7 @@ describe("PUT /profile/me/bento", () => {
 	it("promotes temp media to the final object key and syncs the replacement graph", async () => {
 		const bucket = createMockBucket();
 		const tempBytes = new TextEncoder().encode("temp bento payload");
-		const tempObjectKey = `tmp/users/user-1/profile-page/bento/bento-1/${crypto.randomUUID()}`;
+			const tempObjectKey = `tmp/users/user-1/profile/bento/bento-1/${crypto.randomUUID()}`;
 		await bucket.bucket.put(tempObjectKey, tempBytes, {
 			httpMetadata: { contentType: "image/png" },
 		});
@@ -756,7 +1062,7 @@ describe("PUT /profile/me/bento", () => {
 						content: {
 							mediaType: "image",
 							url: "https://cdn.harune.me/placeholder?v=content-hash-123",
-							objectKey: "public/users/user-1/profile-page/bento/bento-1/media",
+						objectKey: "public/users/user-1/profile/bento/bento-1/media",
 							tempObjectKey,
 							contentHash: "content-hash-123",
 							contentType: "image/png",
@@ -825,8 +1131,8 @@ describe("PUT /profile/me/bento", () => {
 						content: {
 							mediaType: "image",
 							url: "https://cdn.harune.me/placeholder?v=content-hash-123",
-							objectKey: "public/users/user-1/profile-page/bento/bento-1/media",
-							tempObjectKey: "tmp/users/user-2/profile-page/bento/bento-1/asset",
+						objectKey: "public/users/user-1/profile/bento/bento-1/media",
+						tempObjectKey: "tmp/users/user-2/profile/bento/bento-1/asset",
 							contentHash: "content-hash-123",
 							contentType: "image/png",
 							alt: "Alt",

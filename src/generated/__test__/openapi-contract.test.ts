@@ -41,6 +41,10 @@ describe("OpenAPI contract", () => {
 		expect(openApi.paths?.["/me/analytics"]?.get?.operationId).toBe(
 			"getMeAnalytics",
 		);
+		expect(openApi.paths?.["/profile/me"]?.post?.operationId).toBe(
+			"createProfilePage",
+		);
+		expect(openApi.paths?.["/profile/me"]?.post?.requestBody).toBeDefined();
 		expect(openApi.paths?.["/profile/image"]?.post?.operationId).toBe(
 			"uploadProfileImage",
 		);

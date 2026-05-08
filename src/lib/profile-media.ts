@@ -40,7 +40,7 @@ export function isAllowedProfileMediaContentType(contentType: string) {
 }
 
 export function getProfileImageObjectKey(userId: string, imageKind: ProfileImageKind) {
-	return `public/users/${userId}/profile-page/${imageKind}`;
+	return `public/users/${userId}/profile/${imageKind}`;
 }
 
 export function getProfileMediaTempObjectKey(
@@ -48,11 +48,11 @@ export function getProfileMediaTempObjectKey(
 	bentoId: string,
 	objectId = crypto.randomUUID(),
 ) {
-	return `tmp/users/${userId}/profile-page/bento/${bentoId}/${objectId}`;
+	return `tmp/users/${userId}/profile/bento/${bentoId}/${objectId}`;
 }
 
 export function getProfileMediaObjectKey(userId: string, bentoId: string) {
-	return `public/users/${userId}/profile-page/bento/${bentoId}/media`;
+	return `public/users/${userId}/profile/bento/${bentoId}/media`;
 }
 
 export function getProfileBentoMediaPublicUrl(
@@ -80,7 +80,7 @@ export function isProfileBentoMediaObjectKeyForBento(
 export function parseProfileBentoMediaObjectKey(objectKey: string) {
 	const segments = objectKey.split("/");
 
-	if (segments.length === 7 && segments[0] === "tmp" && segments[1] === "users" && segments[3] === "profile-page" && segments[4] === "bento") {
+	if (segments.length === 7 && segments[0] === "tmp" && segments[1] === "users" && segments[3] === "profile" && segments[4] === "bento") {
 		return {
 			kind: "temp" as const,
 			userId: segments[2],
@@ -89,7 +89,7 @@ export function parseProfileBentoMediaObjectKey(objectKey: string) {
 		};
 	}
 
-	if (segments.length === 7 && segments[0] === "public" && segments[1] === "users" && segments[3] === "profile-page" && segments[4] === "bento" && segments[6] === "media") {
+	if (segments.length === 7 && segments[0] === "public" && segments[1] === "users" && segments[3] === "profile" && segments[4] === "bento" && segments[6] === "media") {
 		return {
 			kind: "final" as const,
 			userId: segments[2],

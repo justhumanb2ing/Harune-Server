@@ -3,6 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import * as v from "valibot";
 
 import {
+  conflict,
   badRequest,
   forbidden,
   internalServerError,
@@ -27,17 +28,25 @@ import {
   MAX_PROFILE_IMAGE_BYTES,
   MAX_PROFILE_MEDIA_BYTES,
 } from "../lib/profile-media";
+import { isReservedHandle, isValidHandleFormat, normalizeHandle } from "../lib/handles";
 import { AppBindings } from "../types/app-bindings";
 import { getProfile } from "../services/get-profile";
 import {
+  createProfilePage,
   findOwnedProfileBentoById,
+  findProfilePageByHandle,
   findProfilePageByUserId,
+  findUserById,
   syncProfileBentoGraph,
   updateProfilePageImageByUserId,
   updateProfilePageByUserId,
 } from "../repositories/profile-repository";
-import type { ProfileBentoSnapshot, ProfilePagePatch } from "../repositories/profile-repository";
-import type { ProfileResponse } from "../types/profile";
+import type {
+  ProfileBentoSnapshot,
+  ProfilePagePatch,
+  ProfilePageSummary,
+} from "../repositories/profile-repository";
+import type { ProfilePageResponse, ProfileResponse } from "../types/profile";
 
 type ParsedProfileBentoItem =
   | {
@@ -98,7 +107,10 @@ type ParsedProfileBentoItem =
     };
 
 type ProfileRouteDependencies = {
+  createProfilePage?: typeof createProfilePage;
   findProfilePageByUserId?: typeof findProfilePageByUserId;
+  findProfilePageByHandle?: typeof findProfilePageByHandle;
+  findUserById?: typeof findUserById;
   updateProfilePageByUserId?: typeof updateProfilePageByUserId;
   updateProfilePageImageByUserId?: typeof updateProfilePageImageByUserId;
   findOwnedProfileBentoById?: typeof findOwnedProfileBentoById;
@@ -137,7 +149,7 @@ function parseProfileImageTarget(baseUrl: string, imageUrl: string) {
     segments.length !== 5 ||
     segments[0] !== "public" ||
     segments[1] !== "users" ||
-    segments[3] !== "profile-page"
+    segments[3] !== "profile"
   ) {
     return null;
   }
@@ -317,6 +329,140 @@ function parseProfilePagePatch(body: unknown): ProfilePagePatch | null {
   }
 
   return patch;
+}
+
+function parseRequiredCreateTextField(value: unknown, maxLength: number) {
+  const parsed = parseTrimmedString(value);
+
+  if (!parsed || parsed.length > maxLength) {
+    return null;
+  }
+
+  return parsed;
+}
+
+function parseOptionalCreateTextField(value: unknown, maxLength: number) {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const parsed = parseRequiredCreateTextField(value, maxLength);
+  return parsed;
+}
+
+function parseOptionalCreateUrlField(value: unknown) {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const parsed = parseTrimmedString(value);
+
+  if (!parsed) {
+    return null;
+  }
+
+  try {
+    const url = new URL(parsed);
+
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return null;
+    }
+
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+function parseCreateProfilePageBody(body: unknown) {
+  if (!isRecord(body)) {
+    return null;
+  }
+
+  const allowedKeys = new Set(["handle", "name", "bio", "role", "location", "image"]);
+
+  for (const key of Object.keys(body)) {
+    if (!allowedKeys.has(key)) {
+      return null;
+    }
+  }
+
+  if (typeof body.handle !== "string" || typeof body.name !== "string") {
+    return null;
+  }
+
+  const handle = normalizeHandle(body.handle);
+
+  if (!handle || !isValidHandleFormat(handle) || isReservedHandle(handle)) {
+    return null;
+  }
+
+  const name = parseRequiredCreateTextField(body.name, 120);
+
+  if (!name) {
+    return null;
+  }
+
+  const bio = parseOptionalCreateTextField(body.bio, 280);
+  if (bio === null) {
+    return null;
+  }
+
+  const role = parseOptionalCreateTextField(body.role, 80);
+  if (role === null) {
+    return null;
+  }
+
+  const location = parseOptionalCreateTextField(body.location, 80);
+  if (location === null) {
+    return null;
+  }
+
+  const image = parseOptionalCreateUrlField(body.image);
+  if (image === null) {
+    return null;
+  }
+
+  return {
+    handle,
+    name,
+    bio,
+    role,
+    location,
+    image,
+  };
+}
+
+function toProfilePageResponse(page: ProfilePageSummary): ProfilePageResponse["page"] {
+  return {
+    id: page.id,
+    userId: page.userId,
+    handle: page.handle,
+    name: page.name,
+    role: page.role ?? null,
+    bio: page.bio ?? null,
+    image: page.image,
+    backgroundImage: page.backgroundImage,
+    location: page.location ?? null,
+    updatedAt: page.updatedAt.toISOString(),
+  };
+}
+
+function isUniqueViolation(error: unknown) {
+  return typeof error === "object" && error !== null && "code" in error && (error as { code?: string }).code === "23505";
+}
+
+function isForeignKeyViolation(error: unknown) {
+  return typeof error === "object" && error !== null && "code" in error && (error as { code?: string }).code === "23503";
+}
+
+function getDbConstraint(error: unknown) {
+  if (typeof error !== "object" || error === null) {
+    return null;
+  }
+
+  const constraint = (error as { constraint?: unknown }).constraint;
+  return typeof constraint === "string" ? constraint : null;
 }
 
 function parseProfileBentoContentUrl(value: unknown) {
@@ -559,7 +705,10 @@ function parseProfileBentoItems(body: unknown) {
 }
 
 export function createProfileRoute(dependencies: ProfileRouteDependencies = {}) {
+  const createPage = dependencies.createProfilePage ?? createProfilePage;
   const findPageByUserId = dependencies.findProfilePageByUserId ?? findProfilePageByUserId;
+  const findPageByHandle = dependencies.findProfilePageByHandle ?? findProfilePageByHandle;
+  const findUserByIdForCreate = dependencies.findUserById ?? findUserById;
   const updatePageByUserId =
     dependencies.updateProfilePageByUserId ?? updateProfilePageByUserId;
   const updatePageImageByUserId =
@@ -570,6 +719,102 @@ export function createProfileRoute(dependencies: ProfileRouteDependencies = {}) 
   const getProfileForUser = dependencies.getProfile ?? getProfile;
 
   return new Hono<AppBindings>()
+    .post("/me", async (c) => {
+      try {
+        const session = c.get("session");
+
+        if (!session?.userId) {
+          return withNoStore(unauthorized(c, "unauthorized", "authentication required"));
+        }
+
+        let body: unknown;
+
+        try {
+          body = await c.req.json();
+        } catch {
+          return withNoStore(validationError(c));
+        }
+
+        const parsed = parseCreateProfilePageBody(body);
+
+        if (!parsed) {
+          return withNoStore(validationError(c));
+        }
+
+        const db = c.get("db");
+        const user = await findUserByIdForCreate(db, session.userId);
+
+        if (!user) {
+          return withNoStore(notFound(c, "user_not_found", "user not found"));
+        }
+
+        const existingPage = await findPageByUserId(db, session.userId);
+
+        if (existingPage) {
+          return withNoStore(conflict(c, "profile_page_exists", "profile page already exists"));
+        }
+
+        const existingHandle = await findPageByHandle(db, parsed.handle);
+
+        if (existingHandle) {
+          return withNoStore(conflict(c, "handle_taken", "handle already taken"));
+        }
+
+        try {
+          await createPage(db, {
+            userId: session.userId,
+            handle: parsed.handle,
+            name: parsed.name,
+            bio: parsed.bio,
+            role: parsed.role,
+            location: parsed.location,
+            image: parsed.image,
+          });
+        } catch (error) {
+          const constraint = getDbConstraint(error);
+
+          if (isUniqueViolation(error)) {
+            if (constraint === "profile_page_user_id_idx") {
+              return withNoStore(
+                conflict(c, "profile_page_exists", "profile page already exists"),
+              );
+            }
+
+            if (constraint === "profile_page_handle_idx") {
+              return withNoStore(conflict(c, "handle_taken", "handle already taken"));
+            }
+          }
+
+          if (isForeignKeyViolation(error)) {
+            return withNoStore(notFound(c, "user_not_found", "user not found"));
+          }
+
+          throw error;
+        }
+
+        const committedPage = await findPageByUserId(db, session.userId);
+
+        if (!committedPage) {
+          return withNoStore(
+            internalServerError(c, "profile_page_create_failed", "failed to load created profile page"),
+          );
+        }
+
+        const response = c.json<ProfilePageResponse>({
+          page: toProfilePageResponse(committedPage),
+        });
+
+        return withNoStore(response);
+      } catch (error) {
+        if (error instanceof HTTPException) {
+          throw error;
+        }
+
+        return withNoStore(
+          internalServerError(c, "profile_page_create_failed", "failed to create profile page"),
+        );
+      }
+    })
     .put("/me", async (c) => {
       try {
         const session = c.get("session");
