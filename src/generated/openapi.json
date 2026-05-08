@@ -562,7 +562,7 @@
                         "id": "page_123",
                         "handle": "new_handle",
                         "name": "Harune",
-                        "image": "https://cdn.example.com/avatar.png"
+                        "image": "https://cdn.harune.me/avatar.png"
                       }
                     }
                   },
@@ -574,7 +574,7 @@
                         "id": "page_123",
                         "handle": "current_handle",
                         "name": "Harune",
-                        "image": "https://cdn.example.com/avatar.png"
+                        "image": "https://cdn.harune.me/avatar.png"
                       }
                     }
                   }
@@ -1036,7 +1036,7 @@
                         "id": "page_123",
                         "handle": "harune",
                         "name": "Harune",
-                        "image": "https://cdn.example.com/avatar.png"
+                        "image": "https://cdn.harune.me/avatar.png"
                       },
                       "user": {
                         "id": "user_123",
@@ -5734,8 +5734,8 @@
                         "name": "Kinmongsang",
                         "role": "Photographer",
                         "bio": "Photo community profile",
-                        "image": "https://cdn.example.com/avatar.jpg",
-                        "backgroundImage": "https://cdn.example.com/background.jpg",
+                        "image": "https://cdn.harune.me/avatar.jpg",
+                        "backgroundImage": "https://cdn.harune.me/background.jpg",
                         "location": "Seoul, KR",
                         "updatedAt": "2026-05-07T00:00:00.000Z"
                       },
@@ -5760,8 +5760,8 @@
                           "content": {
                             "title": "Portfolio",
                             "description": "Main portfolio site",
-                            "favicon": "https://cdn.example.com/favicon.ico",
-                            "thumbnail": "https://cdn.example.com/thumb.jpg",
+                            "favicon": "https://cdn.harune.me/favicon.ico",
+                            "thumbnail": "https://cdn.harune.me/thumb.jpg",
                             "url": "https://example.com"
                           }
                         }

@@ -147,7 +147,7 @@ describe("profile mutation routes", () => {
 			},
 			{
 				PROFILE_MEDIA_BUCKET: bucket.bucket,
-				R2_PUBLIC_BASE_URL: "https://cdn.example.com",
+				R2_PUBLIC_BASE_URL: "https://cdn.harune.me",
 			} as never,
 		);
 		const json = await response.json();
@@ -158,7 +158,7 @@ describe("profile mutation routes", () => {
 		expect(json).toEqual({
 			imageKind: "profile",
 			imageUrl: buildPublicObjectUrl(
-				"https://cdn.example.com",
+				"https://cdn.harune.me",
 				getProfileImageObjectKey("user-1", "profile"),
 				hash,
 			),
@@ -189,7 +189,7 @@ describe("profile mutation routes", () => {
 			},
 			{
 				PROFILE_MEDIA_BUCKET: bucket.bucket,
-				R2_PUBLIC_BASE_URL: "https://cdn.example.com",
+				R2_PUBLIC_BASE_URL: "https://cdn.harune.me",
 			} as never,
 		);
 
@@ -214,7 +214,7 @@ describe("profile mutation routes", () => {
 			session: { userId: "user-1" },
 			bucket,
 		});
-		const imageUrl = buildPublicObjectUrl("https://cdn.example.com", objectKey, imageFixture.hash);
+		const imageUrl = buildPublicObjectUrl("https://cdn.harune.me", objectKey, imageFixture.hash);
 
 		const response = await app.request(
 			"/profile/image",
@@ -230,7 +230,7 @@ describe("profile mutation routes", () => {
 			},
 			{
 				PROFILE_MEDIA_BUCKET: bucket.bucket,
-				R2_PUBLIC_BASE_URL: "https://cdn.example.com",
+				R2_PUBLIC_BASE_URL: "https://cdn.harune.me",
 			} as never,
 		);
 		const json = await response.json();
@@ -265,7 +265,7 @@ describe("profile mutation routes", () => {
 				method: "PATCH",
 				body: JSON.stringify({
 					imageKind: "profile",
-					imageUrl: buildPublicObjectUrl("https://cdn.example.com", objectKey, hash),
+					imageUrl: buildPublicObjectUrl("https://cdn.harune.me", objectKey, hash),
 				}),
 				headers: {
 					"content-type": "application/json",
@@ -273,7 +273,7 @@ describe("profile mutation routes", () => {
 			},
 			{
 				PROFILE_MEDIA_BUCKET: bucket.bucket,
-				R2_PUBLIC_BASE_URL: "https://cdn.example.com",
+				R2_PUBLIC_BASE_URL: "https://cdn.harune.me",
 			} as never,
 		);
 
@@ -303,7 +303,7 @@ describe("profile mutation routes", () => {
 			{
 				method: "DELETE",
 				body: JSON.stringify({
-					imageUrl: buildPublicObjectUrl("https://cdn.example.com", objectKey, imageFixture.hash),
+					imageUrl: buildPublicObjectUrl("https://cdn.harune.me", objectKey, imageFixture.hash),
 				}),
 				headers: {
 					"content-type": "application/json",
@@ -311,7 +311,7 @@ describe("profile mutation routes", () => {
 			},
 			{
 				PROFILE_MEDIA_BUCKET: bucket.bucket,
-				R2_PUBLIC_BASE_URL: "https://cdn.example.com",
+				R2_PUBLIC_BASE_URL: "https://cdn.harune.me",
 			} as never,
 		);
 		const json = await response.json();
@@ -338,7 +338,7 @@ describe("profile mutation routes", () => {
 				method: "DELETE",
 				body: JSON.stringify({
 					imageUrl: buildPublicObjectUrl(
-						"https://cdn.example.com",
+						"https://cdn.harune.me",
 						getProfileImageObjectKey("user-1", "profile"),
 						"missing",
 					),
@@ -349,7 +349,7 @@ describe("profile mutation routes", () => {
 			},
 			{
 				PROFILE_MEDIA_BUCKET: bucket.bucket,
-				R2_PUBLIC_BASE_URL: "https://cdn.example.com",
+				R2_PUBLIC_BASE_URL: "https://cdn.harune.me",
 			} as never,
 		);
 
@@ -383,7 +383,7 @@ describe("profile mutation routes", () => {
 			},
 			{
 				PROFILE_MEDIA_BUCKET: bucket.bucket,
-				R2_PUBLIC_BASE_URL: "https://cdn.example.com",
+				R2_PUBLIC_BASE_URL: "https://cdn.harune.me",
 			} as never,
 		);
 		const json = await response.json();
@@ -398,7 +398,7 @@ describe("profile mutation routes", () => {
 			tempObjectKey: expect.stringMatching(
 				/^tmp\/users\/user-1\/profile\/bento\/bento-1\/[0-9a-f-]{36}$/,
 			),
-			tempUrl: expect.stringContaining("https://cdn.example.com/tmp/users/user-1/profile/bento/bento-1/"),
+			tempUrl: expect.stringContaining("https://cdn.harune.me/tmp/users/user-1/profile/bento/bento-1/"),
 		});
 		expect(bucket.bucket.put).toHaveBeenCalledTimes(1);
 	});
@@ -423,7 +423,7 @@ describe("profile mutation routes", () => {
 			},
 			{
 				PROFILE_MEDIA_BUCKET: bucket.bucket,
-				R2_PUBLIC_BASE_URL: "https://cdn.example.com",
+				R2_PUBLIC_BASE_URL: "https://cdn.harune.me",
 			} as never,
 		);
 		const json = await response.json();
@@ -440,7 +440,7 @@ describe("profile mutation routes", () => {
 				),
 			),
 			tempUrl: expect.stringContaining(
-				`https://cdn.example.com/tmp/users/user-1/profile/bento/${previewBentoId}/`,
+				`https://cdn.harune.me/tmp/users/user-1/profile/bento/${previewBentoId}/`,
 			),
 		});
 		expect(bucket.bucket.put).toHaveBeenCalledTimes(1);
@@ -466,7 +466,7 @@ describe("profile mutation routes", () => {
 			},
 			{
 				PROFILE_MEDIA_BUCKET: bucket.bucket,
-				R2_PUBLIC_BASE_URL: "https://cdn.example.com",
+				R2_PUBLIC_BASE_URL: "https://cdn.harune.me",
 			} as never,
 		);
 
