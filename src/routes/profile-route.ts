@@ -19,8 +19,8 @@ import {
 } from "../lib/handles";
 import {
 	buildPublicObjectUrl,
-	createR2PresignedPutUrl,
 	copyProfileBentoMediaObject,
+	createR2PresignedPutUrl,
 	deleteProfileBentoMediaObject,
 	getProfileBentoMediaPublicUrl,
 	getProfileImageObjectKey,
@@ -36,13 +36,12 @@ import {
 	normalizeProfileMediaObjectKey,
 	parseObjectKeyFromPublicUrl,
 	parseProfileBentoMediaObjectKey,
-	sha256Hex,
 } from "../lib/profile-media";
 import type {
 	ProfileBentoSnapshot,
 	ProfilePagePatch,
-	ProfilePageSummary,
 	ProfilePageRecord,
+	ProfilePageSummary,
 } from "../repositories/profile-repository";
 import {
 	createProfilePage,
@@ -145,7 +144,9 @@ function waitForProfileCleanup(
 	c: { executionCtx?: { waitUntil: (promise: Promise<unknown>) => void } },
 	promise: Promise<unknown>,
 ) {
-	let executionCtx: { waitUntil: (promise: Promise<unknown>) => void } | undefined;
+	let executionCtx:
+		| { waitUntil: (promise: Promise<unknown>) => void }
+		| undefined;
 
 	try {
 		executionCtx = c.executionCtx;
@@ -219,20 +220,6 @@ function parseRequiredEnvString(value: unknown) {
 	const trimmed = value.trim();
 	return trimmed.length > 0 ? trimmed : null;
 }
-
-type ProfileMediaUploadConfig =
-	| {
-			kind: "missing";
-			missing: string[];
-	  }
-	| {
-			kind: "ready";
-			accountId: string;
-			accessKeyId: string;
-			secretAccessKey: string;
-			bucketName: string;
-			publicBaseUrl: string;
-	  };
 
 function getProfileMediaUploadConfig(env: AppBindings["Bindings"]) {
 	const accountId = parseRequiredEnvString(env.R2_ACCOUNT_ID);
@@ -654,6 +641,17 @@ function parseProfileBentoContentUrl(value: unknown) {
 	}
 }
 
+function parseProfileMediaObjectKeyFromUrlPath(value: string) {
+	try {
+		const url = new URL(value);
+		const objectKey = decodeURIComponent(url.pathname.replace(/^\/+/, ""));
+
+		return objectKey.startsWith("public/users/") ? objectKey : null;
+	} catch {
+		return null;
+	}
+}
+
 function parseContentHashFromUrl(value: string) {
 	try {
 		const url = new URL(value);
@@ -735,7 +733,12 @@ function parseMediaBentoContent(value: unknown) {
 			: value.href === null
 				? null
 				: parseOptionalNullableUrlField(value.href);
-	const alt = parseTrimmedString(value.alt);
+	const alt =
+		value.alt === undefined
+			? ""
+			: typeof value.alt === "string"
+				? value.alt.trim()
+				: null;
 	const caption =
 		value.caption === undefined
 			? ""
@@ -757,7 +760,7 @@ function parseMediaBentoContent(value: unknown) {
 				? null
 				: parseTrimmedString(value.contentType);
 
-	if (!mediaType || !url || !objectKey || !alt) {
+	if (!mediaType || !url || !objectKey || alt === null) {
 		return null;
 	}
 
@@ -971,7 +974,7 @@ export function createProfileRoute(
 				}
 
 				try {
-					await createPage(db, {
+					const committedPage = await createPage(db, {
 						userId: session.userId,
 						handle: parsed.handle,
 						name: parsed.name,
@@ -980,6 +983,22 @@ export function createProfileRoute(
 						location: parsed.location,
 						image: parsed.image,
 					});
+
+					if (!committedPage) {
+						return withNoStore(
+							internalServerError(
+								c,
+								"profile_page_create_failed",
+								"failed to load created profile page",
+							),
+						);
+					}
+
+					const response = c.json<ProfilePageResponse>({
+						page: toProfilePageResponse(committedPage),
+					});
+
+					return withNoStore(response);
 				} catch (error) {
 					const constraint = getDbConstraint(error);
 
@@ -1007,24 +1026,6 @@ export function createProfileRoute(
 
 					throw error;
 				}
-
-				const committedPage = await findPageByUserId(db, session.userId);
-
-				if (!committedPage) {
-					return withNoStore(
-						internalServerError(
-							c,
-							"profile_page_create_failed",
-							"failed to load created profile page",
-						),
-					);
-				}
-
-				const response = c.json<ProfilePageResponse>({
-					page: toProfilePageResponse(committedPage),
-				});
-
-				return withNoStore(response);
 			} catch (error) {
 				if (error instanceof HTTPException) {
 					throw error;
@@ -1071,11 +1072,10 @@ export function createProfileRoute(
 					);
 				}
 
-				await updatePageByUserId(c.get("db"), session.userId, patch);
-
-				const committedPage = await findPageByUserId(
+				const committedPage = await updatePageByUserId(
 					c.get("db"),
 					session.userId,
+					patch,
 				);
 
 				if (!committedPage) {
@@ -1088,11 +1088,18 @@ export function createProfileRoute(
 					);
 				}
 
-				const response = c.json(
-					await getProfileForUser(c.get("db"), committedPage.handle, {
+				const profile = await getProfileForUser(
+					c.get("db"),
+					committedPage.handle,
+					{
 						userId: session.userId,
-					}),
+					},
 				);
+
+				const response = c.json<ProfileResponse>({
+					...profile,
+					page: toProfilePageResponse(committedPage),
+				});
 
 				return withNoStore(response);
 			} catch (error) {
@@ -1231,18 +1238,22 @@ export function createProfileRoute(
 						);
 						tempObjectKeysToDelete.add(tempObjectKey);
 					} else {
-						const publicObjectKey = parseObjectKeyFromPublicUrl(
-							c.env.R2_PUBLIC_BASE_URL,
-							bento.content.url,
-						);
+						const publicObjectKey =
+							parseObjectKeyFromPublicUrl(
+								c.env.R2_PUBLIC_BASE_URL,
+								bento.content.url,
+							) ?? parseProfileMediaObjectKeyFromUrlPath(bento.content.url);
 						const parsedObjectKey = parseProfileBentoMediaObjectKey(objectKey);
 						const normalizedObjectKey =
 							normalizeProfileMediaObjectKey(objectKey);
+						const normalizedPublicObjectKey = publicObjectKey
+							? normalizeProfileMediaObjectKey(publicObjectKey)
+							: null;
 
 						if (
-							!publicObjectKey ||
+							!normalizedPublicObjectKey ||
 							!normalizedObjectKey ||
-							publicObjectKey !== normalizedObjectKey
+							normalizedPublicObjectKey !== normalizedObjectKey
 						) {
 							return withNoStore(
 								badRequest(
@@ -1443,48 +1454,48 @@ export function createProfileRoute(
 					);
 				}
 
-					if (contentLength > MAX_PROFILE_IMAGE_BYTES) {
-						return withNoStore(
-							badRequest(c, "profile_image_too_large", "image file is too large"),
-						);
-					}
+				if (contentLength > MAX_PROFILE_IMAGE_BYTES) {
+					return withNoStore(
+						badRequest(c, "profile_image_too_large", "image file is too large"),
+					);
+				}
 
-					const uploadConfig = getProfileMediaUploadConfig(c.env);
+				const uploadConfig = getProfileMediaUploadConfig(c.env);
 
-					const readyUploadConfig =
-						uploadConfig.kind === "ready" ? uploadConfig : null;
+				const readyUploadConfig =
+					uploadConfig.kind === "ready" ? uploadConfig : null;
 
-					if (!readyUploadConfig) {
-						return withNoStore(
-							internalServerError(
-								c,
-								"profile_image_upload_failed",
-								"missing profile media upload configuration",
-								{
-									missing: uploadConfig.missing,
-								},
-							),
-						);
-					}
-
-					const objectKey = getProfileImageObjectKey(session.userId, imageKind);
-					const { uploadUrl, expiresAt } = await createPresignedPutUrl({
-						accountId: readyUploadConfig.accountId,
-						accessKeyId: readyUploadConfig.accessKeyId,
-						secretAccessKey: readyUploadConfig.secretAccessKey,
-						bucketName: readyUploadConfig.bucketName,
-						objectKey,
-						contentType,
-					});
-
-					const response = c.json({
-						imageKind,
-						imageHash,
-						imageUrl: buildPublicObjectUrl(
-							readyUploadConfig.publicBaseUrl,
-							objectKey,
-							imageHash,
+				if (!readyUploadConfig) {
+					return withNoStore(
+						internalServerError(
+							c,
+							"profile_image_upload_failed",
+							"missing profile media upload configuration",
+							{
+								missing: uploadConfig.missing,
+							},
 						),
+					);
+				}
+
+				const objectKey = getProfileImageObjectKey(session.userId, imageKind);
+				const { uploadUrl, expiresAt } = await createPresignedPutUrl({
+					accountId: readyUploadConfig.accountId,
+					accessKeyId: readyUploadConfig.accessKeyId,
+					secretAccessKey: readyUploadConfig.secretAccessKey,
+					bucketName: readyUploadConfig.bucketName,
+					objectKey,
+					contentType,
+				});
+
+				const response = c.json({
+					imageKind,
+					imageHash,
+					imageUrl: buildPublicObjectUrl(
+						readyUploadConfig.publicBaseUrl,
+						objectKey,
+						imageHash,
+					),
 					objectKey,
 					contentType,
 					contentLength,
@@ -1792,62 +1803,62 @@ export function createProfileRoute(
 
 				const mediaType = getProfileMediaType(contentType);
 
-					if (!mediaType) {
-						return withNoStore(
-							badRequest(
-								c,
-								"profile_media_invalid_type",
-								"invalid media file type",
-							),
-						);
-					}
-
-					const uploadConfig = getProfileMediaUploadConfig(c.env);
-
-					const readyUploadConfig =
-						uploadConfig.kind === "ready" ? uploadConfig : null;
-
-					if (!readyUploadConfig) {
-						return withNoStore(
-							internalServerError(
-								c,
-								"profile_media_upload_failed",
-								"missing profile media upload configuration",
-								{
-									missing: uploadConfig.missing,
-								},
-							),
-						);
-					}
-
-					const objectKey = isPreviewBentoId
-						? getProfileMediaObjectKey(session.userId, bentoId)
-						: getProfileMediaTempObjectKey(session.userId, bentoId);
-
-					const { uploadUrl, expiresAt } = await createPresignedPutUrl({
-						accountId: readyUploadConfig.accountId,
-						accessKeyId: readyUploadConfig.accessKeyId,
-						secretAccessKey: readyUploadConfig.secretAccessKey,
-						bucketName: readyUploadConfig.bucketName,
-						objectKey,
-						contentType,
-					});
-
-					const response = c.json({
-						bentoId,
-						contentHash,
-						contentType,
-						mediaType,
-						tempObjectKey: objectKey,
-						tempUrl: buildPublicObjectUrl(
-							readyUploadConfig.publicBaseUrl,
-							objectKey,
-							contentHash,
+				if (!mediaType) {
+					return withNoStore(
+						badRequest(
+							c,
+							"profile_media_invalid_type",
+							"invalid media file type",
 						),
-						uploadUrl,
-						expiresAt,
-						contentLength,
-					});
+					);
+				}
+
+				const uploadConfig = getProfileMediaUploadConfig(c.env);
+
+				const readyUploadConfig =
+					uploadConfig.kind === "ready" ? uploadConfig : null;
+
+				if (!readyUploadConfig) {
+					return withNoStore(
+						internalServerError(
+							c,
+							"profile_media_upload_failed",
+							"missing profile media upload configuration",
+							{
+								missing: uploadConfig.missing,
+							},
+						),
+					);
+				}
+
+				const objectKey = isPreviewBentoId
+					? getProfileMediaObjectKey(session.userId, bentoId)
+					: getProfileMediaTempObjectKey(session.userId, bentoId);
+
+				const { uploadUrl, expiresAt } = await createPresignedPutUrl({
+					accountId: readyUploadConfig.accountId,
+					accessKeyId: readyUploadConfig.accessKeyId,
+					secretAccessKey: readyUploadConfig.secretAccessKey,
+					bucketName: readyUploadConfig.bucketName,
+					objectKey,
+					contentType,
+				});
+
+				const response = c.json({
+					bentoId,
+					contentHash,
+					contentType,
+					mediaType,
+					tempObjectKey: objectKey,
+					tempUrl: buildPublicObjectUrl(
+						readyUploadConfig.publicBaseUrl,
+						objectKey,
+						contentHash,
+					),
+					uploadUrl,
+					expiresAt,
+					contentLength,
+				});
 
 				return withNoStore(response);
 			} catch (error) {

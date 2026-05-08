@@ -633,8 +633,7 @@ handlePatch.responses["404"] = {
 };
 
 handlePatch.responses["409"] = {
-	description:
-		"Returned when another user already owns the requested handle.",
+	description: "Returned when another user already owns the requested handle.",
 	content: {
 		"application/json": {
 			schema: {
@@ -667,7 +666,8 @@ handlePatch.responses["409"] = {
 };
 
 handlePatch.responses["500"] = {
-	description: "Returned when the updated profile page cannot be reloaded after the write.",
+	description:
+		"Returned when the updated profile page cannot be reloaded after the write.",
 	content: {
 		"application/json": {
 			schema: {
@@ -944,34 +944,34 @@ const analyticsSummarySchema = {
 		changes: {
 			type: "object",
 			properties: {
-					ctr: {
-						type: "object",
-						properties: {
-							absolute: { type: "number" },
-							direction: { type: "string", enum: ["down", "flat", "up"] },
-							percent: { type: "number", nullable: true },
-							previous: { type: "number" },
-						},
+				ctr: {
+					type: "object",
+					properties: {
+						absolute: { type: "number" },
+						direction: { type: "string", enum: ["down", "flat", "up"] },
+						percent: { type: "number", nullable: true },
+						previous: { type: "number" },
+					},
 					required: ["absolute", "direction", "percent", "previous"],
 				},
-					linkClicks: {
-						type: "object",
-						properties: {
-							absolute: { type: "number" },
-							direction: { type: "string", enum: ["down", "flat", "up"] },
-							percent: { type: "number", nullable: true },
-							previous: { type: "number" },
-						},
+				linkClicks: {
+					type: "object",
+					properties: {
+						absolute: { type: "number" },
+						direction: { type: "string", enum: ["down", "flat", "up"] },
+						percent: { type: "number", nullable: true },
+						previous: { type: "number" },
+					},
 					required: ["absolute", "direction", "percent", "previous"],
 				},
-					pageViews: {
-						type: "object",
-						properties: {
-							absolute: { type: "number" },
-							direction: { type: "string", enum: ["down", "flat", "up"] },
-							percent: { type: "number", nullable: true },
-							previous: { type: "number" },
-						},
+				pageViews: {
+					type: "object",
+					properties: {
+						absolute: { type: "number" },
+						direction: { type: "string", enum: ["down", "flat", "up"] },
+						percent: { type: "number", nullable: true },
+						previous: { type: "number" },
+					},
 					required: ["absolute", "direction", "percent", "previous"],
 				},
 			},
@@ -989,7 +989,16 @@ const analyticsSummarySchema = {
 				linkClicks: { type: "number" },
 				pageViews: { type: "number" },
 			},
-			required: ["endAt", "label", "startAt", "timezone", "unit", "ctr", "linkClicks", "pageViews"],
+			required: [
+				"endAt",
+				"label",
+				"startAt",
+				"timezone",
+				"unit",
+				"ctr",
+				"linkClicks",
+				"pageViews",
+			],
 		},
 		series: {
 			type: "array",
@@ -1006,12 +1015,12 @@ const analyticsSummarySchema = {
 		},
 		topItems: {
 			type: "array",
-				items: {
-					type: "object",
-					properties: {
-						change: { type: "number" },
-						changePercent: { type: "number", nullable: true },
-						clicks: { type: "number" },
+			items: {
+				type: "object",
+				properties: {
+					change: { type: "number" },
+					changePercent: { type: "number", nullable: true },
+					clicks: { type: "number" },
 					kind: { type: "string", enum: ["link", "social"] },
 					label: { type: "string" },
 					previousClicks: { type: "number" },
@@ -1972,7 +1981,13 @@ function profileImageFinalizeSuccessSchema() {
 			backgroundImage: { type: "string", nullable: true },
 			updatedAt: { type: "string", format: "date-time" },
 		},
-		required: ["imageKind", "imageUrl", "image", "backgroundImage", "updatedAt"],
+		required: [
+			"imageKind",
+			"imageUrl",
+			"image",
+			"backgroundImage",
+			"updatedAt",
+		],
 	};
 }
 
@@ -2026,7 +2041,9 @@ const profilePagesGet = openApi.paths?.["/profile/pages"]?.get as
 	| undefined;
 
 if (!profilePagesGet) {
-	throw new Error("Could not find /profile/pages GET operation in openapi.json");
+	throw new Error(
+		"Could not find /profile/pages GET operation in openapi.json",
+	);
 }
 
 profilePagesGet.summary = "List profile page rows";
@@ -2096,7 +2113,9 @@ const profileImagePost = openApi.paths?.["/profile/image"]?.post as
 	| undefined;
 
 if (!profileImagePost) {
-	throw new Error("Could not find /profile/image POST operation in openapi.json");
+	throw new Error(
+		"Could not find /profile/image POST operation in openapi.json",
+	);
 }
 
 profileImagePost.operationId = "uploadProfileImage";
@@ -2142,7 +2161,8 @@ profileImagePost.responses["200"] = {
 						imageKind: "profile",
 						imageHash:
 							"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-						imageUrl: "https://pub.example.com/public/users/user-1/profile/profile?v=abc123",
+						imageUrl:
+							"https://pub.example.com/public/users/user-1/profile/profile?v=abc123",
 						objectKey: "public/users/user-1/profile/profile",
 						contentType: "image/png",
 						contentLength: 12345,
@@ -2216,7 +2236,9 @@ const profileImagePatch = openApi.paths?.["/profile/image"]?.patch as
 	| undefined;
 
 if (!profileImagePatch) {
-	throw new Error("Could not find /profile/image PATCH operation in openapi.json");
+	throw new Error(
+		"Could not find /profile/image PATCH operation in openapi.json",
+	);
 }
 
 profileImagePatch.operationId = "finalizeProfileImage";
@@ -2237,7 +2259,8 @@ profileImagePatch.requestBody = {
 				default: {
 					value: {
 						imageKind: "profile",
-						imageUrl: "https://pub.example.com/public/users/user-1/profile/profile?v=abc123",
+						imageUrl:
+							"https://pub.example.com/public/users/user-1/profile/profile?v=abc123",
 					},
 				},
 			},
@@ -2254,8 +2277,10 @@ profileImagePatch.responses["200"] = {
 				default: {
 					value: {
 						imageKind: "profile",
-						imageUrl: "https://pub.example.com/public/users/user-1/profile/profile?v=abc123",
-						image: "https://pub.example.com/public/users/user-1/profile/profile?v=abc123",
+						imageUrl:
+							"https://pub.example.com/public/users/user-1/profile/profile?v=abc123",
+						image:
+							"https://pub.example.com/public/users/user-1/profile/profile?v=abc123",
 						backgroundImage: null,
 						updatedAt: "2026-05-08T01:00:00.000Z",
 					},
@@ -2268,7 +2293,10 @@ profileImagePatch.responses["400"] = {
 	description: "Invalid finalize request.",
 	content: {
 		"application/json": {
-			schema: profileErrorSchema(["validation_error", "profile_image_url_invalid"]),
+			schema: profileErrorSchema([
+				"validation_error",
+				"profile_image_url_invalid",
+			]),
 		},
 	},
 };
@@ -2292,7 +2320,10 @@ profileImagePatch.responses["404"] = {
 	description: "The profile page or image object does not exist.",
 	content: {
 		"application/json": {
-			schema: profileErrorSchema(["profile_page_not_found", "profile_image_not_found"]),
+			schema: profileErrorSchema([
+				"profile_page_not_found",
+				"profile_image_not_found",
+			]),
 		},
 	},
 };
@@ -2315,7 +2346,9 @@ const profileImageDelete = openApi.paths?.["/profile/image"]?.delete as
 	| undefined;
 
 if (!profileImageDelete) {
-	throw new Error("Could not find /profile/image DELETE operation in openapi.json");
+	throw new Error(
+		"Could not find /profile/image DELETE operation in openapi.json",
+	);
 }
 
 profileImageDelete.operationId = "deleteProfileImage";
@@ -2334,7 +2367,8 @@ profileImageDelete.requestBody = {
 			examples: {
 				default: {
 					value: {
-						imageUrl: "https://pub.example.com/public/users/user-1/profile/profile?v=abc123",
+						imageUrl:
+							"https://pub.example.com/public/users/user-1/profile/profile?v=abc123",
 					},
 				},
 			},
@@ -2362,7 +2396,10 @@ profileImageDelete.responses["400"] = {
 	description: "Invalid delete request.",
 	content: {
 		"application/json": {
-			schema: profileErrorSchema(["validation_error", "profile_image_url_invalid"]),
+			schema: profileErrorSchema([
+				"validation_error",
+				"profile_image_url_invalid",
+			]),
 		},
 	},
 };
@@ -2400,7 +2437,8 @@ profileImageDelete.responses["500"] = {
 };
 delete profileImageDelete.responses.default;
 
-const profileBentoMediaUpload = openApi.paths?.["/profile/bento/media/upload"]?.post as
+const profileBentoMediaUpload = openApi.paths?.["/profile/bento/media/upload"]
+	?.post as
 	| {
 			requestBody?: unknown;
 			responses?: Record<string, unknown>;
@@ -2409,7 +2447,9 @@ const profileBentoMediaUpload = openApi.paths?.["/profile/bento/media/upload"]?.
 	| undefined;
 
 if (!profileBentoMediaUpload) {
-	throw new Error("Could not find /profile/bento/media/upload POST operation in openapi.json");
+	throw new Error(
+		"Could not find /profile/bento/media/upload POST operation in openapi.json",
+	);
 }
 
 profileBentoMediaUpload.operationId = "uploadProfileBentoMedia";
@@ -2453,10 +2493,12 @@ profileBentoMediaUpload.responses["200"] = {
 				default: {
 					value: {
 						bentoId: "bento_123",
-						contentHash: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+						contentHash:
+							"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
 						contentType: "video/mp4",
 						mediaType: "video",
-						tempObjectKey: "public/users/user-1/profile/bento/preview:123e4567-e89b-12d3-a456-426614174000/media",
+						tempObjectKey:
+							"public/users/user-1/profile/bento/preview:123e4567-e89b-12d3-a456-426614174000/media",
 						tempUrl:
 							"https://pub.example.com/public/users/user-1/profile/bento/preview:123e4567-e89b-12d3-a456-426614174000/media?v=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
 						uploadUrl:
@@ -2553,7 +2595,8 @@ profileMePost.requestBody = {
 };
 profileMePost.responses = {
 	200: {
-		description: "Successful profile creation. Returns the committed page snapshot only.",
+		description:
+			"Successful profile creation. Returns the committed page snapshot only.",
 		content: {
 			"application/json": {
 				schema: profilePageCreateResponseSchema(),
@@ -2661,7 +2704,8 @@ profileMePost.responses = {
 		},
 	},
 	500: {
-		description: "Failed to load the committed profile snapshot after creation.",
+		description:
+			"Failed to load the committed profile snapshot after creation.",
 		content: {
 			"application/json": {
 				schema: profileErrorSchema(["profile_page_create_failed"]),
@@ -2727,7 +2771,8 @@ profileMePut.requestBody = {
 };
 profileMePut.responses = {
 	200: {
-		description: "Successful profile update. Returns the committed profile page snapshot.",
+		description:
+			"Successful profile update. Returns the committed profile page snapshot.",
 		content: {
 			"application/json": {
 				schema: profileResponseSchema(),
@@ -2846,12 +2891,14 @@ const profileMeBentoPut = openApi.paths?.["/profile/me/bento"]?.put as
 	| undefined;
 
 if (!profileMeBentoPut) {
-	throw new Error("Could not find /profile/me/bento PUT operation in openapi.json");
+	throw new Error(
+		"Could not find /profile/me/bento PUT operation in openapi.json",
+	);
 }
 
 profileMeBentoPut.summary = "Replace my bento graph";
 profileMeBentoPut.description =
-	"Replaces the authenticated user's bento graph with the provided snapshot. The server validates each bento item, deletes bentos missing from the snapshot, promotes legacy temporary media objects when tempObjectKey is present, accepts a public preview object key in tempObjectKey without copying, accepts existing `public/.../preview:` media object keys as-is, and also resolves a preview draft media object when objectKey still points at a client-generated `preview:` bento id. It returns the saved profile graph assembled from the accepted payload after the database write with no-store headers on success.";
+	"Replaces the authenticated user's bento graph with the provided snapshot. The server validates each bento item, deletes bentos missing from the snapshot, promotes legacy temporary media objects when tempObjectKey is present, accepts a public preview object key in tempObjectKey without copying, accepts existing `public/.../preview:` media object keys as-is, accepts existing media URLs from an older public R2 origin when their path matches `objectKey`, allows empty media alt text, and also resolves a preview draft media object when objectKey still points at a client-generated `preview:` bento id. It returns the saved profile graph assembled from the accepted payload after the database write with no-store headers on success.";
 profileMeBentoPut.operationId = "replaceProfileBentoGraph";
 profileMeBentoPut.tags = ["Profile API"];
 profileMeBentoPut.requestBody = {
@@ -2874,8 +2921,10 @@ profileMeBentoPut.requestBody = {
 								content: {
 									mediaType: "image",
 									url: "https://cdn.harune.me/public/users/user_123/profile/bento/bento_123/media?v=content-hash-123",
-									objectKey: "public/users/user_123/profile/bento/bento_123/media",
-									tempObjectKey: "tmp/users/user_123/profile/bento/bento_123/123e4567-e89b-12d3-a456-426614174000",
+									objectKey:
+										"public/users/user_123/profile/bento/bento_123/media",
+									tempObjectKey:
+										"tmp/users/user_123/profile/bento/bento_123/123e4567-e89b-12d3-a456-426614174000",
 									contentHash: "content-hash-123",
 									contentType: "image/png",
 									alt: "Alt",
@@ -2922,7 +2971,8 @@ profileMeBentoPut.responses = {
 									content: {
 										mediaType: "image",
 										url: "https://cdn.harune.me/public/users/user_123/profile/bento/bento_123/media?v=content-hash-123",
-										objectKey: "public/users/user_123/profile/bento/bento_123/media",
+										objectKey:
+											"public/users/user_123/profile/bento/bento_123/media",
 										href: null,
 										alt: "Alt",
 										caption: "Caption",

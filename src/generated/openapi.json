@@ -6213,7 +6213,7 @@
             }
           }
         },
-        "description": "Replaces the authenticated user's bento graph with the provided snapshot. The server validates each bento item, deletes bentos missing from the snapshot, promotes legacy temporary media objects when tempObjectKey is present, accepts a public preview object key in tempObjectKey without copying, accepts existing `public/.../preview:` media object keys as-is, and also resolves a preview draft media object when objectKey still points at a client-generated `preview:` bento id. It returns the saved profile graph assembled from the accepted payload after the database write with no-store headers on success.",
+        "description": "Replaces the authenticated user's bento graph with the provided snapshot. The server validates each bento item, deletes bentos missing from the snapshot, promotes legacy temporary media objects when tempObjectKey is present, accepts a public preview object key in tempObjectKey without copying, accepts existing `public/.../preview:` media object keys as-is, accepts existing media URLs from an older public R2 origin when their path matches `objectKey`, allows empty media alt text, and also resolves a preview draft media object when objectKey still points at a client-generated `preview:` bento id. It returns the saved profile graph assembled from the accepted payload after the database write with no-store headers on success.",
         "tags": [
           "Profile API"
         ],

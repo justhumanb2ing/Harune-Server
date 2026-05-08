@@ -435,10 +435,24 @@ export async function updateProfilePageByUserId(
 		nextValues.backgroundImage = patch.backgroundImage;
 	}
 
-	await db
+	const rows = await db
 		.update(profilePages)
 		.set(nextValues)
-		.where(eq(profilePages.userId, userId));
+		.where(eq(profilePages.userId, userId))
+		.returning({
+			id: profilePages.id,
+			userId: profilePages.userId,
+			handle: profilePages.handle,
+			name: profilePages.name,
+			location: profilePages.location,
+			role: profilePages.role,
+			bio: profilePages.bio,
+			image: profilePages.image,
+			backgroundImage: profilePages.backgroundImage,
+			updatedAt: profilePages.updatedAt,
+		});
+
+	return rows[0] ?? null;
 }
 
 export async function createProfilePage(
@@ -468,7 +482,20 @@ export async function createProfilePage(
 		values.image = input.image;
 	}
 
-	await db.insert(profilePages).values(values);
+	const rows = await db.insert(profilePages).values(values).returning({
+		id: profilePages.id,
+		userId: profilePages.userId,
+		handle: profilePages.handle,
+		name: profilePages.name,
+		location: profilePages.location,
+		role: profilePages.role,
+		bio: profilePages.bio,
+		image: profilePages.image,
+		backgroundImage: profilePages.backgroundImage,
+		updatedAt: profilePages.updatedAt,
+	});
+
+	return rows[0] ?? null;
 }
 
 export async function syncProfileBentoGraph(
@@ -698,13 +725,27 @@ export async function updateProfilePageHandleById(
 	profilePageId: string,
 	handle: string,
 ) {
-	await db
+	const rows = await db
 		.update(profilePages)
 		.set({
 			handle,
 			updatedAt: new Date(),
 		})
-		.where(eq(profilePages.id, profilePageId));
+		.where(eq(profilePages.id, profilePageId))
+		.returning({
+			id: profilePages.id,
+			userId: profilePages.userId,
+			handle: profilePages.handle,
+			name: profilePages.name,
+			location: profilePages.location,
+			role: profilePages.role,
+			bio: profilePages.bio,
+			image: profilePages.image,
+			backgroundImage: profilePages.backgroundImage,
+			updatedAt: profilePages.updatedAt,
+		});
+
+	return rows[0] ?? null;
 }
 
 export async function updateProfilePageImageByUserId(
