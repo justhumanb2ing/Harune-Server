@@ -44,6 +44,7 @@
     {
       "binding": "PROFILE_MEDIA_BUCKET",
       "bucket_name": "umbrella",
+      "remote": true,
     },
   ],
 }
