@@ -1,65 +1,66 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "server",
-  "main": "src/index.ts",
-  "compatibility_date": "2026-05-07",
-  "observability": {
-    "enabled": true,
-    "head_sampling_rate": 0.1,
-    "logs": {
-      "enabled": true,
-      "head_sampling_rate": 0.1,
-      "persist": true,
-      "invocation_logs": true,
-    },
-    "traces": {
-      "enabled": true,
-      "persist": true,
-      "head_sampling_rate": 0.1,
-    },
-  },
-  "routes": [
-    {
-      "pattern": "api.harune.me",
-      "custom_domain": true,
-    },
-  ],
-  "compatibility_flags": ["nodejs_compat"],
-  "secrets": {
-    "required": [
-      "BETTER_AUTH_SECRET",
-      "GOOGLE_CLIENT_ID",
-      "GOOGLE_CLIENT_SECRET",
-      "R2_ACCESS_KEY_ID",
-      "R2_SECRET_ACCESS_KEY",
-      "UPSTASH_REDIS_REST_TOKEN",
-    ],
-  },
-  "placement": {
-    "mode": "smart",
-    // "region": "aws:ap-northeast-2",
-  },
-  "vars": {
-    "HARUNE_APP_ORIGIN": "https://harune.me",
-    "PROFILE_MEDIA_BUCKET_NAME": "umbrella",
-    "R2_ACCOUNT_ID": "849b4ba384d03f3c7d2bea5ed1ab9a3c",
-    "R2_PUBLIC_BASE_URL": "https://cdn.harune.me",
-    "UPSTASH_REDIS_REST_URL": "https://accepted-midge-95805.upstash.io",
-    "UMAMI_API_ENDPOINT": "https://api.umami.is/v1",
-    "UMAMI_WEBSITE_ID": "c6d6da3b-2144-4194-a7a8-397fb884026b",
-    "UMAMI_SCRIPT_SRC": "https://cloud.umami.is/script.js",
-  },
-  "hyperdrive": [
-    {
-      "binding": "HYPERDRIVE",
-      "id": "cf2cd4db500f4cd981219bd01b7d3a93",
-    },
-  ],
-  "r2_buckets": [
-    {
-      "binding": "PROFILE_MEDIA_BUCKET",
-      "bucket_name": "umbrella",
-      "remote": true,
-    },
-  ],
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "server",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-05-07",
+	"workers_dev": true,
+	"observability": {
+		"enabled": true,
+		"head_sampling_rate": 0.1,
+		"logs": {
+			"enabled": true,
+			"head_sampling_rate": 0.1,
+			"persist": true,
+			"invocation_logs": true
+		},
+		"traces": {
+			"enabled": true,
+			"persist": true,
+			"head_sampling_rate": 0.1
+		}
+	},
+	"routes": [
+		{
+			"pattern": "api.harune.me",
+			"custom_domain": true
+		}
+	],
+	"compatibility_flags": ["nodejs_compat"],
+	"secrets": {
+		"required": [
+			"BETTER_AUTH_SECRET",
+			"GOOGLE_CLIENT_ID",
+			"GOOGLE_CLIENT_SECRET",
+			"R2_ACCESS_KEY_ID",
+			"R2_SECRET_ACCESS_KEY",
+			"UPSTASH_REDIS_REST_TOKEN"
+		]
+	},
+	"placement": {
+		"mode": "smart"
+		// "region": "aws:ap-northeast-2",
+	},
+	"vars": {
+		"HARUNE_APP_ORIGIN": "https://harune.me",
+		"PROFILE_MEDIA_BUCKET_NAME": "umbrella",
+		"R2_ACCOUNT_ID": "849b4ba384d03f3c7d2bea5ed1ab9a3c",
+		"R2_PUBLIC_BASE_URL": "https://cdn.harune.me",
+		"UPSTASH_REDIS_REST_URL": "https://accepted-midge-95805.upstash.io",
+		"UMAMI_API_ENDPOINT": "https://api.umami.is/v1",
+		"UMAMI_WEBSITE_ID": "c6d6da3b-2144-4194-a7a8-397fb884026b",
+		"UMAMI_SCRIPT_SRC": "https://cloud.umami.is/script.js"
+	},
+	"hyperdrive": [
+		{
+			"binding": "HYPERDRIVE",
+			"id": "cf2cd4db500f4cd981219bd01b7d3a93"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "PROFILE_MEDIA_BUCKET",
+			"bucket_name": "umbrella",
+			"remote": true
+		}
+	]
 }
