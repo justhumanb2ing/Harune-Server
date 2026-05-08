@@ -12,13 +12,14 @@ export function createDB(c: Context<AppBindings>): Database {
     return cachedDB;
   }
 
+  const connectionString = c.env.HYPERDRIVE.connectionString;
   const pool = new Pool({
-    connectionString: c.env.HYPERDRIVE.connectionString,
+    connectionString,
     max: 1,
+    connectionTimeoutMillis: 5_000,
   });
 
   const dbInstance = drizzle({ client: pool, schema: baseSchema });
-  c.set("dbPool", pool);
   c.set("db", dbInstance);
 
   return dbInstance;

@@ -13,12 +13,7 @@ export default createFactory<AppBindings>({
       createDB(c);
       const auth = createAuth(c);
       c.set("auth", auth);
-      try {
-        await next();
-      } finally {
-        const pool = c.get("dbPool");
-        await pool.end();
-      }
+      await next();
     });
   }
 });

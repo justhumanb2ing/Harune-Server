@@ -1,7 +1,6 @@
 import type { Hyperdrive, R2Bucket } from "@cloudflare/workers-types";
 import { Session, User } from "better-auth";
 import { Env } from "hono";
-import type { Pool } from "pg";
 
 import { createAuth } from "../lib/auth";
 import { createDB } from "../lib/db";
@@ -33,7 +32,6 @@ export interface AppBindings extends Env {
 	Variables: {
 		auth: ReturnType<typeof createAuth>;
 		db: ReturnType<typeof createDB>;
-		dbPool: Pool;
 		session: Session | null;
 		user: User | null;
 	};
