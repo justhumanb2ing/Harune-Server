@@ -2051,7 +2051,7 @@ profileBentoMediaUpload.responses["200"] = {
 						mediaType: "video",
 						tempObjectKey: "tmp/users/user-1/profile-page/bento/bento_123/123e4567-e89b-12d3-a456-426614174000",
 						tempUrl:
-							"https://pub.example.com/tmp/users/user-1/profile-page/bento/bento_123/123e4567-e89b-12d3-a456-426614174000",
+							"https://api.example.com/profile/bento/media?key=tmp%2Fusers%2Fuser-1%2Fprofile-page%2Fbento%2Fbento_123%2F123e4567-e89b-12d3-a456-426614174000",
 					},
 				},
 			},
@@ -2097,5 +2097,68 @@ profileBentoMediaUpload.responses["500"] = {
 	},
 };
 delete profileBentoMediaUpload.responses.default;
+
+const profileBentoMediaGet = openApi.paths?.["/profile/bento/media"]?.get as
+	| {
+			parameters?: unknown;
+			responses?: Record<string, unknown>;
+			operationId?: string;
+	  }
+	| undefined;
+
+if (!profileBentoMediaGet) {
+	throw new Error("Could not find /profile/bento/media GET operation in openapi.json");
+}
+
+profileBentoMediaGet.operationId = "fetchProfileTemporaryMedia";
+profileBentoMediaGet.parameters = [
+	{
+		name: "key",
+		in: "query",
+		required: true,
+		description:
+			"Temporary R2 object key returned by `POST /profile/bento/media/upload`. The key must point to the authenticated user's `tmp/users/.../profile-page/bento/...` namespace.",
+		schema: {
+			type: "string",
+		},
+	},
+];
+profileBentoMediaGet.responses ??= {};
+profileBentoMediaGet.responses["200"] = {
+	description: "Temporary bento media stream response.",
+	content: {
+		"application/octet-stream": {
+			schema: {
+				type: "string",
+				format: "binary",
+			},
+		},
+	},
+};
+profileBentoMediaGet.responses["400"] = {
+	description: "Invalid temporary media key.",
+	content: {
+		"application/json": {
+			schema: profileErrorSchema(["validation_error", "profile_media_key_invalid"]),
+		},
+	},
+};
+profileBentoMediaGet.responses["404"] = {
+	description: "Temporary media object not found.",
+	content: {
+		"application/json": {
+			schema: profileErrorSchema(["profile_media_not_found"]),
+		},
+	},
+};
+profileBentoMediaGet.responses["500"] = {
+	description: "Internal temporary media fetch failure.",
+	content: {
+		"application/json": {
+			schema: profileErrorSchema(["profile_media_fetch_failed"]),
+		},
+	},
+};
+delete profileBentoMediaGet.responses.default;
 
 await writeFile(openApiPath, `${JSON.stringify(openApi, null, 2)}\n`);

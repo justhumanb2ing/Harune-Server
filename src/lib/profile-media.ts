@@ -53,6 +53,12 @@ export function getProfileMediaObjectKey(userId: string, bentoId: string) {
 	return `public/users/${userId}/profile-page/bento/${bentoId}/media`;
 }
 
+export function getProfileMediaTempUrl(baseUrl: string, objectKey: string) {
+	const url = new URL("/profile/bento/media", baseUrl);
+	url.searchParams.set("key", objectKey);
+	return url.toString();
+}
+
 export function buildPublicObjectUrl(
 	baseUrl: string,
 	objectKey: string,
@@ -91,6 +97,35 @@ export function parseObjectKeyFromPublicUrl(baseUrl: string, publicUrl: string) 
 	} catch {
 		return null;
 	}
+}
+
+export function parseProfileMediaTempObjectKey(tempObjectKey: string) {
+	const segments = tempObjectKey.split("/");
+
+	if (
+		segments.length !== 7 ||
+		segments[0] !== "tmp" ||
+		segments[1] !== "users" ||
+		segments[3] !== "profile-page" ||
+		segments[4] !== "bento"
+	) {
+		return null;
+	}
+
+	const userId = segments[2];
+	const bentoId = segments[5];
+	const objectId = segments[6];
+
+	if (!userId || !bentoId || !objectId) {
+		return null;
+	}
+
+	return {
+		objectKey: tempObjectKey,
+		userId,
+		bentoId,
+		objectId,
+	} as const;
 }
 
 export async function sha256Hex(input: ArrayBuffer | Uint8Array) {

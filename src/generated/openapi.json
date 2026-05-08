@@ -4879,6 +4879,155 @@
         }
       }
     },
+    "/profile/bento/media": {
+      "get": {
+        "summary": "Fetch temporary bento media",
+        "responses": {
+          "200": {
+            "description": "Temporary bento media stream response.",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid temporary media key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "validation_error",
+                            "profile_media_key_invalid"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Temporary media object not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "profile_media_not_found"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal temporary media fetch failure.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "profile_media_fetch_failed"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "description": "Streams a previously uploaded temporary bento media object from storage.\n\nRules:\n- Accepts a `key` query parameter that points to a `tmp/users/.../profile-page/bento/...` object\n- The key is URL-encoded when returned from the upload endpoint\n- The object is served with its stored content type\n- Missing keys or non-temporary keys are rejected\n- Missing objects return 404\n- The response is `Cache-Control: no-store`",
+        "tags": [
+          "Profile API"
+        ],
+        "operationId": "fetchProfileTemporaryMedia",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "query",
+            "required": true,
+            "description": "Temporary R2 object key returned by `POST /profile/bento/media/upload`. The key must point to the authenticated user's `tmp/users/.../profile-page/bento/...` namespace.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
     "/profile/bento/media/upload": {
       "post": {
         "summary": "Upload temporary bento media",
@@ -4930,7 +5079,7 @@
                       "contentType": "video/mp4",
                       "mediaType": "video",
                       "tempObjectKey": "tmp/users/user-1/profile-page/bento/bento_123/123e4567-e89b-12d3-a456-426614174000",
-                      "tempUrl": "https://pub.example.com/tmp/users/user-1/profile-page/bento/bento_123/123e4567-e89b-12d3-a456-426614174000"
+                      "tempUrl": "https://api.example.com/profile/bento/media?key=tmp%2Fusers%2Fuser-1%2Fprofile-page%2Fbento%2Fbento_123%2F123e4567-e89b-12d3-a456-426614174000"
                     }
                   }
                 }

@@ -313,6 +313,23 @@ export default defineConfig({
 					tag: ["Profile API"],
 				},
 				{
+					api: "/bento/media",
+					method: "get",
+					summary: "Fetch temporary bento media",
+					description: [
+						"Streams a previously uploaded temporary bento media object from storage.",
+						"",
+						"Rules:",
+						"- Accepts a `key` query parameter that points to a `tmp/users/.../profile-page/bento/...` object",
+						"- The key is URL-encoded when returned from the upload endpoint",
+						"- The object is served with its stored content type",
+						"- Missing keys or non-temporary keys are rejected",
+						"- Missing objects return 404",
+						"- The response is `Cache-Control: no-store`",
+					].join("\n"),
+					tag: ["Profile API"],
+				},
+				{
 					api: "/bento/media/upload",
 					method: "post",
 					summary: "Upload temporary bento media",

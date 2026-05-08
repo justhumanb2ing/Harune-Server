@@ -11,16 +11,18 @@ import {
   validationError,
 } from "../lib/api-response";
 import {
-  buildPublicObjectUrl,
-  getProfileImageObjectKey,
-  getProfileMediaTempObjectKey,
-  getProfileMediaType,
-  isAllowedProfileImageContentType,
-  isAllowedProfileMediaContentType,
-  parseObjectKeyFromPublicUrl,
-  sha256Hex,
-  MAX_PROFILE_IMAGE_BYTES,
-  MAX_PROFILE_MEDIA_BYTES,
+	buildPublicObjectUrl,
+	getProfileImageObjectKey,
+	getProfileMediaTempObjectKey,
+	getProfileMediaTempUrl,
+	getProfileMediaType,
+	isAllowedProfileImageContentType,
+	isAllowedProfileMediaContentType,
+	parseProfileMediaTempObjectKey,
+	parseObjectKeyFromPublicUrl,
+	sha256Hex,
+	MAX_PROFILE_IMAGE_BYTES,
+	MAX_PROFILE_MEDIA_BYTES,
 } from "../lib/profile-media";
 import { AppBindings } from "../types/app-bindings";
 import { getProfile } from "../services/get-profile";
@@ -316,6 +318,54 @@ export function createProfileRoute(dependencies: ProfileRouteDependencies = {}) 
         );
       }
     })
+    .get("/bento/media", async (c) => {
+      try {
+        const key = parseFormValue(c.req.query("key"));
+
+        if (!key) {
+          return withNoStore(validationError(c));
+        }
+
+        const target = parseProfileMediaTempObjectKey(key);
+
+        if (!target) {
+          return withNoStore(
+            badRequest(c, "profile_media_key_invalid", "key must point to a temporary bento media object"),
+          );
+        }
+
+        const object = await c.env.PROFILE_MEDIA_BUCKET.get(target.objectKey);
+
+        if (!object) {
+          return withNoStore(
+            notFound(c, "profile_media_not_found", "profile media object not found"),
+          );
+        }
+
+        const headers = new Headers();
+
+        object.writeHttpMetadata(headers);
+        headers.set("Cache-Control", "no-store");
+        headers.set("Pragma", "no-cache");
+        headers.set("Content-Length", String(object.size));
+
+        if (object.httpEtag) {
+          headers.set("ETag", object.httpEtag);
+        }
+
+        return new Response(object.body, {
+          headers,
+        });
+      } catch (error) {
+        if (error instanceof HTTPException) {
+          throw error;
+        }
+
+        return withNoStore(
+          internalServerError(c, "profile_media_fetch_failed", "failed to fetch profile media"),
+        );
+      }
+    })
     .post("/bento/media/upload", async (c) => {
       try {
         const session = c.get("session");
@@ -382,7 +432,7 @@ export function createProfileRoute(dependencies: ProfileRouteDependencies = {}) 
           contentType,
           mediaType,
           tempObjectKey,
-          tempUrl: buildPublicObjectUrl(c.env.R2_PUBLIC_BASE_URL, tempObjectKey),
+          tempUrl: getProfileMediaTempUrl(c.req.url, tempObjectKey),
         });
 
         return withNoStore(response);
