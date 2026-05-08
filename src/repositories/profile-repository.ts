@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, notInArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, notInArray, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 import type { Database } from "../lib/db";
@@ -27,6 +27,21 @@ export type ProfilePageSummary = {
 	bio?: string | null;
 	image: string | null;
 	backgroundImage: string | null;
+	updatedAt: Date;
+};
+
+export type ProfilePageRecord = {
+	id: string;
+	userId: string;
+	handle: string;
+	name: string | null;
+	location: string | null;
+	role: string | null;
+	bio: string | null;
+	image: string | null;
+	backgroundImage: string | null;
+	linkBlockPosition: number;
+	createdAt: Date;
 	updatedAt: Date;
 };
 
@@ -270,6 +285,26 @@ export async function findProfilePageByUserId(db: Database, userId: string) {
 	return rows[0] ?? null;
 }
 
+export async function findProfilePages(db: Database) {
+	return db
+		.select({
+			id: profilePages.id,
+			userId: profilePages.userId,
+			handle: profilePages.handle,
+			name: profilePages.name,
+			location: profilePages.location,
+			role: profilePages.role,
+			bio: profilePages.bio,
+			image: profilePages.image,
+			backgroundImage: profilePages.backgroundImage,
+			linkBlockPosition: profilePages.linkBlockPosition,
+			createdAt: profilePages.createdAt,
+			updatedAt: profilePages.updatedAt,
+		})
+		.from(profilePages)
+		.orderBy(desc(profilePages.updatedAt), desc(profilePages.createdAt));
+}
+
 export async function findProfileRowsByPageId(db: Database, pageId: string) {
 	return db
 		.select({
@@ -481,37 +516,30 @@ export async function syncProfileBentoGraph(
 			});
 
 		await tx
-			.delete(profileLinkBentos)
-			.where(inArray(profileLinkBentos.bentoId, bentoIds));
-		await tx
-			.delete(profileTextBentos)
-			.where(inArray(profileTextBentos.bentoId, bentoIds));
-		await tx
-			.delete(profileSectionBentos)
-			.where(inArray(profileSectionBentos.bentoId, bentoIds));
-		await tx
-			.delete(profileMediaBentos)
-			.where(inArray(profileMediaBentos.bentoId, bentoIds));
-		await tx
-			.delete(profileMapBentos)
-			.where(inArray(profileMapBentos.bentoId, bentoIds));
-		await tx
-			.delete(profileBentoLayouts)
-			.where(inArray(profileBentoLayouts.bentoId, bentoIds));
-
-		await tx.insert(profileBentoLayouts).values(
-			bentos.flatMap((bento) =>
-				Object.entries(bento.layout).map(([breakpoint, layout]) => ({
-					bentoId: bento.id,
-					breakpoint: breakpoint as "desktop" | "compact",
-					x: layout.x,
-					y: layout.y,
-					w: layout.w,
-					h: layout.h,
+			.insert(profileBentoLayouts)
+			.values(
+				bentos.flatMap((bento) =>
+					Object.entries(bento.layout).map(([breakpoint, layout]) => ({
+						bentoId: bento.id,
+						breakpoint: breakpoint as "desktop" | "compact",
+						x: layout.x,
+						y: layout.y,
+						w: layout.w,
+						h: layout.h,
+						updatedAt: now,
+					})),
+				),
+			)
+			.onConflictDoUpdate({
+				target: [profileBentoLayouts.bentoId, profileBentoLayouts.breakpoint],
+				set: {
+					x: sql`excluded."x"`,
+					y: sql`excluded."y"`,
+					w: sql`excluded."w"`,
+					h: sql`excluded."h"`,
 					updatedAt: now,
-				})),
-			),
-		);
+				},
+			});
 
 		const linkRows = bentos
 			.filter((bento) => bento.type === "link")
@@ -562,23 +590,80 @@ export async function syncProfileBentoGraph(
 			}));
 
 		if (linkRows.length > 0) {
-			await tx.insert(profileLinkBentos).values(linkRows);
+			await tx
+				.insert(profileLinkBentos)
+				.values(linkRows)
+				.onConflictDoUpdate({
+					target: profileLinkBentos.bentoId,
+					set: {
+						title: sql`excluded."title"`,
+						description: sql`excluded."description"`,
+						favicon: sql`excluded."favicon"`,
+						thumbnail: sql`excluded."thumbnail"`,
+						url: sql`excluded."url"`,
+						updatedAt: now,
+					},
+				});
 		}
 
 		if (textRows.length > 0) {
-			await tx.insert(profileTextBentos).values(textRows);
+			await tx
+				.insert(profileTextBentos)
+				.values(textRows)
+				.onConflictDoUpdate({
+					target: profileTextBentos.bentoId,
+					set: {
+						content: sql`excluded."content"`,
+						updatedAt: now,
+					},
+				});
 		}
 
 		if (sectionRows.length > 0) {
-			await tx.insert(profileSectionBentos).values(sectionRows);
+			await tx
+				.insert(profileSectionBentos)
+				.values(sectionRows)
+				.onConflictDoUpdate({
+					target: profileSectionBentos.bentoId,
+					set: {
+						title: sql`excluded."title"`,
+					},
+				});
 		}
 
 		if (mediaRows.length > 0) {
-			await tx.insert(profileMediaBentos).values(mediaRows);
+			await tx
+				.insert(profileMediaBentos)
+				.values(mediaRows)
+				.onConflictDoUpdate({
+					target: profileMediaBentos.bentoId,
+					set: {
+						mediaType: sql`excluded."mediaType"`,
+						url: sql`excluded."url"`,
+						objectKey: sql`excluded."objectKey"`,
+						href: sql`excluded."href"`,
+						alt: sql`excluded."alt"`,
+						caption: sql`excluded."caption"`,
+						updatedAt: now,
+					},
+				});
 		}
 
 		if (mapRows.length > 0) {
-			await tx.insert(profileMapBentos).values(mapRows);
+			await tx
+				.insert(profileMapBentos)
+				.values(mapRows)
+				.onConflictDoUpdate({
+					target: profileMapBentos.bentoId,
+					set: {
+						latitude: sql`excluded."latitude"`,
+						longitude: sql`excluded."longitude"`,
+						zoom: sql`excluded."zoom"`,
+						caption: sql`excluded."caption"`,
+						url: sql`excluded."url"`,
+						updatedAt: now,
+					},
+				});
 		}
 	});
 }

@@ -1,3 +1,4 @@
+import type { R2Bucket } from "@cloudflare/workers-types";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import * as v from "valibot";
@@ -40,12 +41,14 @@ import type {
 	ProfileBentoSnapshot,
 	ProfilePagePatch,
 	ProfilePageSummary,
+	ProfilePageRecord,
 } from "../repositories/profile-repository";
 import {
 	createProfilePage,
 	findOwnedProfileBentoById,
 	findProfilePageByHandle,
 	findProfilePageByUserId,
+	findProfilePages,
 	findUserById,
 	syncProfileBentoGraph,
 	updateProfilePageByUserId,
@@ -53,7 +56,11 @@ import {
 } from "../repositories/profile-repository";
 import { getProfile } from "../services/get-profile";
 import type { AppBindings } from "../types/app-bindings";
-import type { ProfilePageResponse, ProfileResponse } from "../types/profile";
+import type {
+	ProfilePageResponse,
+	ProfilePagesResponse,
+	ProfileResponse,
+} from "../types/profile";
 
 type ParsedProfileBentoItem =
 	| {
@@ -117,6 +124,7 @@ type ProfileRouteDependencies = {
 	createProfilePage?: typeof createProfilePage;
 	findProfilePageByUserId?: typeof findProfilePageByUserId;
 	findProfilePageByHandle?: typeof findProfilePageByHandle;
+	findProfilePages?: typeof findProfilePages;
 	findUserById?: typeof findUserById;
 	updateProfilePageByUserId?: typeof updateProfilePageByUserId;
 	updateProfilePageImageByUserId?: typeof updateProfilePageImageByUserId;
@@ -129,6 +137,48 @@ function withNoStore(response: Response) {
 	response.headers.set("Cache-Control", "no-store");
 	response.headers.set("Pragma", "no-cache");
 	return response;
+}
+
+function waitForProfileCleanup(
+	c: { executionCtx?: { waitUntil: (promise: Promise<unknown>) => void } },
+	promise: Promise<unknown>,
+) {
+	let executionCtx: { waitUntil: (promise: Promise<unknown>) => void } | undefined;
+
+	try {
+		executionCtx = c.executionCtx;
+	} catch {
+		executionCtx = undefined;
+	}
+
+	if (executionCtx) {
+		executionCtx.waitUntil(promise);
+		return;
+	}
+
+	void promise.catch((error) => {
+		console.error("Failed to run deferred profile cleanup:", error);
+	});
+}
+
+async function deleteProfileBentoMediaObjects(
+	bucket: R2Bucket,
+	objectKeys: Iterable<string>,
+) {
+	const deleteResults = await Promise.allSettled(
+		Array.from(objectKeys, async (objectKeyToDelete) => {
+			await deleteProfileBentoMediaObject(bucket, objectKeyToDelete);
+		}),
+	);
+
+	for (const result of deleteResults) {
+		if (result.status === "rejected") {
+			console.error(
+				"Failed to delete temporary bento media object:",
+				result.reason,
+			);
+		}
+	}
 }
 
 function normalizeContentType(contentType: string) {
@@ -470,6 +520,23 @@ function toProfilePageResponse(
 	};
 }
 
+function toProfilePageRecordResponse(page: ProfilePageRecord) {
+	return {
+		id: page.id,
+		userId: page.userId,
+		handle: page.handle,
+		name: page.name,
+		location: page.location,
+		role: page.role,
+		bio: page.bio,
+		image: page.image,
+		backgroundImage: page.backgroundImage,
+		linkBlockPosition: page.linkBlockPosition,
+		createdAt: page.createdAt.toISOString(),
+		updatedAt: page.updatedAt.toISOString(),
+	};
+}
+
 function isUniqueViolation(error: unknown) {
 	return (
 		typeof error === "object" &&
@@ -770,6 +837,7 @@ export function createProfileRoute(
 		dependencies.findProfilePageByUserId ?? findProfilePageByUserId;
 	const findPageByHandle =
 		dependencies.findProfilePageByHandle ?? findProfilePageByHandle;
+	const findPages = dependencies.findProfilePages ?? findProfilePages;
 	const findUserByIdForCreate = dependencies.findUserById ?? findUserById;
 	const updatePageByUserId =
 		dependencies.updateProfilePageByUserId ?? updateProfilePageByUserId;
@@ -1021,10 +1089,12 @@ export function createProfileRoute(
 						const parsedTempObjectKey =
 							parseProfileBentoMediaObjectKey(tempObjectKey);
 						const ownsTempObjectKey =
-							parsedTempObjectKey?.kind === "temp" &&
+							parsedTempObjectKey !== null &&
 							parsedTempObjectKey.userId === session.userId &&
-							(parsedTempObjectKey.bentoId === bento.id ||
-								parsedTempObjectKey.bentoId.startsWith("preview:"));
+							(parsedTempObjectKey.kind === "temp"
+								? parsedTempObjectKey.bentoId === bento.id ||
+									parsedTempObjectKey.bentoId.startsWith("preview:")
+								: parsedTempObjectKey.bentoId.startsWith("preview:"));
 
 						if (!ownsTempObjectKey) {
 							return withNoStore(
@@ -1046,10 +1116,46 @@ export function createProfileRoute(
 							);
 						}
 
+						if (parsedTempObjectKey?.kind === "final") {
+							const previewPublicObject =
+								await c.env.PROFILE_MEDIA_BUCKET.head(tempObjectKey);
+
+							if (!previewPublicObject) {
+								return withNoStore(
+									badRequest(
+										c,
+										"invalid_media_upload_ownership",
+										"Invalid media upload ownership.",
+									),
+								);
+							}
+
+							normalizedBentos.push({
+								...bento,
+								content: {
+									mediaType: bento.content.mediaType,
+									url: getProfileBentoMediaPublicUrl(
+										c.env.R2_PUBLIC_BASE_URL,
+										tempObjectKey,
+										bento.content.contentHash,
+									),
+									objectKey: tempObjectKey,
+									href: bento.content.href,
+									alt: bento.content.alt,
+									caption: bento.content.caption,
+								},
+							});
+
+							continue;
+						}
+
 						await copyProfileBentoMediaObject(
 							c.env.PROFILE_MEDIA_BUCKET,
 							tempObjectKey,
 							finalObjectKey,
+							{
+								contentHash: bento.content.contentHash ?? undefined,
+							},
 						);
 						tempObjectKeysToDelete.add(tempObjectKey);
 					} else {
@@ -1089,9 +1195,8 @@ export function createProfileRoute(
 							parsedObjectKey.userId === session.userId &&
 							parsedObjectKey.bentoId.startsWith("preview:")
 						) {
-							const previewPublicObject = await c.env.PROFILE_MEDIA_BUCKET.head(
-								normalizedObjectKey,
-							);
+							const previewPublicObject =
+								await c.env.PROFILE_MEDIA_BUCKET.head(normalizedObjectKey);
 
 							if (previewPublicObject) {
 								normalizedBentos.push({
@@ -1134,6 +1239,9 @@ export function createProfileRoute(
 								c.env.PROFILE_MEDIA_BUCKET,
 								previewTempObjectKey,
 								finalObjectKey,
+								{
+									contentHash: bento.content.contentHash ?? undefined,
+								},
 							);
 
 							tempObjectKeysToDelete.add(previewTempObjectKey);
@@ -1185,18 +1293,14 @@ export function createProfileRoute(
 
 				await syncBentoGraph(c.get("db"), page.id, normalizedBentos);
 
-				for (const objectKeyToDelete of tempObjectKeysToDelete) {
-					try {
-						await deleteProfileBentoMediaObject(
+				if (tempObjectKeysToDelete.size > 0) {
+					waitForProfileCleanup(
+						c,
+						deleteProfileBentoMediaObjects(
 							c.env.PROFILE_MEDIA_BUCKET,
-							objectKeyToDelete,
-						);
-					} catch (error) {
-						console.error(
-							"Failed to delete temporary bento media object:",
-							error,
-						);
-					}
+							tempObjectKeysToDelete,
+						),
+					);
 				}
 
 				const response = c.json<ProfileResponse>({
@@ -1613,12 +1717,11 @@ export function createProfileRoute(
 
 				const bytes = new Uint8Array(await file.arrayBuffer());
 				const contentHash = await sha256Hex(bytes);
-				const tempObjectKey = getProfileMediaTempObjectKey(
-					session.userId,
-					bentoId,
-				);
+				const objectKey = isPreviewBentoId
+					? getProfileMediaObjectKey(session.userId, bentoId)
+					: getProfileMediaTempObjectKey(session.userId, bentoId);
 
-				await c.env.PROFILE_MEDIA_BUCKET.put(tempObjectKey, bytes, {
+				await c.env.PROFILE_MEDIA_BUCKET.put(objectKey, bytes, {
 					httpMetadata: {
 						contentType,
 					},
@@ -1629,10 +1732,11 @@ export function createProfileRoute(
 					contentHash,
 					contentType,
 					mediaType,
-					tempObjectKey,
+					tempObjectKey: objectKey,
 					tempUrl: buildPublicObjectUrl(
 						c.env.R2_PUBLIC_BASE_URL,
-						tempObjectKey,
+						objectKey,
+						isPreviewBentoId ? contentHash : undefined,
 					),
 				});
 
@@ -1647,6 +1751,36 @@ export function createProfileRoute(
 						c,
 						"profile_media_upload_failed",
 						"failed to upload profile media",
+					),
+				);
+			}
+		})
+		.get("/pages", async (c) => {
+			try {
+				const session = c.get("session");
+
+				if (!session?.userId) {
+					return withNoStore(
+						unauthorized(c, "unauthorized", "authentication required"),
+					);
+				}
+
+				const pages = await findPages(c.get("db"));
+				const response = c.json<ProfilePagesResponse>({
+					pages: pages.map(toProfilePageRecordResponse),
+				});
+
+				return withNoStore(response);
+			} catch (error) {
+				if (error instanceof HTTPException) {
+					throw error;
+				}
+
+				return withNoStore(
+					internalServerError(
+						c,
+						"profile_pages_failed",
+						"failed to load profile pages",
 					),
 				);
 			}

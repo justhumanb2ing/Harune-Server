@@ -106,3 +106,22 @@ export type ProfileResponse = {
 export type ProfilePageResponse = {
   page: ProfileResponse["page"];
 };
+
+export type ProfilePageRecord = {
+  id: string;
+  userId: string;
+  handle: string;
+  name: string | null;
+  location: string | null;
+  role: string | null;
+  bio: string | null;
+  image: string | null;
+  backgroundImage: string | null;
+  linkBlockPosition: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ProfilePagesResponse = {
+  pages: ProfilePageRecord[];
+};

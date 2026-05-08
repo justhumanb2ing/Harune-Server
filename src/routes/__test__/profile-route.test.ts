@@ -75,6 +75,8 @@ function createMockBucket() {
 function createTestApp({
 	session,
 	page,
+	pages,
+	findProfilePages,
 	ownedBento,
 	bucket: _bucket,
 }: {
@@ -88,6 +90,21 @@ function createTestApp({
 		backgroundImage: string | null;
 		updatedAt: Date;
 	} | null;
+	pages?: Array<{
+		id: string;
+		userId: string;
+		handle: string;
+		name: string | null;
+		location: string | null;
+		role: string | null;
+		bio: string | null;
+		image: string | null;
+		backgroundImage: string | null;
+		linkBlockPosition: number;
+		createdAt: Date;
+		updatedAt: Date;
+	}>;
+	findProfilePages?: () => Promise<unknown>;
 	ownedBento?: { id: string } | null;
 	bucket: ReturnType<typeof createMockBucket>;
 }) {
@@ -126,6 +143,13 @@ function createTestApp({
 					? { image: imageUrl }
 					: { backgroundImage: imageUrl }),
 			};
+		},
+		findProfilePages: async () => {
+			if (findProfilePages) {
+				return findProfilePages();
+			}
+
+			return pages ?? [];
 		},
 		findOwnedProfileBentoById: async (_db, bentoId, userId) => {
 			if (!ownedBento || userId !== "user-1" || bentoId !== ownedBento.id) {
@@ -382,6 +406,130 @@ async function createVideoFixture() {
 		hash: await sha256Hex(bytes),
 	};
 }
+
+describe("GET /profile/pages", () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it("returns 401 when no session exists", async () => {
+		const bucket = createMockBucket();
+		const { app } = createTestApp({
+			session: null,
+			bucket,
+		});
+
+		const response = await app.request("/profile/pages");
+
+		expect(response.status).toBe(401);
+		expect(response.headers.get("Cache-Control")).toBe("no-store");
+		expect(await response.json()).toEqual({
+			error: {
+				code: "unauthorized",
+				message: "authentication required",
+			},
+		});
+	});
+
+	it("returns all profile page rows for the current user session", async () => {
+		const bucket = createMockBucket();
+		const pages = [
+			{
+				id: "page-2",
+				userId: "user-2",
+				handle: "maker-two",
+				name: "Maker Two",
+				location: "Busan",
+				role: "creator",
+				bio: "Second profile",
+				image: "https://cdn.harune.me/avatar-2.png",
+				backgroundImage: null,
+				linkBlockPosition: 3,
+				createdAt: new Date("2026-05-07T00:00:00.000Z"),
+				updatedAt: new Date("2026-05-08T02:00:00.000Z"),
+			},
+			{
+				id: "page-1",
+				userId: "user-1",
+				handle: "maker",
+				name: "Maker",
+				location: null,
+				role: null,
+				bio: null,
+				image: null,
+				backgroundImage: null,
+				linkBlockPosition: 0,
+				createdAt: new Date("2026-05-06T00:00:00.000Z"),
+				updatedAt: new Date("2026-05-08T01:00:00.000Z"),
+			},
+		];
+		const { app } = createTestApp({
+			session: { userId: "user-1" },
+			pages,
+			bucket,
+		});
+
+		const response = await app.request("/profile/pages");
+		const json = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(response.headers.get("Cache-Control")).toBe("no-store");
+		expect(json).toEqual({
+			pages: [
+				{
+					id: "page-2",
+					userId: "user-2",
+					handle: "maker-two",
+					name: "Maker Two",
+					location: "Busan",
+					role: "creator",
+					bio: "Second profile",
+					image: "https://cdn.harune.me/avatar-2.png",
+					backgroundImage: null,
+					linkBlockPosition: 3,
+					createdAt: "2026-05-07T00:00:00.000Z",
+					updatedAt: "2026-05-08T02:00:00.000Z",
+				},
+				{
+					id: "page-1",
+					userId: "user-1",
+					handle: "maker",
+					name: "Maker",
+					location: null,
+					role: null,
+					bio: null,
+					image: null,
+					backgroundImage: null,
+					linkBlockPosition: 0,
+					createdAt: "2026-05-06T00:00:00.000Z",
+					updatedAt: "2026-05-08T01:00:00.000Z",
+				},
+			],
+		});
+	});
+
+	it("returns 500 when the profile page list cannot be loaded", async () => {
+		const bucket = createMockBucket();
+		const { app } = createTestApp({
+			session: { userId: "user-1" },
+			findProfilePages: async () => {
+				throw new Error("db offline");
+			},
+			bucket,
+		});
+
+		const response = await app.request("/profile/pages");
+
+		expect(response.status).toBe(500);
+		expect(response.headers.get("Cache-Control")).toBe("no-store");
+		expect(await response.json()).toEqual({
+			error: {
+				code: "profile_pages_failed",
+				message: "failed to load profile pages",
+			},
+		});
+	});
+});
 
 describe("profile mutation routes", () => {
 	afterEach(() => {
@@ -690,7 +838,7 @@ describe("profile mutation routes", () => {
 		expect(bucket.bucket.put).toHaveBeenCalledTimes(1);
 	});
 
-	it("uploads temporary bento media metadata for preview bento ids without a stored row", async () => {
+	it("uploads preview bento media directly to a public preview object key", async () => {
 		const bucket = createMockBucket();
 		const { app } = createTestApp({
 			session: { userId: "user-1" },
@@ -721,16 +869,21 @@ describe("profile mutation routes", () => {
 			contentHash: hash,
 			contentType: "video/mp4",
 			mediaType: "video",
-			tempObjectKey: expect.stringMatching(
-				new RegExp(
-					`^tmp/users/user-1/profile/bento/${previewBentoId}/[0-9a-f-]{36}$`,
-				),
-			),
-			tempUrl: expect.stringContaining(
-				`https://cdn.harune.me/tmp/users/user-1/profile/bento/${previewBentoId}/`,
+			tempObjectKey: getProfileMediaObjectKey("user-1", previewBentoId),
+			tempUrl: getProfileBentoMediaPublicUrl(
+				"https://cdn.harune.me",
+				getProfileMediaObjectKey("user-1", previewBentoId),
+				hash,
 			),
 		});
 		expect(bucket.bucket.put).toHaveBeenCalledTimes(1);
+		expect(bucket.bucket.put).toHaveBeenCalledWith(
+			getProfileMediaObjectKey("user-1", previewBentoId),
+			expect.any(Uint8Array),
+			{
+				httpMetadata: { contentType: "video/mp4" },
+			},
+		);
 	});
 
 	it("returns 403 when the bento does not belong to the current user", async () => {
@@ -1435,14 +1588,14 @@ describe("PUT /profile/me/bento", () => {
 		]);
 	});
 
-	it("promotes preview media when tempObjectKey is provided", async () => {
+	it("accepts a public preview object key in tempObjectKey without copying on save", async () => {
 		const bucket = createMockBucket();
 		const tempBytes = new TextEncoder().encode("preview bento payload");
 		const previewBentoId = `preview:${crypto.randomUUID()}`;
-		const tempObjectKey = `tmp/users/user-1/profile/bento/${previewBentoId}/${crypto.randomUUID()}`;
+		const previewObjectKey = getProfileMediaObjectKey("user-1", previewBentoId);
 		const contentHash = await sha256Hex(tempBytes);
 
-		await bucket.bucket.put(tempObjectKey, tempBytes, {
+		await bucket.bucket.put(previewObjectKey, tempBytes, {
 			httpMetadata: { contentType: "image/png" },
 		});
 
@@ -1465,9 +1618,13 @@ describe("PUT /profile/me/bento", () => {
 							},
 							content: {
 								mediaType: "image",
-								url: `https://cdn.harune.me/public/users/user-1/profile/bento/${encodeURIComponent(previewBentoId)}/media`,
-								objectKey: `public/users/user-1/profile/bento/${encodeURIComponent(previewBentoId)}/media`,
-								tempObjectKey,
+								url: getProfileBentoMediaPublicUrl(
+									"https://cdn.harune.me",
+									previewObjectKey,
+									contentHash,
+								),
+								objectKey: previewObjectKey,
+								tempObjectKey: previewObjectKey,
 								contentHash,
 								contentType: "image/png",
 								href: null,
@@ -1515,10 +1672,10 @@ describe("PUT /profile/me/bento", () => {
 						mediaType: "image",
 						url: getProfileBentoMediaPublicUrl(
 							"https://cdn.harune.me",
-							getProfileMediaObjectKey("user-1", "bento-1"),
+							previewObjectKey,
 							contentHash,
 						),
-						objectKey: getProfileMediaObjectKey("user-1", "bento-1"),
+						objectKey: previewObjectKey,
 						href: null,
 						alt: "Alt",
 						caption: "Caption",
@@ -1531,8 +1688,8 @@ describe("PUT /profile/me/bento", () => {
 				canEdit: true,
 			},
 		});
-		expect(bucket.bucket.put).toHaveBeenCalledTimes(2);
-		expect(bucket.bucket.delete).toHaveBeenCalledWith(tempObjectKey);
+		expect(bucket.bucket.put).toHaveBeenCalledTimes(1);
+		expect(bucket.bucket.delete).not.toHaveBeenCalled();
 		expect(getLastSyncedBentos()).toEqual([
 			{
 				id: "bento-1",
@@ -1545,10 +1702,10 @@ describe("PUT /profile/me/bento", () => {
 					mediaType: "image",
 					url: getProfileBentoMediaPublicUrl(
 						"https://cdn.harune.me",
-						getProfileMediaObjectKey("user-1", "bento-1"),
+						previewObjectKey,
 						contentHash,
 					),
-					objectKey: getProfileMediaObjectKey("user-1", "bento-1"),
+					objectKey: previewObjectKey,
 					href: null,
 					alt: "Alt",
 					caption: "Caption",
