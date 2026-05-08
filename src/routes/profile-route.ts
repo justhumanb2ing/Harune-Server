@@ -902,6 +902,29 @@ async function findSingleProfileMediaTempObjectKey(
 	return objects[0]?.key ?? null;
 }
 
+async function findExistingProfileMediaObjectKey(
+	bucket: AppBindings["Bindings"]["PROFILE_MEDIA_BUCKET"],
+	candidates: string[],
+) {
+	const seen = new Set<string>();
+
+	for (const candidate of candidates) {
+		if (seen.has(candidate)) {
+			continue;
+		}
+
+		seen.add(candidate);
+
+		const object = await bucket.head(candidate);
+
+		if (object) {
+			return candidate;
+		}
+	}
+
+	return null;
+}
+
 export function createProfileRoute(
 	dependencies: ProfileRouteDependencies = {},
 ) {
@@ -1278,20 +1301,27 @@ export function createProfileRoute(
 							parsedObjectKey.userId === session.userId &&
 							parsedObjectKey.bentoId.startsWith("preview:")
 						) {
-							const previewPublicObject =
-								await c.env.PROFILE_MEDIA_BUCKET.head(normalizedObjectKey);
+							const existingPreviewObjectKey =
+								await findExistingProfileMediaObjectKey(
+									c.env.PROFILE_MEDIA_BUCKET,
+									[
+										normalizedObjectKey,
+										objectKey,
+										publicObjectKey ?? "",
+									].filter((candidate) => candidate.length > 0),
+								);
 
-							if (previewPublicObject) {
+							if (existingPreviewObjectKey) {
 								normalizedBentos.push({
 									...bento,
 									content: {
 										mediaType: bento.content.mediaType,
 										url: getProfileBentoMediaPublicUrl(
 											c.env.R2_PUBLIC_BASE_URL,
-											normalizedObjectKey,
+											existingPreviewObjectKey,
 											bento.content.contentHash ?? "",
 										),
-										objectKey: normalizedObjectKey,
+										objectKey: existingPreviewObjectKey,
 										href: bento.content.href,
 										alt: bento.content.alt,
 										caption: bento.content.caption,

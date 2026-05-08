@@ -380,7 +380,7 @@ export default defineConfig({
 						"- Each bento item must include `id`, `type`, `layout`, and type-specific `content`",
 						"- Supported bento types are `link`, `text`, `section`, `media`, and `map`",
 						"- Media items may include `tempObjectKey` for temp-to-final promotion, including `preview:` draft uploads",
-						"- `public/.../preview:` media object keys are also accepted as-is when the object already exists",
+						"- `public/.../preview:` media object keys are accepted as-is when the object already exists, including percent-encoded `preview%3A` keys from older preview uploads",
 						"- `tempObjectKey` may be a legacy temp key or a public preview object key returned by upload",
 						"- Existing media URLs from an older public R2 origin are accepted when their path matches `objectKey`; saved responses normalize media URLs to the current public CDN",
 						"- Media `alt` may be an empty string",
