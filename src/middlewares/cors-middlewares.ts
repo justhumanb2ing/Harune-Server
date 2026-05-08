@@ -6,7 +6,7 @@ export const corsMiddleware = cors({
     const allowedOrigins = getAllowedOrigins(c.env);
     return allowedOrigins.includes(origin) ? origin : null;
   },
-  allowHeaders: ['Content-Type', 'Authorization'],
+  allowHeaders: ['Content-Type', 'Authorization', 'Cache-Control'],
   allowMethods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
   exposeHeaders: ['Content-Length'],
   maxAge: 600,

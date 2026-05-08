@@ -13,7 +13,7 @@ describe("corsMiddleware", () => {
       headers: {
         Origin: "https://harune.me",
         "Access-Control-Request-Method": "PUT",
-        "Access-Control-Request-Headers": "content-type, authorization",
+        "Access-Control-Request-Headers": "content-type, authorization, cache-control",
       },
     });
 
@@ -22,5 +22,6 @@ describe("corsMiddleware", () => {
     expect(response.headers.get("access-control-allow-methods")).toContain("PATCH");
     expect(response.headers.get("access-control-allow-methods")).toContain("PUT");
     expect(response.headers.get("access-control-allow-methods")).toContain("DELETE");
+    expect(response.headers.get("access-control-allow-headers")).toContain("Cache-Control");
   });
 });
