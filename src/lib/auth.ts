@@ -121,7 +121,7 @@ export const createAuth = (c: Context<AppBindings>) => {
 							},
 						],
 						successUrl: getDodoPaymentsSuccessUrl(c),
-						authenticatedUsersOnly: false,
+						authenticatedUsersOnly: true,
 					}),
 					portal(),
 					webhooks({
