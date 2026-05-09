@@ -116,10 +116,12 @@ export type ProfileBentoSnapshot =
 				mediaType: "image" | "video";
 				url: string;
 				objectKey: string;
+				tempObjectKey?: string | null;
+				contentHash?: string | null;
+				contentType?: string | null;
 				href: string | null;
 				alt: string;
 				caption: string;
-				contentHash?: string;
 			};
 	  }
 	| {

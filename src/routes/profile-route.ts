@@ -1,6 +1,7 @@
 import type { R2Bucket } from "@cloudflare/workers-types";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
+import type { Context } from "hono";
 import * as v from "valibot";
 
 import {
@@ -39,6 +40,7 @@ import {
 } from "../lib/profile-media";
 import type {
 	ProfileBentoSnapshot,
+	ProfilePageRecord,
 	ProfilePagePatch,
 	ProfilePageSummary,
 } from "../repositories/profile-repository";
@@ -136,6 +138,7 @@ type ProfileRouteDependencies = {
 type ProfileRouteContext = {
 	env: AppBindings["Bindings"];
 	get<T = unknown>(key: string): T;
+	json: Context["json"];
 	executionCtx?: { waitUntil: (promise: Promise<unknown>) => void };
 };
 
