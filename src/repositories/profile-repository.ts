@@ -119,6 +119,7 @@ export type ProfileBentoSnapshot =
 				href: string | null;
 				alt: string;
 				caption: string;
+				contentHash?: string;
 			};
 	  }
 	| {

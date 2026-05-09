@@ -1752,39 +1752,15 @@ function profilePageUpdateRequestSchema() {
 		type: "object",
 		additionalProperties: false,
 		properties: {
+			handle: { type: "string" },
 			name: { type: "string", nullable: true },
 			location: { type: "string", nullable: true },
 			role: { type: "string", nullable: true },
 			bio: { type: "string", nullable: true },
 			image: { type: "string", nullable: true },
 			backgroundImage: { type: "string", nullable: true },
+			bento: profileBentoReplaceRequestSchema().properties?.bento,
 		},
-	};
-}
-
-function profilePageCreateRequestSchema() {
-	return {
-		type: "object",
-		additionalProperties: false,
-		properties: {
-			handle: { type: "string" },
-			name: { type: "string" },
-			bio: { type: "string" },
-			role: { type: "string" },
-			location: { type: "string" },
-			image: { type: "string" },
-		},
-		required: ["handle", "name"],
-	};
-}
-
-function profilePageCreateResponseSchema() {
-	return {
-		type: "object",
-		properties: {
-			page: profilePageSchema(),
-		},
-		required: ["page"],
 	};
 }
 
@@ -2162,8 +2138,8 @@ profileImagePost.responses["200"] = {
 						imageHash:
 							"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
 						imageUrl:
-							"https://pub.example.com/public/users/user-1/profile/profile?v=abc123",
-						objectKey: "public/users/user-1/profile/profile",
+							"https://pub.example.com/public/users/user-1/profile?v=abc123",
+						objectKey: "public/users/user-1/profile",
 						contentType: "image/png",
 						contentLength: 12345,
 						uploadUrl:
@@ -2260,7 +2236,7 @@ profileImagePatch.requestBody = {
 					value: {
 						imageKind: "profile",
 						imageUrl:
-							"https://pub.example.com/public/users/user-1/profile/profile?v=abc123",
+							"https://pub.example.com/public/users/user-1/profile?v=abc123",
 					},
 				},
 			},
@@ -2278,9 +2254,9 @@ profileImagePatch.responses["200"] = {
 					value: {
 						imageKind: "profile",
 						imageUrl:
-							"https://pub.example.com/public/users/user-1/profile/profile?v=abc123",
+							"https://pub.example.com/public/users/user-1/profile?v=abc123",
 						image:
-							"https://pub.example.com/public/users/user-1/profile/profile?v=abc123",
+							"https://pub.example.com/public/users/user-1/profile?v=abc123",
 						backgroundImage: null,
 						updatedAt: "2026-05-08T01:00:00.000Z",
 					},
@@ -2368,7 +2344,7 @@ profileImageDelete.requestBody = {
 				default: {
 					value: {
 						imageUrl:
-							"https://pub.example.com/public/users/user-1/profile/profile?v=abc123",
+							"https://pub.example.com/public/users/user-1/profile?v=abc123",
 					},
 				},
 			},
@@ -2385,7 +2361,7 @@ profileImageDelete.responses["200"] = {
 				default: {
 					value: {
 						success: true,
-						deletedObjectKey: "public/users/user-1/profile/profile",
+						deletedObjectKey: "public/users/user-1/profile",
 					},
 				},
 			},
@@ -2498,11 +2474,11 @@ profileBentoMediaUpload.responses["200"] = {
 						contentType: "video/mp4",
 						mediaType: "video",
 						tempObjectKey:
-							"public/users/user-1/profile/bento/preview:123e4567-e89b-12d3-a456-426614174000/media",
+							"public/users/user-1/bento/preview:123e4567-e89b-12d3-a456-426614174000",
 						tempUrl:
-							"https://pub.example.com/public/users/user-1/profile/bento/preview:123e4567-e89b-12d3-a456-426614174000/media?v=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+							"https://pub.example.com/public/users/user-1/bento/preview:123e4567-e89b-12d3-a456-426614174000?v=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
 						uploadUrl:
-							"https://upload.example/public%2Fusers%2Fuser-1%2Fprofile%2Fbento%2Fbento_123%2Fmedia?contentType=video%2Fmp4",
+							"https://upload.example/public%2Fusers%2Fuser-1%2Fbento%2Fbento_123?contentType=video%2Fmp4",
 						expiresAt: "2026-05-08T02:00:00.000Z",
 						contentLength: 23456,
 					},
@@ -2552,188 +2528,6 @@ profileBentoMediaUpload.responses["500"] = {
 };
 delete profileBentoMediaUpload.responses.default;
 
-const profileMePost = openApi.paths?.["/profile/me"]?.post as
-	| {
-			requestBody?: unknown;
-			responses?: Record<string, unknown>;
-			summary?: string;
-			description?: string;
-			tags?: string[];
-			operationId?: string;
-	  }
-	| undefined;
-
-if (!profileMePost) {
-	throw new Error("Could not find /profile/me POST operation in openapi.json");
-}
-
-profileMePost.summary = "Create my profile page";
-profileMePost.description =
-	"Creates the authenticated user's first profile page. The server normalizes the submitted handle to lowercase, rejects reserved or malformed handles, trims text fields, treats empty `role` and `location` strings as null, returns 409 when a profile page already exists or the handle is already taken, and returns only the committed page snapshot on success.";
-profileMePost.operationId = "createProfilePage";
-profileMePost.tags = ["Profile API"];
-profileMePost.requestBody = {
-	required: true,
-	content: {
-		"application/json": {
-			schema: profilePageCreateRequestSchema(),
-			examples: {
-				default: {
-					summary: "Create a new profile page",
-					value: {
-						handle: "maker_one",
-						name: "Maker One",
-						bio: "Bio",
-						role: "Creator",
-						location: "Seoul",
-						image: "https://cdn.harune.me/avatar.png",
-					},
-				},
-				emptyOptionalFields: {
-					summary: "Leave optional text fields blank",
-					value: {
-						handle: "harune",
-						name: "Harune",
-						role: "   ",
-						location: "   ",
-					},
-				},
-			},
-		},
-	},
-};
-profileMePost.responses = {
-	200: {
-		description:
-			"Successful profile creation. Returns the committed page snapshot only.",
-		content: {
-			"application/json": {
-				schema: profilePageCreateResponseSchema(),
-				examples: {
-					default: {
-						value: {
-							page: {
-								id: "page_123",
-								userId: "user_123",
-								handle: "maker_one",
-								name: "Maker One",
-								role: "Creator",
-								bio: "Bio",
-								image: "https://cdn.harune.me/avatar.png",
-								backgroundImage: null,
-								location: "Seoul",
-								updatedAt: "2026-05-08T01:00:00.000Z",
-							},
-						},
-					},
-				},
-			},
-		},
-	},
-	400: {
-		description:
-			"Invalid profile creation request. Returned when the payload is malformed, the handle is missing, reserved, or invalid, or one of the optional text or URL fields cannot be normalized.",
-		content: {
-			"application/json": {
-				schema: profileErrorSchema(["validation_error"]),
-				examples: {
-					validation: {
-						value: {
-							error: {
-								code: "validation_error",
-								message: "invalid request",
-							},
-						},
-					},
-				},
-			},
-		},
-	},
-	401: {
-		description: "Authentication required.",
-		content: {
-			"application/json": {
-				schema: profileErrorSchema(["unauthorized"]),
-				examples: {
-					unauthorized: {
-						value: {
-							error: {
-								code: "unauthorized",
-								message: "authentication required",
-							},
-						},
-					},
-				},
-			},
-		},
-	},
-	404: {
-		description: "The authenticated user row does not exist.",
-		content: {
-			"application/json": {
-				schema: profileErrorSchema(["user_not_found"]),
-				examples: {
-					notFound: {
-						value: {
-							error: {
-								code: "user_not_found",
-								message: "user not found",
-							},
-						},
-					},
-				},
-			},
-		},
-	},
-	409: {
-		description:
-			"Returned when the authenticated user already owns a profile page or when another profile page already uses the requested handle.",
-		content: {
-			"application/json": {
-				schema: profileErrorSchema(["profile_page_exists", "handle_taken"]),
-				examples: {
-					existingPage: {
-						value: {
-							error: {
-								code: "profile_page_exists",
-								message: "profile page already exists",
-							},
-						},
-					},
-					takenHandle: {
-						value: {
-							error: {
-								code: "handle_taken",
-								message: "handle already taken",
-							},
-						},
-					},
-				},
-			},
-		},
-	},
-	500: {
-		description:
-			"Failed to load the committed profile snapshot after creation.",
-		content: {
-			"application/json": {
-				schema: profileErrorSchema(["profile_page_create_failed"]),
-				examples: {
-					failed: {
-						value: {
-							error: {
-								code: "profile_page_create_failed",
-								message: "failed to create profile page",
-							},
-						},
-					},
-				},
-			},
-		},
-	},
-};
-delete profileMePost.responses.default;
-
 const profileMePut = openApi.paths?.["/profile/me"]?.put as
 	| {
 			requestBody?: unknown;
@@ -2751,7 +2545,7 @@ if (!profileMePut) {
 
 profileMePut.summary = "Update my profile page";
 profileMePut.description =
-	"Partially updates the authenticated user's profile page. The server trims text fields, allows null to clear fields, treats empty `role` and `location` strings as null, validates image/backgroundImage as absolute http or https URLs when provided, and returns the committed profile snapshot with no-store headers on success.";
+	"Partially updates the authenticated user's profile page. The server trims text fields, allows null to clear fields, treats empty `role` and `location` strings as null, validates image/backgroundImage as absolute http or https URLs when provided, and can also accept a full `bento` snapshot in the same request so profile fields and bento graph commit together with no-store headers on success. When the authenticated user does not yet have a profile page, the same endpoint accepts the onboarding create payload with `handle` and `name` and creates the page before returning the committed profile snapshot.";
 profileMePut.operationId = "updateProfilePage";
 profileMePut.tags = ["Profile API"];
 profileMePut.requestBody = {
@@ -2760,6 +2554,17 @@ profileMePut.requestBody = {
 		"application/json": {
 			schema: profilePageUpdateRequestSchema(),
 			examples: {
+				createIfMissing: {
+					summary: "Create the initial page during onboarding",
+					value: {
+						handle: "maker_one",
+						name: "Maker One",
+						bio: "Bio",
+						role: "Creator",
+						location: "Seoul",
+						image: "https://cdn.harune.me/avatar.png",
+					},
+				},
 				updateNameBio: {
 					summary: "Update name and bio only",
 					value: {
@@ -2772,6 +2577,35 @@ profileMePut.requestBody = {
 					value: {
 						image: null,
 						backgroundImage: null,
+					},
+				},
+				saveProfileAndBento: {
+					summary: "Save profile and bento together",
+					value: {
+						name: "Harune",
+						image:
+							"https://cdn.harune.me/public/users/user_123/profile/profile?v=image-hash-123",
+						bento: [
+							{
+								id: "bento_123",
+								type: "media",
+								layout: {
+									desktop: { x: 0, y: 0, w: 4, h: 4 },
+									compact: { x: 0, y: 0, w: 4, h: 4 },
+								},
+								content: {
+									mediaType: "image",
+									url: "https://cdn.harune.me/public/users/user_123/bento/bento_123?v=content-hash-123",
+									objectKey: "public/users/user_123/bento/bento_123",
+									tempObjectKey:
+										"tmp/users/user_123/bento/bento_123/123e4567-e89b-12d3-a456-426614174000",
+									contentHash: "content-hash-123",
+									contentType: "image/png",
+									alt: "Alt",
+									caption: "Caption",
+								},
+							},
+						],
 					},
 				},
 				blankOptionalFields: {
@@ -2788,7 +2622,7 @@ profileMePut.requestBody = {
 profileMePut.responses = {
 	200: {
 		description:
-			"Successful profile update. Returns the committed profile page snapshot.",
+			"Successful profile update. Returns the committed profile snapshot, including bento when a bento snapshot was included in the same request.",
 		content: {
 			"application/json": {
 				schema: profileResponseSchema(),
@@ -2821,7 +2655,7 @@ profileMePut.responses = {
 	},
 	400: {
 		description:
-			"Invalid profile update request. Returned when the payload is malformed, contains unknown fields, or includes invalid text or URL values.",
+			"Invalid profile update request. Returned when the payload is malformed, contains unknown fields, includes invalid text or URL values, or fails bento validation when a bento snapshot is included.",
 		content: {
 			"application/json": {
 				schema: profileErrorSchema(["validation_error"]),
@@ -2894,214 +2728,4 @@ profileMePut.responses = {
 	},
 };
 delete profileMePut.responses.default;
-
-const profileMeBentoPut = openApi.paths?.["/profile/me/bento"]?.put as
-	| {
-			requestBody?: unknown;
-			responses?: Record<string, unknown>;
-			summary?: string;
-			description?: string;
-			tags?: string[];
-			operationId?: string;
-	  }
-	| undefined;
-
-if (!profileMeBentoPut) {
-	throw new Error(
-		"Could not find /profile/me/bento PUT operation in openapi.json",
-	);
-}
-
-profileMeBentoPut.summary = "Replace my bento graph";
-profileMeBentoPut.description =
-	"Replaces the authenticated user's bento graph with the provided snapshot. The server validates each bento item, deletes bentos missing from the snapshot, promotes legacy temporary media objects when tempObjectKey is present, accepts a public preview object key in tempObjectKey without copying, accepts existing `public/.../preview:` media object keys as-is, accepts percent-encoded `public/.../preview%3A` media object keys from older preview uploads when the object exists, accepts existing media URLs from an older public R2 origin when their path matches `objectKey`, allows empty media alt text, and also resolves a preview draft media object when objectKey still points at a client-generated `preview:` bento id. It returns the saved profile graph assembled from the accepted payload after the database write with no-store headers on success.";
-profileMeBentoPut.operationId = "replaceProfileBentoGraph";
-profileMeBentoPut.tags = ["Profile API"];
-profileMeBentoPut.requestBody = {
-	required: true,
-	content: {
-		"application/json": {
-			schema: profileBentoReplaceRequestSchema(),
-			examples: {
-				mediaTempPromotion: {
-					summary: "Replace a media bento with temp promotion",
-					value: {
-						bento: [
-							{
-								id: "bento_123",
-								type: "media",
-								layout: {
-									desktop: { x: 0, y: 0, w: 4, h: 4 },
-									compact: { x: 0, y: 0, w: 4, h: 4 },
-								},
-								content: {
-									mediaType: "image",
-									url: "https://cdn.harune.me/public/users/user_123/profile/bento/bento_123/media?v=content-hash-123",
-									objectKey:
-										"public/users/user_123/profile/bento/bento_123/media",
-									tempObjectKey:
-										"tmp/users/user_123/profile/bento/bento_123/123e4567-e89b-12d3-a456-426614174000",
-									contentHash: "content-hash-123",
-									contentType: "image/png",
-									alt: "Alt",
-									caption: "Caption",
-								},
-							},
-						],
-					},
-				},
-			},
-		},
-	},
-};
-profileMeBentoPut.responses = {
-	200: {
-		description:
-			"Successful bento graph replacement. Returns the saved profile graph after the database write without re-reading the public profile joins.",
-		content: {
-			"application/json": {
-				schema: profileResponseSchema(),
-				examples: {
-					default: {
-						value: {
-							page: {
-								id: "page_123",
-								userId: "user_123",
-								handle: "harune",
-								name: "Harune",
-								role: "creator",
-								bio: "Link in bio page",
-								image: "https://cdn.harune.me/avatar.png",
-								backgroundImage: null,
-								location: "Seoul",
-								updatedAt: "2026-05-08T01:00:00.000Z",
-							},
-							bento: [
-								{
-									id: "bento_123",
-									type: "media",
-									layout: {
-										desktop: { x: 0, y: 0, w: 4, h: 4 },
-										compact: { x: 0, y: 0, w: 4, h: 4 },
-									},
-									content: {
-										mediaType: "image",
-										url: "https://cdn.harune.me/public/users/user_123/profile/bento/bento_123/media?v=content-hash-123",
-										objectKey:
-											"public/users/user_123/profile/bento/bento_123/media",
-										href: null,
-										alt: "Alt",
-										caption: "Caption",
-									},
-								},
-							],
-							viewer: {
-								isAuthenticated: true,
-								userId: "user_123",
-								canEdit: true,
-							},
-						},
-					},
-				},
-			},
-		},
-	},
-	400: {
-		description:
-			"Invalid bento graph request. Returned when the payload is malformed, contains duplicate ids, includes unsupported or invalid layouts, or fails media ownership or metadata validation.",
-		content: {
-			"application/json": {
-				schema: profileErrorSchema([
-					"validation_error",
-					"invalid_media_upload_ownership",
-					"missing_media_upload_metadata",
-					"profile_media_url_invalid",
-				]),
-				examples: {
-					validation: {
-						value: {
-							error: {
-								code: "validation_error",
-								message: "invalid request",
-							},
-						},
-					},
-					ownership: {
-						value: {
-							error: {
-								code: "invalid_media_upload_ownership",
-								message: "Invalid media upload ownership.",
-							},
-						},
-					},
-					metadata: {
-						value: {
-							error: {
-								code: "missing_media_upload_metadata",
-								message: "Missing media upload metadata.",
-							},
-						},
-					},
-				},
-			},
-		},
-	},
-	401: {
-		description: "Authentication required.",
-		content: {
-			"application/json": {
-				schema: profileErrorSchema(["unauthorized"]),
-				examples: {
-					unauthorized: {
-						value: {
-							error: {
-								code: "unauthorized",
-								message: "authentication required",
-							},
-						},
-					},
-				},
-			},
-		},
-	},
-	404: {
-		description: "The current user does not own a profile page.",
-		content: {
-			"application/json": {
-				schema: profileErrorSchema(["profile_page_not_found"]),
-				examples: {
-					notFound: {
-						value: {
-							error: {
-								code: "profile_page_not_found",
-								message: "profile page not found",
-							},
-						},
-					},
-				},
-			},
-		},
-	},
-	500: {
-		description:
-			"Failed to sync the bento graph or promote required media before the response.",
-		content: {
-			"application/json": {
-				schema: profileErrorSchema(["profile_bento_sync_failed"]),
-				examples: {
-					failed: {
-						value: {
-							error: {
-								code: "profile_bento_sync_failed",
-								message: "failed to sync profile bento",
-							},
-						},
-					},
-				},
-			},
-		},
-	},
-};
-delete profileMeBentoPut.responses.default;
-
 await writeFile(openApiPath, `${JSON.stringify(openApi, null, 2)}\n`);

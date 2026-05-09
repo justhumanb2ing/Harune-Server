@@ -40,7 +40,6 @@ import {
 import type {
 	ProfileBentoSnapshot,
 	ProfilePagePatch,
-	ProfilePageRecord,
 	ProfilePageSummary,
 } from "../repositories/profile-repository";
 import {
@@ -132,6 +131,12 @@ type ProfileRouteDependencies = {
 	syncProfileBentoGraph?: typeof syncProfileBentoGraph;
 	getProfile?: typeof getProfile;
 	createPresignedPutUrl?: typeof createR2PresignedPutUrl;
+};
+
+type ProfileRouteContext = {
+	env: AppBindings["Bindings"];
+	get<T = unknown>(key: string): T;
+	executionCtx?: { waitUntil: (promise: Promise<unknown>) => void };
 };
 
 function withNoStore(response: Response) {
@@ -264,19 +269,15 @@ function parseProfileImageTarget(baseUrl: string, imageUrl: string) {
 	const segments = objectKey.split("/");
 
 	if (
-		segments.length !== 5 ||
+		segments.length !== 4 ||
 		segments[0] !== "public" ||
 		segments[1] !== "users" ||
-		segments[3] !== "profile"
+		(segments[3] !== "profile" && segments[3] !== "background")
 	) {
 		return null;
 	}
 
-	const imageKind = segments[4];
-
-	if (imageKind !== "profile" && imageKind !== "background") {
-		return null;
-	}
+	const imageKind = segments[3];
 
 	return {
 		objectKey,
@@ -474,6 +475,482 @@ function parseProfilePagePatch(body: unknown): ProfilePagePatch | null {
 	}
 
 	return patch;
+}
+
+function parseProfileSaveBody(
+	body: unknown,
+): { patch: ProfilePagePatch; bentos: ProfileBentoSnapshot[] | null } | null {
+	if (!isRecord(body)) {
+		return null;
+	}
+
+	const allowedKeys = new Set([
+		"name",
+		"location",
+		"role",
+		"bio",
+		"image",
+		"backgroundImage",
+		"bento",
+	]);
+
+	for (const key of Object.keys(body)) {
+		if (!allowedKeys.has(key)) {
+			return null;
+		}
+	}
+
+	const pageBody: Record<string, unknown> = {};
+	for (const key of [
+		"name",
+		"location",
+		"role",
+		"bio",
+		"image",
+		"backgroundImage",
+	] as const) {
+		if (key in body) {
+			pageBody[key] = body[key];
+		}
+	}
+
+	const patch = parseProfilePagePatch(pageBody);
+
+	if (!patch) {
+		return null;
+	}
+
+	const hasPageFields = Object.keys(pageBody).length > 0;
+	const hasBento = "bento" in body;
+
+	if (!hasPageFields && !hasBento) {
+		return null;
+	}
+
+	if (!hasBento) {
+		return { patch, bentos: null };
+	}
+
+	const bentos = parseProfileBentoItems({ bento: body.bento }) as
+		| ProfileBentoSnapshot[]
+		| null;
+
+	if (!bentos) {
+		return null;
+	}
+
+	return { patch, bentos };
+}
+
+async function syncProfileBentoGraphResponse(
+	c: ProfileRouteContext,
+	page: ProfilePageSummary,
+	sessionUserId: string,
+	bentos: ProfileBentoSnapshot[],
+	syncBentoGraph: typeof syncProfileBentoGraph,
+	requestId: string,
+	metrics: {
+		bodyParseMs: number;
+		validationMs: number;
+	},
+) {
+	let normalizationMs = 0;
+	let dbMs = 0;
+	let cleanupMs = 0;
+	let r2LookupMs = 0;
+	let r2CopyMs = 0;
+
+	const requestStartedAt = Date.now();
+	const normalizationStartedAt = Date.now();
+	const normalizationResults = await Promise.all(
+		bentos.map(
+			async (
+				bento,
+			): Promise<{
+				bento: ProfileBentoSnapshot | null;
+				tempObjectKeyToDelete: string | null;
+				response: Response | null;
+				copy?: {
+					sourceObjectKey: string;
+					targetObjectKey: string;
+					contentHash?: string;
+					buildBento: (copied: { contentHash: string }) => ProfileBentoSnapshot;
+				};
+			}> => {
+				if (bento.type !== "media") {
+					return {
+						bento,
+						tempObjectKeyToDelete: null,
+						response: null,
+					};
+				}
+
+				const tempObjectKey = bento.content.tempObjectKey;
+				const objectKey = bento.content.objectKey;
+				const finalObjectKey = getProfileMediaObjectKey(
+					sessionUserId,
+					bento.id,
+				);
+
+				if (tempObjectKey) {
+					const parsedTempObjectKey =
+						parseProfileBentoMediaObjectKey(tempObjectKey);
+					const ownsTempObjectKey =
+						parsedTempObjectKey !== null &&
+						parsedTempObjectKey.userId === sessionUserId &&
+						(parsedTempObjectKey.kind === "temp"
+							? parsedTempObjectKey.bentoId === bento.id ||
+								parsedTempObjectKey.bentoId.startsWith("preview:")
+							: parsedTempObjectKey.bentoId.startsWith("preview:"));
+
+					if (!ownsTempObjectKey) {
+						return {
+							bento: null,
+							tempObjectKeyToDelete: null,
+							response: withNoStore(
+								badRequest(
+									c,
+									"invalid_media_upload_ownership",
+									"Invalid media upload ownership.",
+								),
+							),
+						};
+					}
+
+					if (!bento.content.contentHash || !bento.content.contentType) {
+						return {
+							bento: null,
+							tempObjectKeyToDelete: null,
+							response: withNoStore(
+								badRequest(
+									c,
+									"missing_media_upload_metadata",
+									"Missing media upload metadata.",
+								),
+							),
+						};
+					}
+
+					if (parsedTempObjectKey?.kind === "final") {
+						const lookupStartedAt = Date.now();
+						const existingPreviewObjectKey =
+							await findExistingProfileMediaObjectKey(
+								c.env.PROFILE_MEDIA_BUCKET,
+								[tempObjectKey],
+							);
+						r2LookupMs += Date.now() - lookupStartedAt;
+
+						if (!existingPreviewObjectKey) {
+							return {
+								bento: null,
+								tempObjectKeyToDelete: null,
+								response: withNoStore(
+									badRequest(
+										c,
+										"invalid_media_upload_ownership",
+										"Invalid media upload ownership.",
+									),
+								),
+							};
+						}
+
+						return {
+							bento: {
+								...bento,
+								content: {
+									mediaType: bento.content.mediaType,
+									url: getProfileBentoMediaPublicUrl(
+										c.env.R2_PUBLIC_BASE_URL,
+										existingPreviewObjectKey,
+										bento.content.contentHash,
+									),
+									objectKey: existingPreviewObjectKey,
+									href: bento.content.href,
+									alt: bento.content.alt,
+									caption: bento.content.caption,
+								},
+							},
+							tempObjectKeyToDelete: null,
+							response: null,
+						};
+					}
+
+					return {
+						bento: null,
+						tempObjectKeyToDelete: tempObjectKey,
+						response: null,
+						copy: {
+							sourceObjectKey: tempObjectKey,
+							targetObjectKey: finalObjectKey,
+							contentHash: bento.content.contentHash ?? undefined,
+							buildBento: (copied) => ({
+								...bento,
+								content: {
+									mediaType: bento.content.mediaType,
+									url: getProfileBentoMediaPublicUrl(
+										c.env.R2_PUBLIC_BASE_URL,
+										finalObjectKey,
+										bento.content.contentHash ?? copied.contentHash,
+									),
+									objectKey: finalObjectKey,
+									href: bento.content.href,
+									alt: bento.content.alt,
+									caption: bento.content.caption,
+								},
+							}),
+						},
+					};
+				}
+
+				const publicObjectKey =
+					parseObjectKeyFromPublicUrl(
+						c.env.R2_PUBLIC_BASE_URL,
+						bento.content.url,
+					) ?? parseProfileMediaObjectKeyFromUrlPath(bento.content.url);
+				const parsedObjectKey = parseProfileBentoMediaObjectKey(objectKey);
+				const normalizedObjectKey = normalizeProfileMediaObjectKey(objectKey);
+				const normalizedPublicObjectKey = publicObjectKey
+					? normalizeProfileMediaObjectKey(publicObjectKey)
+					: null;
+
+				if (
+					!normalizedPublicObjectKey ||
+					!normalizedObjectKey ||
+					normalizedPublicObjectKey !== normalizedObjectKey
+				) {
+					return {
+						bento: null,
+						tempObjectKeyToDelete: null,
+						response: withNoStore(
+							badRequest(
+								c,
+								"profile_media_url_invalid",
+								"media url does not match objectKey",
+							),
+						),
+					};
+				}
+
+				if (
+					isProfileBentoMediaObjectKeyForBento(
+						objectKey,
+						sessionUserId,
+						bento.id,
+					)
+				) {
+					return {
+						bento: {
+							...bento,
+							content: {
+								mediaType: bento.content.mediaType,
+								url: getProfileBentoMediaPublicUrl(
+									c.env.R2_PUBLIC_BASE_URL,
+									finalObjectKey,
+									bento.content.contentHash ?? "",
+								),
+								objectKey: finalObjectKey,
+								href: bento.content.href,
+								alt: bento.content.alt,
+								caption: bento.content.caption,
+							},
+						},
+						tempObjectKeyToDelete: null,
+						response: null,
+					};
+				}
+
+				if (
+					parsedObjectKey &&
+					parsedObjectKey.kind === "final" &&
+					parsedObjectKey.userId === sessionUserId &&
+					parsedObjectKey.bentoId.startsWith("preview:")
+				) {
+					const lookupStartedAt = Date.now();
+					const existingPreviewObjectKey =
+						await findExistingProfileMediaObjectKey(
+							c.env.PROFILE_MEDIA_BUCKET,
+							[normalizedObjectKey, objectKey, publicObjectKey ?? ""].filter(
+								(candidate) => candidate.length > 0,
+							),
+						);
+					r2LookupMs += Date.now() - lookupStartedAt;
+
+					if (existingPreviewObjectKey) {
+						return {
+							bento: {
+								...bento,
+								content: {
+									mediaType: bento.content.mediaType,
+									url: getProfileBentoMediaPublicUrl(
+										c.env.R2_PUBLIC_BASE_URL,
+										existingPreviewObjectKey,
+										bento.content.contentHash ?? "",
+									),
+									objectKey: existingPreviewObjectKey,
+									href: bento.content.href,
+									alt: bento.content.alt,
+									caption: bento.content.caption,
+								},
+							},
+							tempObjectKeyToDelete: null,
+							response: null,
+						};
+					}
+
+					const previewTempLookupStartedAt = Date.now();
+					const previewTempObjectKey =
+						await findSingleProfileMediaTempObjectKey(
+							c.env.PROFILE_MEDIA_BUCKET,
+							sessionUserId,
+							parsedObjectKey.bentoId,
+						);
+					r2LookupMs += Date.now() - previewTempLookupStartedAt;
+
+					if (!previewTempObjectKey) {
+						return {
+							bento: null,
+							tempObjectKeyToDelete: null,
+							response: withNoStore(
+								badRequest(
+									c,
+									"invalid_media_upload_ownership",
+									"Invalid media upload ownership.",
+								),
+							),
+						};
+					}
+
+					return {
+						bento: null,
+						tempObjectKeyToDelete: previewTempObjectKey,
+						response: null,
+						copy: {
+							sourceObjectKey: previewTempObjectKey,
+							targetObjectKey: finalObjectKey,
+							contentHash: bento.content.contentHash ?? undefined,
+							buildBento: (copied) => ({
+								...bento,
+								content: {
+									mediaType: bento.content.mediaType,
+									url: getProfileBentoMediaPublicUrl(
+										c.env.R2_PUBLIC_BASE_URL,
+										finalObjectKey,
+										bento.content.contentHash ?? copied.contentHash,
+									),
+									objectKey: finalObjectKey,
+									href: bento.content.href,
+									alt: bento.content.alt,
+									caption: bento.content.caption,
+								},
+							}),
+						},
+					};
+				}
+
+				return {
+					bento: null,
+					tempObjectKeyToDelete: null,
+					response: withNoStore(
+						badRequest(
+							c,
+							"invalid_media_upload_ownership",
+							"Invalid media upload ownership.",
+						),
+					),
+				};
+			},
+		),
+	);
+	normalizationMs = Date.now() - normalizationStartedAt;
+
+	const invalidNormalization = normalizationResults.find(
+		(result) => result.response,
+	);
+
+	if (invalidNormalization?.response) {
+		return invalidNormalization.response;
+	}
+
+	const tempObjectKeysToDelete = new Set<string>();
+	const normalizedBentosStartedAt = Date.now();
+	const normalizedBentos = await Promise.all(
+		normalizationResults.map(async (result) => {
+			if (result.copy) {
+				const copyStartedAt = Date.now();
+				const copied = await copyProfileBentoMediaObject(
+					c.env.PROFILE_MEDIA_BUCKET,
+					result.copy.sourceObjectKey,
+					result.copy.targetObjectKey,
+					{
+						contentHash: result.copy.contentHash,
+					},
+				);
+				r2CopyMs += Date.now() - copyStartedAt;
+
+				if (result.tempObjectKeyToDelete) {
+					tempObjectKeysToDelete.add(result.tempObjectKeyToDelete);
+				}
+
+				return result.copy.buildBento(copied);
+			}
+
+			if (!result.bento) {
+				throw new Error("missing normalized bento");
+			}
+
+			return result.bento;
+		}),
+	);
+	normalizationMs += Date.now() - normalizedBentosStartedAt;
+
+	const dbStartedAt = Date.now();
+	await syncBentoGraph(c.get("db"), page.id, normalizedBentos);
+	dbMs = Date.now() - dbStartedAt;
+
+	if (tempObjectKeysToDelete.size > 0) {
+		const cleanupStartedAt = Date.now();
+		waitForProfileCleanup(
+			c,
+			deleteProfileBentoMediaObjects(
+				c.env.PROFILE_MEDIA_BUCKET,
+				tempObjectKeysToDelete,
+			),
+		);
+		cleanupMs = Date.now() - cleanupStartedAt;
+	}
+
+	logProfileBentoSaveTiming({
+		route: "PUT /profile/me",
+		requestId,
+		bodyParseMs: metrics.bodyParseMs,
+		validationMs: metrics.validationMs,
+		normalizationMs,
+		r2LookupMs,
+		r2CopyMs,
+		dbMs,
+		cleanupMs,
+		bentoCount: normalizedBentos.length,
+		mediaCount: normalizedBentos.filter((bento) => bento.type === "media")
+			.length,
+		totalMs: Date.now() - requestStartedAt,
+	});
+
+	return new Response(
+		JSON.stringify({
+			page: toProfilePageResponse(page),
+			bento: normalizedBentos,
+			viewer: {
+				isAuthenticated: true,
+				userId: sessionUserId,
+				canEdit: true,
+			},
+		}),
+		{
+			headers: {
+				"content-type": "application/json",
+			},
+		},
+	);
 }
 
 function parseRequiredCreateTextField(value: unknown, maxLength: number) {
@@ -990,120 +1467,6 @@ export function createProfileRoute(
 			await next();
 			withNoStore(c.res);
 		})
-		.post("/me", async (c) => {
-			try {
-				const session = c.get("session");
-
-				if (!session?.userId) {
-					return withNoStore(
-						unauthorized(c, "unauthorized", "authentication required"),
-					);
-				}
-
-				let body: unknown;
-
-				try {
-					body = await c.req.json();
-				} catch {
-					return withNoStore(validationError(c));
-				}
-
-				const parsed = parseCreateProfilePageBody(body);
-
-				if (!parsed) {
-					return withNoStore(validationError(c));
-				}
-
-				const db = c.get("db");
-				const user = await findUserByIdForCreate(db, session.userId);
-
-				if (!user) {
-					return withNoStore(notFound(c, "user_not_found", "user not found"));
-				}
-
-				const existingPage = await findPageByUserId(db, session.userId);
-
-				if (existingPage) {
-					return withNoStore(
-						conflict(c, "profile_page_exists", "profile page already exists"),
-					);
-				}
-
-				const existingHandle = await findPageByHandle(db, parsed.handle);
-
-				if (existingHandle) {
-					return withNoStore(
-						conflict(c, "handle_taken", "handle already taken"),
-					);
-				}
-
-				try {
-					const committedPage = await createPage(db, {
-						userId: session.userId,
-						handle: parsed.handle,
-						name: parsed.name,
-						bio: parsed.bio,
-						role: parsed.role,
-						location: parsed.location,
-						image: parsed.image,
-					});
-
-					if (!committedPage) {
-						return withNoStore(
-							internalServerError(
-								c,
-								"profile_page_create_failed",
-								"failed to load created profile page",
-							),
-						);
-					}
-
-					const response = c.json<ProfilePageResponse>({
-						page: toProfilePageResponse(committedPage),
-					});
-
-					return withNoStore(response);
-				} catch (error) {
-					const constraint = getDbConstraint(error);
-
-					if (isUniqueViolation(error)) {
-						if (constraint === "profile_page_user_id_idx") {
-							return withNoStore(
-								conflict(
-									c,
-									"profile_page_exists",
-									"profile page already exists",
-								),
-							);
-						}
-
-						if (constraint === "profile_page_handle_idx") {
-							return withNoStore(
-								conflict(c, "handle_taken", "handle already taken"),
-							);
-						}
-					}
-
-					if (isForeignKeyViolation(error)) {
-						return withNoStore(notFound(c, "user_not_found", "user not found"));
-					}
-
-					throw error;
-				}
-			} catch (error) {
-				if (error instanceof HTTPException) {
-					throw error;
-				}
-
-				return withNoStore(
-					internalServerError(
-						c,
-						"profile_page_create_failed",
-						"failed to create profile page",
-					),
-				);
-			}
-		})
 		.put("/me", async (c) => {
 			try {
 				const session = c.get("session");
@@ -1122,34 +1485,140 @@ export function createProfileRoute(
 					return withNoStore(validationError(c));
 				}
 
-				const patch = parseProfilePagePatch(body);
+				const db = c.get("db");
+				const page = await findPageByUserId(db, session.userId);
 
-				if (!patch) {
+				if (!page) {
+					const parsedCreate = parseCreateProfilePageBody(body);
+
+					if (!parsedCreate) {
+						return withNoStore(validationError(c));
+					}
+
+					const user = await findUserByIdForCreate(db, session.userId);
+
+					if (!user) {
+						return withNoStore(notFound(c, "user_not_found", "user not found"));
+					}
+
+					const existingHandle = await findPageByHandle(
+						db,
+						parsedCreate.handle,
+					);
+
+					if (existingHandle) {
+						return withNoStore(
+							conflict(c, "handle_taken", "handle already taken"),
+						);
+					}
+
+					try {
+						const committedPage = await createPage(db, {
+							userId: session.userId,
+							handle: parsedCreate.handle,
+							name: parsedCreate.name,
+							bio: parsedCreate.bio,
+							role: parsedCreate.role,
+							location: parsedCreate.location,
+							image: parsedCreate.image,
+						});
+
+						if (!committedPage) {
+							return withNoStore(
+								internalServerError(
+									c,
+									"profile_page_create_failed",
+									"failed to load created profile page",
+								),
+							);
+						}
+
+						const profile = await getProfileForUser(db, committedPage.handle, {
+							userId: session.userId,
+						});
+
+						const response = c.json<ProfileResponse>({
+							...profile,
+							page: toProfilePageResponse(committedPage),
+						});
+
+						return withNoStore(response);
+					} catch (error) {
+						const constraint = getDbConstraint(error);
+
+						if (isUniqueViolation(error)) {
+							if (constraint === "profile_page_user_id_idx") {
+								return withNoStore(
+									conflict(
+										c,
+										"profile_page_exists",
+										"profile page already exists",
+									),
+								);
+							}
+
+							if (constraint === "profile_page_handle_idx") {
+								return withNoStore(
+									conflict(c, "handle_taken", "handle already taken"),
+								);
+							}
+						}
+
+						if (isForeignKeyViolation(error)) {
+							return withNoStore(
+								notFound(c, "user_not_found", "user not found"),
+							);
+						}
+
+						throw error;
+					}
+				}
+
+				if (isRecord(body) && "handle" in body) {
+					return withNoStore(
+						conflict(c, "profile_page_exists", "profile page already exists"),
+					);
+				}
+
+				const parsed = parseProfileSaveBody(body);
+
+				if (!parsed) {
 					return withNoStore(validationError(c));
 				}
 
-				const page = await findPageByUserId(c.get("db"), session.userId);
+				let committedPage = page;
 
-				if (!page) {
-					return withNoStore(
-						notFound(c, "profile_page_not_found", "profile page not found"),
+				if (Object.keys(parsed.patch).length > 0) {
+					committedPage = await updatePageByUserId(
+						c.get("db"),
+						session.userId,
+						parsed.patch,
 					);
+
+					if (!committedPage) {
+						return withNoStore(
+							internalServerError(
+								c,
+								"profile_page_update_failed",
+								"failed to load updated profile page",
+							),
+						);
+					}
 				}
 
-				const committedPage = await updatePageByUserId(
-					c.get("db"),
-					session.userId,
-					patch,
-				);
-
-				if (!committedPage) {
-					return withNoStore(
-						internalServerError(
-							c,
-							"profile_page_update_failed",
-							"failed to load updated profile page",
-						),
+				if (parsed.bentos) {
+					const requestId = c.req.header("x-request-id") ?? crypto.randomUUID();
+					const response = await syncProfileBentoGraphResponse(
+						c,
+						committedPage,
+						session.userId,
+						parsed.bentos,
+						syncBentoGraph,
+						requestId,
+						{ bodyParseMs: 0, validationMs: 0 },
 					);
+
+					return withNoStore(response);
 				}
 
 				const profile = await getProfileForUser(
@@ -1176,455 +1645,6 @@ export function createProfileRoute(
 						c,
 						"profile_page_update_failed",
 						"failed to update profile page",
-					),
-				);
-			}
-		})
-		.put("/me/bento", async (c) => {
-			try {
-				const session = c.get("session");
-
-				if (!session?.userId) {
-					return withNoStore(
-						unauthorized(c, "unauthorized", "authentication required"),
-					);
-				}
-
-				const requestStartedAt = Date.now();
-				const requestId = c.req.header("x-request-id") ?? crypto.randomUUID();
-				let bodyParseMs = 0;
-				let validationMs = 0;
-				let normalizationMs = 0;
-				let dbMs = 0;
-				let cleanupMs = 0;
-				let r2LookupMs = 0;
-				let r2CopyMs = 0;
-
-				let body: unknown;
-
-				try {
-					const bodyStartedAt = Date.now();
-					body = await c.req.json();
-					bodyParseMs = Date.now() - bodyStartedAt;
-				} catch {
-					return withNoStore(validationError(c));
-				}
-
-				const validationStartedAt = Date.now();
-				const bentos = parseProfileBentoItems(body);
-				validationMs = Date.now() - validationStartedAt;
-
-				if (!bentos) {
-					return withNoStore(validationError(c));
-				}
-
-				const page = await findPageByUserId(c.get("db"), session.userId);
-
-				if (!page) {
-					return withNoStore(
-						notFound(c, "profile_page_not_found", "profile page not found"),
-					);
-				}
-
-				const normalizationStartedAt = Date.now();
-				const normalizationResults = await Promise.all(
-					bentos.map(
-						async (
-							bento,
-						): Promise<{
-							bento: ProfileBentoSnapshot | null;
-							tempObjectKeyToDelete: string | null;
-							response: Response | null;
-							copy?: {
-								sourceObjectKey: string;
-								targetObjectKey: string;
-								contentHash?: string;
-								buildBento: (copied: {
-									contentHash: string;
-								}) => ProfileBentoSnapshot;
-							};
-						}> => {
-							if (bento.type !== "media") {
-								return {
-									bento,
-									tempObjectKeyToDelete: null,
-									response: null,
-								};
-							}
-
-							const tempObjectKey = bento.content.tempObjectKey;
-							const objectKey = bento.content.objectKey;
-							const finalObjectKey = getProfileMediaObjectKey(
-								session.userId,
-								bento.id,
-							);
-
-							if (tempObjectKey) {
-								const parsedTempObjectKey =
-									parseProfileBentoMediaObjectKey(tempObjectKey);
-								const ownsTempObjectKey =
-									parsedTempObjectKey !== null &&
-									parsedTempObjectKey.userId === session.userId &&
-									(parsedTempObjectKey.kind === "temp"
-										? parsedTempObjectKey.bentoId === bento.id ||
-											parsedTempObjectKey.bentoId.startsWith("preview:")
-										: parsedTempObjectKey.bentoId.startsWith("preview:"));
-
-								if (!ownsTempObjectKey) {
-									return {
-										bento: null,
-										tempObjectKeyToDelete: null,
-										response: withNoStore(
-											badRequest(
-												c,
-												"invalid_media_upload_ownership",
-												"Invalid media upload ownership.",
-											),
-										),
-									};
-								}
-
-								if (!bento.content.contentHash || !bento.content.contentType) {
-									return {
-										bento: null,
-										tempObjectKeyToDelete: null,
-										response: withNoStore(
-											badRequest(
-												c,
-												"missing_media_upload_metadata",
-												"Missing media upload metadata.",
-											),
-										),
-									};
-								}
-
-								if (parsedTempObjectKey?.kind === "final") {
-									const lookupStartedAt = Date.now();
-									const existingPreviewObjectKey =
-										await findExistingProfileMediaObjectKey(
-											c.env.PROFILE_MEDIA_BUCKET,
-											[tempObjectKey],
-										);
-									r2LookupMs += Date.now() - lookupStartedAt;
-
-									if (!existingPreviewObjectKey) {
-										return {
-											bento: null,
-											tempObjectKeyToDelete: null,
-											response: withNoStore(
-												badRequest(
-													c,
-													"invalid_media_upload_ownership",
-													"Invalid media upload ownership.",
-												),
-											),
-										};
-									}
-
-									return {
-										bento: {
-											...bento,
-											content: {
-												mediaType: bento.content.mediaType,
-												url: getProfileBentoMediaPublicUrl(
-													c.env.R2_PUBLIC_BASE_URL,
-													existingPreviewObjectKey,
-													bento.content.contentHash,
-												),
-												objectKey: existingPreviewObjectKey,
-												href: bento.content.href,
-												alt: bento.content.alt,
-												caption: bento.content.caption,
-											},
-										},
-										tempObjectKeyToDelete: null,
-										response: null,
-									};
-								}
-
-								return {
-									bento: null,
-									tempObjectKeyToDelete: tempObjectKey,
-									response: null,
-									copy: {
-										sourceObjectKey: tempObjectKey,
-										targetObjectKey: finalObjectKey,
-										contentHash: bento.content.contentHash ?? undefined,
-										buildBento: (copied) => ({
-											...bento,
-											content: {
-												mediaType: bento.content.mediaType,
-												url: getProfileBentoMediaPublicUrl(
-													c.env.R2_PUBLIC_BASE_URL,
-													finalObjectKey,
-													bento.content.contentHash ?? copied.contentHash,
-												),
-												objectKey: finalObjectKey,
-												href: bento.content.href,
-												alt: bento.content.alt,
-												caption: bento.content.caption,
-											},
-										}),
-									},
-								};
-							} else {
-								const publicObjectKey =
-									parseObjectKeyFromPublicUrl(
-										c.env.R2_PUBLIC_BASE_URL,
-										bento.content.url,
-									) ?? parseProfileMediaObjectKeyFromUrlPath(bento.content.url);
-								const parsedObjectKey =
-									parseProfileBentoMediaObjectKey(objectKey);
-								const normalizedObjectKey =
-									normalizeProfileMediaObjectKey(objectKey);
-								const normalizedPublicObjectKey = publicObjectKey
-									? normalizeProfileMediaObjectKey(publicObjectKey)
-									: null;
-
-								if (
-									!normalizedPublicObjectKey ||
-									!normalizedObjectKey ||
-									normalizedPublicObjectKey !== normalizedObjectKey
-								) {
-									return {
-										bento: null,
-										tempObjectKeyToDelete: null,
-										response: withNoStore(
-											badRequest(
-												c,
-												"profile_media_url_invalid",
-												"media url does not match objectKey",
-											),
-										),
-									};
-								}
-
-								if (
-									isProfileBentoMediaObjectKeyForBento(
-										objectKey,
-										session.userId,
-										bento.id,
-									)
-								) {
-									return {
-										bento: {
-											...bento,
-											content: {
-												mediaType: bento.content.mediaType,
-												url: getProfileBentoMediaPublicUrl(
-													c.env.R2_PUBLIC_BASE_URL,
-													finalObjectKey,
-													bento.content.contentHash ?? "",
-												),
-												objectKey: finalObjectKey,
-												href: bento.content.href,
-												alt: bento.content.alt,
-												caption: bento.content.caption,
-											},
-										},
-										tempObjectKeyToDelete: null,
-										response: null,
-									};
-								} else if (
-									parsedObjectKey &&
-									parsedObjectKey.kind === "final" &&
-									parsedObjectKey.userId === session.userId &&
-									parsedObjectKey.bentoId.startsWith("preview:")
-								) {
-									const lookupStartedAt = Date.now();
-									const existingPreviewObjectKey =
-										await findExistingProfileMediaObjectKey(
-											c.env.PROFILE_MEDIA_BUCKET,
-											[
-												normalizedObjectKey,
-												objectKey,
-												publicObjectKey ?? "",
-											].filter((candidate) => candidate.length > 0),
-										);
-									r2LookupMs += Date.now() - lookupStartedAt;
-
-									if (existingPreviewObjectKey) {
-										return {
-											bento: {
-												...bento,
-												content: {
-													mediaType: bento.content.mediaType,
-													url: getProfileBentoMediaPublicUrl(
-														c.env.R2_PUBLIC_BASE_URL,
-														existingPreviewObjectKey,
-														bento.content.contentHash ?? "",
-													),
-													objectKey: existingPreviewObjectKey,
-													href: bento.content.href,
-													alt: bento.content.alt,
-													caption: bento.content.caption,
-												},
-											},
-											tempObjectKeyToDelete: null,
-											response: null,
-										};
-									}
-
-									const previewTempLookupStartedAt = Date.now();
-									const previewTempObjectKey =
-										await findSingleProfileMediaTempObjectKey(
-											c.env.PROFILE_MEDIA_BUCKET,
-											session.userId,
-											parsedObjectKey.bentoId,
-										);
-									r2LookupMs += Date.now() - previewTempLookupStartedAt;
-
-									if (!previewTempObjectKey) {
-										return {
-											bento: null,
-											tempObjectKeyToDelete: null,
-											response: withNoStore(
-												badRequest(
-													c,
-													"invalid_media_upload_ownership",
-													"Invalid media upload ownership.",
-												),
-											),
-										};
-									}
-
-									return {
-										bento: null,
-										tempObjectKeyToDelete: previewTempObjectKey,
-										response: null,
-										copy: {
-											sourceObjectKey: previewTempObjectKey,
-											targetObjectKey: finalObjectKey,
-											contentHash: bento.content.contentHash ?? undefined,
-											buildBento: (copied) => ({
-												...bento,
-												content: {
-													mediaType: bento.content.mediaType,
-													url: getProfileBentoMediaPublicUrl(
-														c.env.R2_PUBLIC_BASE_URL,
-														finalObjectKey,
-														bento.content.contentHash ?? copied.contentHash,
-													),
-													objectKey: finalObjectKey,
-													href: bento.content.href,
-													alt: bento.content.alt,
-													caption: bento.content.caption,
-												},
-											}),
-										},
-									};
-								} else {
-									return {
-										bento: null,
-										tempObjectKeyToDelete: null,
-										response: withNoStore(
-											badRequest(
-												c,
-												"invalid_media_upload_ownership",
-												"Invalid media upload ownership.",
-											),
-										),
-									};
-								}
-							}
-						},
-					),
-				);
-				normalizationMs = Date.now() - normalizationStartedAt;
-
-				const invalidNormalization = normalizationResults.find(
-					(result) => result.response,
-				);
-
-				if (invalidNormalization?.response) {
-					return invalidNormalization.response;
-				}
-
-				const tempObjectKeysToDelete = new Set<string>();
-				const normalizedBentosStartedAt = Date.now();
-				const normalizedBentos = await Promise.all(
-					normalizationResults.map(async (result) => {
-						if (result.copy) {
-							const copyStartedAt = Date.now();
-							const copied = await copyProfileBentoMediaObject(
-								c.env.PROFILE_MEDIA_BUCKET,
-								result.copy.sourceObjectKey,
-								result.copy.targetObjectKey,
-								{
-									contentHash: result.copy.contentHash,
-								},
-							);
-							r2CopyMs += Date.now() - copyStartedAt;
-
-							if (result.tempObjectKeyToDelete) {
-								tempObjectKeysToDelete.add(result.tempObjectKeyToDelete);
-							}
-
-							return result.copy.buildBento(copied);
-						}
-
-						if (!result.bento) {
-							throw new Error("missing normalized bento");
-						}
-
-						return result.bento;
-					}),
-				);
-				normalizationMs += Date.now() - normalizedBentosStartedAt;
-
-				const dbStartedAt = Date.now();
-				await syncBentoGraph(c.get("db"), page.id, normalizedBentos);
-				dbMs = Date.now() - dbStartedAt;
-
-				if (tempObjectKeysToDelete.size > 0) {
-					const cleanupStartedAt = Date.now();
-					waitForProfileCleanup(
-						c,
-						deleteProfileBentoMediaObjects(
-							c.env.PROFILE_MEDIA_BUCKET,
-							tempObjectKeysToDelete,
-						),
-					);
-					cleanupMs = Date.now() - cleanupStartedAt;
-				}
-
-				logProfileBentoSaveTiming({
-					route: "PUT /profile/me/bento",
-					requestId,
-					bodyParseMs,
-					validationMs,
-					normalizationMs,
-					r2LookupMs,
-					r2CopyMs,
-					dbMs,
-					cleanupMs,
-					bentoCount: normalizedBentos.length,
-					mediaCount: normalizedBentos.filter((bento) => bento.type === "media")
-						.length,
-					totalMs: Date.now() - requestStartedAt,
-				});
-
-				const response = c.json<ProfileResponse>({
-					page: toProfilePageResponse(page),
-					bento: normalizedBentos,
-					viewer: {
-						isAuthenticated: true,
-						userId: session.userId,
-						canEdit: true,
-					},
-				});
-
-				return withNoStore(response);
-			} catch (error) {
-				if (error instanceof HTTPException) {
-					throw error;
-				}
-
-				return withNoStore(
-					internalServerError(
-						c,
-						"profile_bento_sync_failed",
-						"failed to sync profile bento",
 					),
 				);
 			}

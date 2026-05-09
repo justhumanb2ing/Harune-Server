@@ -1,6 +1,6 @@
-import type { R2Bucket } from "@cloudflare/workers-types";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import type { R2Bucket } from "@cloudflare/workers-types";
 
 export const MAX_PROFILE_IMAGE_BYTES = 5 * 1024 * 1024;
 export const MAX_PROFILE_MEDIA_BYTES = 5 * 1024 * 1024;
@@ -73,7 +73,7 @@ export function getProfileImageObjectKey(
 	userId: string,
 	imageKind: ProfileImageKind,
 ) {
-	return `public/users/${userId}/profile/${imageKind}`;
+	return `public/users/${userId}/${imageKind}`;
 }
 
 export function getProfileMediaTempObjectKey(
@@ -81,18 +81,18 @@ export function getProfileMediaTempObjectKey(
 	bentoId: string,
 	objectId = crypto.randomUUID(),
 ) {
-	return `tmp/users/${userId}/profile/bento/${bentoId}/${objectId}`;
+	return `tmp/users/${userId}/bento/${bentoId}/${objectId}`;
 }
 
 export function getProfileMediaTempObjectPrefix(
 	userId: string,
 	bentoId: string,
 ) {
-	return `tmp/users/${userId}/profile/bento/${bentoId}/`;
+	return `tmp/users/${userId}/bento/${bentoId}/`;
 }
 
 export function getProfileMediaObjectKey(userId: string, bentoId: string) {
-	return `public/users/${userId}/profile/bento/${bentoId}/media`;
+	return `public/users/${userId}/bento/${bentoId}`;
 }
 
 export function getProfileBentoMediaPublicUrl(
@@ -127,14 +127,13 @@ export function parseProfileBentoMediaObjectKey(objectKey: string) {
 	const segments = normalizedObjectKey.split("/");
 
 	if (
-		segments.length === 7 &&
+		segments.length === 6 &&
 		segments[0] === "tmp" &&
 		segments[1] === "users" &&
-		segments[3] === "profile" &&
-		segments[4] === "bento"
+		segments[3] === "bento"
 	) {
-		const bentoId = decodeObjectKeySegment(segments[5] ?? "");
-		const objectId = decodeObjectKeySegment(segments[6] ?? "");
+		const bentoId = decodeObjectKeySegment(segments[4] ?? "");
+		const objectId = decodeObjectKeySegment(segments[5] ?? "");
 
 		if (!bentoId || !objectId) {
 			return null;
@@ -149,17 +148,14 @@ export function parseProfileBentoMediaObjectKey(objectKey: string) {
 	}
 
 	if (
-		segments.length === 7 &&
+		segments.length === 5 &&
 		segments[0] === "public" &&
 		segments[1] === "users" &&
-		segments[3] === "profile" &&
-		segments[4] === "bento" &&
-		segments[6] === "media"
+		segments[3] === "bento"
 	) {
-		const bentoId = decodeObjectKeySegment(segments[5] ?? "");
-		const objectId = decodeObjectKeySegment(segments[6] ?? "");
+		const bentoId = decodeObjectKeySegment(segments[4] ?? "");
 
-		if (!bentoId || !objectId) {
+		if (!bentoId) {
 			return null;
 		}
 
@@ -167,7 +163,6 @@ export function parseProfileBentoMediaObjectKey(objectKey: string) {
 			kind: "final" as const,
 			userId: segments[2],
 			bentoId,
-			objectId,
 		};
 	}
 
