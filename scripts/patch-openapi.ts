@@ -258,6 +258,135 @@ if (!handleGet) {
 }
 
 handleGet.operationId = "checkHandleAvailability";
+
+const billingProductsGet = openApi.paths?.["/billing/products"]?.get as
+	| {
+			parameters?: unknown[];
+			responses?: Record<string, unknown>;
+			operationId?: string;
+	  }
+	| undefined;
+
+if (!billingProductsGet) {
+	throw new Error(
+		"Could not find /billing/products GET operation in openapi.json",
+	);
+}
+
+billingProductsGet.operationId = "listBillingProducts";
+billingProductsGet.responses = billingProductsGet.responses ?? {};
+billingProductsGet.responses["200"] = {
+	description: "Successful product list response.",
+	content: {
+		"application/json": {
+			schema: {
+				type: "object",
+				additionalProperties: false,
+				properties: {
+					items: {
+						type: "array",
+						items: {
+							type: "object",
+							additionalProperties: false,
+							properties: {
+								slug: { type: "string" },
+								productId: { type: "string" },
+								businessId: { type: "string" },
+								name: { type: "string", nullable: true },
+								description: { type: "string", nullable: true },
+								image: { type: "string", nullable: true },
+								isRecurring: { type: "boolean" },
+								currency: { type: "string", nullable: true },
+								price: { type: "number", nullable: true },
+								taxCategory: { type: "string" },
+								taxInclusive: { type: "boolean", nullable: true },
+								createdAt: { type: "string", format: "date-time" },
+								updatedAt: { type: "string", format: "date-time" },
+							},
+							required: [
+								"slug",
+								"productId",
+								"businessId",
+								"name",
+								"description",
+								"image",
+								"isRecurring",
+								"currency",
+								"price",
+								"taxCategory",
+								"taxInclusive",
+								"createdAt",
+								"updatedAt",
+							],
+						},
+					},
+				},
+				required: ["items"],
+			},
+			examples: {
+				default: {
+					summary: "Product list",
+					value: {
+						items: [
+							{
+								slug: "pro-plan",
+								productId: "pdt_123",
+								businessId: "biz_1",
+								name: "Pro Plan",
+								description: "Pro plan",
+								image: "https://cdn.example.com/pro.png",
+								isRecurring: true,
+								currency: "USD",
+								price: 1200,
+								taxCategory: "digital_products",
+								taxInclusive: true,
+								createdAt: "2026-05-09T00:00:00.000Z",
+								updatedAt: "2026-05-09T00:00:00.000Z",
+							},
+						],
+					},
+				},
+			},
+		},
+	},
+};
+
+billingProductsGet.responses["502"] = {
+	description: "Failed to load products from DodoPayments.",
+	content: {
+		"application/json": {
+			schema: {
+				type: "object",
+				additionalProperties: false,
+				properties: {
+					error: {
+						type: "object",
+						additionalProperties: false,
+						properties: {
+							code: { type: "string", enum: ["dodo_payments_unavailable"] },
+							message: { type: "string" },
+						},
+						required: ["code", "message"],
+					},
+				},
+				required: ["error"],
+			},
+			examples: {
+				upstreamUnavailable: {
+					summary: "Upstream failure",
+					value: {
+						error: {
+							code: "dodo_payments_unavailable",
+							message: "failed to load products",
+						},
+					},
+				},
+			},
+		},
+	},
+};
+
+delete billingProductsGet.responses.default;
 handleGet.responses ??= {};
 handleGet.responses["200"] = {
 	description:

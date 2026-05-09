@@ -253,6 +253,29 @@ export default defineConfig({
 			],
 		},
 		{
+			name: "Billing API",
+			apiPrefix: "/billing",
+			appTypePath: "src/routes/billing-route.ts",
+			api: [
+				{
+					api: "/products",
+					method: "get",
+					summary: "List DodoPayments products",
+					description: [
+						"Returns the products registered in DodoPayments for frontend display.",
+						"",
+						"Rules:",
+						"- This route is public and does not require a session",
+						"- The server reads DodoPayments with the server-side API key only",
+						"- Products are returned with a stable `slug` field",
+						"- `slug` is derived from `metadata.slug` when present, otherwise the product id is used",
+						"- The response is `Cache-Control: no-store`",
+					].join("\n"),
+					tag: ["Billing API"],
+				},
+			],
+		},
+		{
 			name: "Profile API",
 			apiPrefix: "/profile",
 			appTypePath: "src/routes/profile-route.ts",
