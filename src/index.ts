@@ -4,6 +4,7 @@ import { handleHonoError } from "./lib/error-utils";
 import { corsMiddleware } from "./middlewares/cors-middlewares";
 import { csrfMiddleware } from "./middlewares/csrf-middleware";
 import { sessionMiddleware } from "./middlewares/session-middleware";
+import billingRoute from "./routes/billing-route";
 import defaultRoute from "./routes/default-route";
 import docRoute from "./routes/doc-route";
 import handleRoute from "./routes/handle-route";
@@ -27,6 +28,7 @@ const app = honoFactory
 	.route("/handle", handleRoute)
 	.route("/me", meRoute)
 	.route("/users/me", meRoute)
+	.route("/billing", billingRoute)
 	.route("/profile", profileRoute)
 	.route("/docs", docRoute);
 
