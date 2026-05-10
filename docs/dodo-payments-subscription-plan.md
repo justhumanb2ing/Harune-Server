@@ -80,7 +80,7 @@
 
 현재 구현에서는 웹훅이 최종 동기화 원장이지만, 읽기 경로에서도 `dodoSubscriptionAccessUntilAt`가 지난 경우 `planId`를 즉시 비우는 정리를 한다. 나중에 cron을 붙이면 이 정리를 배치로 보강하면 된다.
 
-배치 정리는 Cloudflare Cron Trigger로 UTC 기준 매시 5분에 실행한다.
+배치 정리는 Cloudflare Cron Trigger로 UTC 기준 매시 0분에 실행한다.
 
 ## 웹훅 처리 규칙
 
