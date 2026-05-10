@@ -1,11 +1,14 @@
 import { HTTPException } from "hono/http-exception";
 
 import type { Database } from "../lib/db";
+import { updateUserSubscriptionStateById } from "../repositories/dodo-subscription-repository";
 import { findMeRowByUserId, type MeRow } from "../repositories/me-repository";
 import type { MeResponse } from "../types/me";
 
 type MeDependencies = {
 	findMeRowByUserId?: (db: Database, userId: string) => Promise<MeRow | null>;
+	updateUserSubscriptionStateById?: typeof updateUserSubscriptionStateById;
+	now?: () => Date;
 };
 
 export async function getMe(
@@ -23,7 +26,57 @@ export async function getMe(
 		});
 	}
 
-	return buildMeResponse(row);
+	const reconciledRow = await reconcileExpiredSubscription(
+		db,
+		row,
+		dependencies,
+	);
+
+	return buildMeResponse(reconciledRow);
+}
+
+async function reconcileExpiredSubscription(
+	db: Database,
+	row: MeRow,
+	dependencies: MeDependencies,
+): Promise<MeRow> {
+	const now = dependencies.now?.() ?? new Date();
+	const accessUntil = row.dodoSubscriptionAccessUntilAt;
+
+	if (!accessUntil || accessUntil.getTime() > now.getTime()) {
+		return row;
+	}
+
+	const updateUserSubscriptionState =
+		dependencies.updateUserSubscriptionStateById ??
+		updateUserSubscriptionStateById;
+
+	try {
+		await updateUserSubscriptionState(db, row.userId, {
+			planId: row.userPlanId !== null ? null : undefined,
+			dodoSubscriptionAccessUntilAt: null,
+		});
+	} catch (error) {
+		console.warn(
+			JSON.stringify({
+				scope: "me_subscription_reconcile",
+				stage: "cleanup_failed",
+				userId: row.userId,
+				error: error instanceof Error ? error.message : "unknown_error",
+			}),
+		);
+	}
+
+	return {
+		...row,
+		userPlanId: null,
+		planId: null,
+		planName: null,
+		planCodename: null,
+		planQuotas: null,
+		planDefault: null,
+		dodoSubscriptionAccessUntilAt: null,
+	};
 }
 
 function buildMeResponse(row: MeRow): MeResponse {
