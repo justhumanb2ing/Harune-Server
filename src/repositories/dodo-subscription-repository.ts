@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, isNotNull, lte } from "drizzle-orm";
 
 import type { Database } from "../lib/db";
 import { users } from "../schemas/base";
@@ -182,4 +182,33 @@ export async function updateUserSubscriptionStateById(
 		});
 
 	return rows[0] ?? null;
+}
+
+export async function clearExpiredDodoSubscriptionAccess(
+	db: Database,
+	cutoff: Date,
+) {
+	const rows = await db
+		.update(users)
+		.set({
+			planId: null,
+			dodoSubscriptionAccessUntilAt: null,
+			updatedAt: new Date(),
+		})
+		.where(
+			and(
+				isNotNull(users.dodoSubscriptionAccessUntilAt),
+				lte(users.dodoSubscriptionAccessUntilAt, cutoff),
+			),
+		)
+		.returning({
+			id: users.id,
+			email: users.email,
+			dodoCustomerId: users.dodoCustomerId,
+			dodoSubscriptionId: users.dodoSubscriptionId,
+			dodoSubscriptionAccessUntilAt: users.dodoSubscriptionAccessUntilAt,
+			planId: users.planId,
+		});
+
+	return rows;
 }

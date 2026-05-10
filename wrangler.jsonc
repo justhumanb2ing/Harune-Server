@@ -26,6 +26,9 @@
 		}
 	],
 	"compatibility_flags": ["nodejs_compat"],
+	"triggers": {
+		"crons": ["5 * * * *"]
+	},
 	"secrets": {
 		"required": [
 			"BETTER_AUTH_SECRET",

@@ -17,6 +17,7 @@ export async function findMeRowByUserId(db: Database, userId: string) {
 			userCreatedAt: users.createdAt,
 			userUpdatedAt: users.updatedAt,
 			userPlanId: users.planId,
+			dodoSubscriptionAccessUntilAt: users.dodoSubscriptionAccessUntilAt,
 			userCredits: users.credits,
 			planId: plans.id,
 			planName: plans.name,

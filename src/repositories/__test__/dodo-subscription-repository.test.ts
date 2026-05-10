@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+	clearExpiredDodoSubscriptionAccess,
 	findDefaultPlan,
 	findPlanByMonthlyDodoProductId,
 	findUserByDodoCustomerId,
@@ -395,6 +396,76 @@ describe("dodo subscription repository", () => {
 				planId: "plan_pro",
 				dodoCustomerId: "cus_1",
 				dodoSubscriptionId: "sub_1",
+				updatedAt: expect.any(Date),
+			}),
+		]);
+		expect(calls[2]).toBe("where");
+		expect(calls[3]).toBe("returning");
+	});
+
+	it("clears expired subscription access for cron reconciliation", async () => {
+		const calls: unknown[] = [];
+		let query: UpdateQuery<{
+			id: string;
+			email: string;
+			dodoCustomerId: string;
+			dodoSubscriptionId: string;
+			dodoSubscriptionAccessUntilAt: Date | null;
+			planId: string | null;
+		}>;
+
+		query = {
+			set: (patch: unknown) => {
+				calls.push(["set", patch]);
+				return query;
+			},
+			where: () => {
+				calls.push("where");
+				return query;
+			},
+			returning: async () => {
+				calls.push("returning");
+				return [
+					{
+						id: "user_9",
+						email: "user9@example.com",
+						dodoCustomerId: "cus_9",
+						dodoSubscriptionId: "sub_9",
+						dodoSubscriptionAccessUntilAt: null,
+						planId: null,
+					},
+				];
+			},
+		};
+
+		const db = {
+			update: () => {
+				calls.push("update");
+				return query;
+			},
+		};
+
+		const cutoff = new Date("2026-06-01T00:00:00.000Z");
+
+		await expect(
+			clearExpiredDodoSubscriptionAccess(db as never, cutoff),
+		).resolves.toEqual([
+			{
+				id: "user_9",
+				email: "user9@example.com",
+				dodoCustomerId: "cus_9",
+				dodoSubscriptionId: "sub_9",
+				dodoSubscriptionAccessUntilAt: null,
+				planId: null,
+			},
+		]);
+
+		expect(calls[0]).toBe("update");
+		expect(calls[1]).toEqual([
+			"set",
+			expect.objectContaining({
+				planId: null,
+				dodoSubscriptionAccessUntilAt: null,
 				updatedAt: expect.any(Date),
 			}),
 		]);

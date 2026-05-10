@@ -1,5 +1,8 @@
+import type { ScheduledController } from "@cloudflare/workers-types";
+
 import honoFactory from "./hono-factory";
 import { notFound } from "./lib/api-response";
+import { createDatabaseClient } from "./lib/db";
 import { handleHonoError } from "./lib/error-utils";
 import { corsMiddleware } from "./middlewares/cors-middlewares";
 import { csrfMiddleware } from "./middlewares/csrf-middleware";
@@ -11,6 +14,8 @@ import handleRoute from "./routes/handle-route";
 import meRoute from "./routes/me-route";
 import metadataRoute from "./routes/metadata-route";
 import profileRoute from "./routes/profile-route";
+import { reconcileExpiredDodoSubscriptions } from "./services/dodo-subscription-cron";
+import type { AppBindings } from "./types/app-bindings";
 
 const app = honoFactory
 	.createApp()
@@ -32,4 +37,18 @@ const app = honoFactory
 	.route("/profile", profileRoute)
 	.route("/docs", docRoute);
 
-export default app;
+export default {
+	fetch: app.fetch.bind(app),
+	async scheduled(
+		_controller: ScheduledController,
+		env: AppBindings["Bindings"],
+	) {
+		const dbClient = createDatabaseClient(env.HYPERDRIVE.connectionString);
+
+		try {
+			await reconcileExpiredDodoSubscriptions(dbClient.db);
+		} finally {
+			await dbClient.close();
+		}
+	},
+};
