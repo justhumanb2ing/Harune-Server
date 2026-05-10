@@ -1,7 +1,7 @@
 import type { R2Bucket } from "@cloudflare/workers-types";
+import type { Context } from "hono";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
-import type { Context } from "hono";
 import * as v from "valibot";
 
 import {
@@ -40,8 +40,8 @@ import {
 } from "../lib/profile-media";
 import type {
 	ProfileBentoSnapshot,
-	ProfilePageRecord,
 	ProfilePagePatch,
+	ProfilePageRecord,
 	ProfilePageSummary,
 } from "../repositories/profile-repository";
 import {
@@ -1642,6 +1642,8 @@ export function createProfileRoute(
 				if (error instanceof HTTPException) {
 					throw error;
 				}
+
+				console.error("PUT /profile/me failed", error);
 
 				return withNoStore(
 					internalServerError(

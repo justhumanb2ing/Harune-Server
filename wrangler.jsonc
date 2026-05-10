@@ -26,6 +26,9 @@
 		}
 	],
 	"compatibility_flags": ["nodejs_compat"],
+	"vars": {
+		"R2_PUBLIC_BASE_URL": "https://cdn.harune.me"
+	},
 	"triggers": {
 		"crons": ["0 * * * *"]
 	},
