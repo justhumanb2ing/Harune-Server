@@ -9,6 +9,7 @@ import { betterAuth } from "better-auth/minimal";
 import { jwt, openAPI } from "better-auth/plugins";
 import type { Context } from "hono";
 import { getAllowedOrigins } from "../config/origins";
+import { createDodoSubscriptionWebhookHandlers } from "../services/dodo-subscription-webhooks";
 import type { AppBindings } from "../types/app-bindings";
 import { createBackgroundTaskHandler } from "./background-tasks";
 import { createDB } from "./db";
@@ -51,6 +52,7 @@ export function getAuthAdvancedConfig(c: Context<AppBindings>) {
 export const createAuth = (c: Context<AppBindings>) => {
 	const dodoPaymentsClient = createDodoPaymentsClient(c);
 	const db = createDB(c);
+	const dodoWebhookHandlers = createDodoSubscriptionWebhookHandlers(db);
 
 	return betterAuth({
 		appName: "Harune",
@@ -112,10 +114,15 @@ export const createAuth = (c: Context<AppBindings>) => {
 			dodopayments({
 				client: dodoPaymentsClient,
 				createCustomerOnSignUp: true,
+				getCustomerParams: (user) => ({
+					metadata: {
+						userId: user.id,
+					},
+				}),
 				use: [
-          checkout({
+					checkout({
 						products: [
-              {
+							{
 								productId: "pdt_0NeW1WSlix31wIXxn1XCC",
 								slug: "free",
 							},
@@ -131,8 +138,26 @@ export const createAuth = (c: Context<AppBindings>) => {
 					webhooks({
 						webhookKey: c.env.DODO_PAYMENTS_WEBHOOK_SECRET,
 						onPayload: async (payload) => {
-							console.log("Received webhook: ", payload.type);
+							console.log(
+								JSON.stringify({
+									scope: "dodo_subscription_webhook",
+									stage: "auth_webhook_received",
+									eventType: payload.type,
+									payloadType: payload.data?.payload_type ?? null,
+								}),
+							);
 						},
+						onPaymentSucceeded: dodoWebhookHandlers.onPaymentSucceeded,
+						onSubscriptionActive: dodoWebhookHandlers.onSubscriptionActive,
+						onSubscriptionUpdated: dodoWebhookHandlers.onSubscriptionUpdated,
+						onSubscriptionRenewed: dodoWebhookHandlers.onSubscriptionRenewed,
+						onSubscriptionPlanChanged:
+							dodoWebhookHandlers.onSubscriptionPlanChanged,
+						onSubscriptionOnHold: dodoWebhookHandlers.onSubscriptionOnHold,
+						onSubscriptionCancelled:
+							dodoWebhookHandlers.onSubscriptionCancelled,
+						onSubscriptionExpired: dodoWebhookHandlers.onSubscriptionExpired,
+						onSubscriptionFailed: dodoWebhookHandlers.onSubscriptionFailed,
 					}),
 				],
 			}),

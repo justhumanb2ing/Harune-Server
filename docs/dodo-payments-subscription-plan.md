@@ -21,9 +21,11 @@
 
 - `dodoCustomerId`
 - `dodoSubscriptionId`
+- `dodoSubscriptionAccessUntilAt`
 - `planId`
 
 이 컬럼들은 구독 사용자와 앱 내부 플랜을 연결하기 위한 최소 매핑 값이다.
+`dodoSubscriptionAccessUntilAt`는 취소 예약 이후 다음 결제 시점까지의 접근 유예 종료 시각을 저장한다.
 
 ### `plans`
 
@@ -101,24 +103,48 @@
 ### 상태 반영 규칙
 
 - `onSubscriptionActive`
-  - `data.customer.customer_id`로 유저를 찾는다.
+  - `data.customer_id`로 유저를 찾는다.
   - `data.product_id`로 `plans.monthlyDodoProductId`를 찾는다.
   - 매칭된 `plan.id`를 `app_user.planId`에 저장한다.
   - `data.subscription_id`를 `app_user.dodoSubscriptionId`에 저장한다.
+  - `data.customer_id`가 있으면 `app_user.dodoCustomerId`도 함께 저장한다.
+  - `customer_id`가 비어 있으면 `customer.metadata.userId` 또는 `customer.email`로 유저를 재탐색한다.
+  - `subscription.updated`도 같은 동기화 경로로 처리한다. 결제 성공 뒤 이 이벤트만 와도 `app_user`가 갱신된다.
+  - `data.product_id`가 `plans.monthlyDodoProductId`와 매칭되지 않으면 현재 플랜을 조용히 유지하지 않고 실패시킨다. 이 경로는 운영 DB의 product mapping drift를 바로 드러내기 위한 것이다.
+
+- `onPaymentSucceeded`
+  - 첫 결제 성공 시점의 보강 경로다.
+  - `payment.subscription_id`와 `payment.product_cart`의 product id 후보들을 기준으로 같은 동기화를 수행한다.
+  - subscription 이벤트보다 payment 이벤트가 먼저 도착해도 `planId`가 채워지도록 한다.
+  - 이 이벤트에서도 `dodoCustomerId`와 `dodoSubscriptionId`를 함께 upsert한다.
+  - 로컬/운영 checkout은 로그인 사용자 id를 Dodo metadata `referenceId`/`userId`로 전달해야 한다.
+  - 웹훅 payload에 `customer.email`이 없더라도 `metadata.referenceId` 또는 `metadata.userId`로 `app_user.id`를 찾아 동기화한다.
 
 - `onSubscriptionRenewed`
   - 갱신을 반영한다.
-  - 필요 시 `dodoSubscriptionId`와 플랜 상태를 재확인한다.
+  - `customer_id`가 없으면 `subscription_id`로 유저를 재확인한다.
+  - `subscription_id`가 바뀌었으면 `app_user.dodoSubscriptionId`를 갱신한다.
+  - `product_id`가 있으면 현재 플랜 매핑도 다시 확인한다.
 
 - `onSubscriptionPlanChanged`
   - 변경된 `data.product_id`를 기준으로 plan을 다시 매핑한다.
+  - `subscription_id`와 `customer_id`도 함께 최신값으로 맞춘다.
 
 - `onSubscriptionCancelled`
+  - 취소 예약만 반영하고 현재 플랜은 유지한다.
+  - `app_user.dodoSubscriptionAccessUntilAt`에 `next_billing_date`를 저장한다.
+  - 실제 권한 회수는 `onSubscriptionExpired`에서 한다.
+
 - `onSubscriptionExpired`
+  - 권한을 회수한다.
+  - 현재 구현은 `plans.default = true`인 기본 플랜으로 되돌리고, 없으면 `app_user.planId = null`로 둔다.
+  - `app_user.dodoSubscriptionAccessUntilAt`는 null로 비운다.
+
 - `onSubscriptionFailed`
+  - 현재 구현은 `onSubscriptionExpired`와 같은 회수 정책을 쓴다.
+
 - `onSubscriptionOnHold`
-  - 권한 회수 또는 하위 플랜 전환을 처리한다.
-  - 실제 정책은 앱 요구사항에 따라 free 플랜, 제한 플랜, 또는 inactive 상태로 정한다.
+  - 현재 구현은 `onSubscriptionExpired`와 같은 회수 정책을 쓴다.
 
 ## quotas 설계
 
