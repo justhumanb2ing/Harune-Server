@@ -274,9 +274,13 @@ if (!billingProductsGet) {
 }
 
 billingProductsGet.operationId = "listBillingProducts";
+billingProductsGet.summary = "List billing plans";
+billingProductsGet.description =
+	"Returns the locally configured billing plans from `plans`, including the free plan. The route is public and does not require a session. Rows without monthly pricing keep `price` null and fall back to the plan id for `productId`. The response is `Cache-Control: no-store`.";
 billingProductsGet.responses = billingProductsGet.responses ?? {};
 billingProductsGet.responses["200"] = {
-	description: "Successful product list response.",
+	description:
+		"Successful billing plan list response. Includes the free plan and monthly billable plans with a Dodo product mapping.",
 	content: {
 		"application/json": {
 			schema: {
@@ -289,34 +293,44 @@ billingProductsGet.responses["200"] = {
 							type: "object",
 							additionalProperties: false,
 							properties: {
+								id: { type: "string" },
 								slug: { type: "string" },
-								productId: { type: "string" },
-								businessId: { type: "string" },
+								productId: {
+									type: "string",
+									description:
+										"Dodo product id for paid plans, or the plan id for free plans.",
+								},
 								name: { type: "string", nullable: true },
-								description: { type: "string", nullable: true },
-								image: { type: "string", nullable: true },
-								isRecurring: { type: "boolean" },
-								currency: { type: "string", nullable: true },
-								price: { type: "number", nullable: true },
-								taxCategory: { type: "string" },
-								taxInclusive: { type: "boolean", nullable: true },
-								createdAt: { type: "string", format: "date-time" },
-								updatedAt: { type: "string", format: "date-time" },
+								price: {
+									type: "number",
+									nullable: true,
+									description: "Monthly price in cents, or null for free plans.",
+								},
+								default: { type: "boolean" },
+								quotas: {
+									type: "object",
+									nullable: true,
+									additionalProperties: false,
+									properties: {
+										permiumSupport: { type: "boolean" },
+										monthlyImages: { type: "number" },
+										somethingElse: { type: "string" },
+									},
+									required: [
+										"permiumSupport",
+										"monthlyImages",
+										"somethingElse",
+									],
+								},
 							},
 							required: [
+								"id",
 								"slug",
 								"productId",
-								"businessId",
 								"name",
-								"description",
-								"image",
-								"isRecurring",
-								"currency",
 								"price",
-								"taxCategory",
-								"taxInclusive",
-								"createdAt",
-								"updatedAt",
+								"default",
+								"quotas",
 							],
 						},
 					},
@@ -325,23 +339,34 @@ billingProductsGet.responses["200"] = {
 			},
 			examples: {
 				default: {
-					summary: "Product list",
+					summary: "Billing plan list",
 					value: {
 						items: [
 							{
+								id: "plan_free",
+								slug: "free",
+								productId: "plan_free",
+								name: "Free",
+								price: null,
+								default: true,
+								quotas: {
+									permiumSupport: false,
+									monthlyImages: 10,
+									somethingElse: "something",
+								},
+							},
+							{
+								id: "plan_pro",
 								slug: "pro-plan",
 								productId: "pdt_123",
-								businessId: "biz_1",
 								name: "Pro Plan",
-								description: "Pro plan",
-								image: "https://cdn.example.com/pro.png",
-								isRecurring: true,
-								currency: "USD",
-								price: 1200,
-								taxCategory: "digital_products",
-								taxInclusive: true,
-								createdAt: "2026-05-09T00:00:00.000Z",
-								updatedAt: "2026-05-09T00:00:00.000Z",
+								price: 399,
+								default: false,
+								quotas: {
+									permiumSupport: true,
+									monthlyImages: 100,
+									somethingElse: "something",
+								},
 							},
 						],
 					},
@@ -351,8 +376,8 @@ billingProductsGet.responses["200"] = {
 	},
 };
 
-billingProductsGet.responses["502"] = {
-	description: "Failed to load products from DodoPayments.",
+billingProductsGet.responses["500"] = {
+	description: "Failed to load billing plans from the database.",
 	content: {
 		"application/json": {
 			schema: {
@@ -363,7 +388,7 @@ billingProductsGet.responses["502"] = {
 						type: "object",
 						additionalProperties: false,
 						properties: {
-							code: { type: "string", enum: ["dodo_payments_unavailable"] },
+							code: { type: "string", enum: ["billing_products_unavailable"] },
 							message: { type: "string" },
 						},
 						required: ["code", "message"],
@@ -373,11 +398,11 @@ billingProductsGet.responses["502"] = {
 			},
 			examples: {
 				upstreamUnavailable: {
-					summary: "Upstream failure",
+					summary: "Database failure",
 					value: {
 						error: {
-							code: "dodo_payments_unavailable",
-							message: "failed to load products",
+							code: "billing_products_unavailable",
+							message: "failed to load billing products",
 						},
 					},
 				},

@@ -5,38 +5,43 @@ import type { AppBindings } from "../../types/app-bindings";
 import { createBillingRoute } from "../billing-route";
 
 describe("billing route", () => {
-	it("returns DodoPayments products with stable slugs", async () => {
+	it("returns billing plans from the database with stable slugs", async () => {
 		const route = createBillingRoute({
-			listProducts: async () => [
+			listPlans: async () => [
 				{
-					business_id: "biz_1",
-					created_at: "2026-05-09T00:00:00.000Z",
-					currency: "USD",
-					description: "Pro plan",
-					image: "https://cdn.example.com/pro.png",
-					is_recurring: true,
-					metadata: { slug: " Pro Plan " },
-					name: "Pro Plan",
-					price: 1200,
-					product_id: "pdt_123",
-					tax_category: "digital_products",
-					tax_inclusive: true,
-					updated_at: "2026-05-09T00:00:00.000Z",
+					codename: "free",
+					default: true,
+					id: "plan_free",
+					monthlyDodoProductId: null,
+					monthlyPrice: null,
+					name: "Free",
+					quotas: {
+						permiumSupport: false,
+						monthlyImages: 10,
+						somethingElse: "something",
+					},
 				},
 				{
-					business_id: "biz_1",
-					created_at: "2026-05-09T00:00:00.000Z",
-					currency: null,
-					description: null,
-					image: null,
-					is_recurring: false,
-					metadata: {},
-					name: null,
-					price: null,
-					product_id: "pdt_456",
-					tax_category: "digital_products",
-					tax_inclusive: null,
-					updated_at: "2026-05-09T00:00:00.000Z",
+					codename: "pro-plan",
+					default: false,
+					id: "plan_pro",
+					monthlyDodoProductId: "pdt_123",
+					monthlyPrice: 399,
+					name: "Pro Plan",
+					quotas: {
+						permiumSupport: true,
+						monthlyImages: 100,
+						somethingElse: "something",
+					},
+				},
+				{
+					codename: null,
+					default: false,
+					id: "plan_special",
+					monthlyDodoProductId: "pdt_789",
+					monthlyPrice: 1500,
+					name: "Special Plan",
+					quotas: null,
 				},
 			],
 		});
@@ -52,42 +57,47 @@ describe("billing route", () => {
 		expect(await response.json()).toEqual({
 			items: [
 				{
-					slug: "pro-plan",
-					productId: "pdt_123",
-					businessId: "biz_1",
-					name: "Pro Plan",
-					description: "Pro plan",
-					image: "https://cdn.example.com/pro.png",
-					isRecurring: true,
-					currency: "USD",
-					price: 1200,
-					taxCategory: "digital_products",
-					taxInclusive: true,
-					createdAt: "2026-05-09T00:00:00.000Z",
-					updatedAt: "2026-05-09T00:00:00.000Z",
+					id: "plan_free",
+					slug: "free",
+					productId: "plan_free",
+					name: "Free",
+					price: null,
+					default: true,
+					quotas: {
+						permiumSupport: false,
+						monthlyImages: 10,
+						somethingElse: "something",
+					},
 				},
 				{
-					slug: "pdt_456",
-					productId: "pdt_456",
-					businessId: "biz_1",
-					name: null,
-					description: null,
-					image: null,
-					isRecurring: false,
-					currency: null,
-					price: null,
-					taxCategory: "digital_products",
-					taxInclusive: null,
-					createdAt: "2026-05-09T00:00:00.000Z",
-					updatedAt: "2026-05-09T00:00:00.000Z",
+					id: "plan_pro",
+					slug: "pro-plan",
+					productId: "pdt_123",
+					name: "Pro Plan",
+					price: 399,
+					default: false,
+					quotas: {
+						permiumSupport: true,
+						monthlyImages: 100,
+						somethingElse: "something",
+					},
+				},
+				{
+					id: "plan_special",
+					slug: "plan_special",
+					productId: "pdt_789",
+					name: "Special Plan",
+					price: 1500,
+					default: false,
+					quotas: null,
 				},
 			],
 		});
 	});
 
-	it("returns a bad gateway response when DodoPayments fails", async () => {
+	it("returns an internal server error when loading billing plans fails", async () => {
 		const route = createBillingRoute({
-			listProducts: async () => {
+			listPlans: async () => {
 				throw new Error("boom");
 			},
 		});
@@ -97,13 +107,13 @@ describe("billing route", () => {
 
 		const response = await app.request("/billing/products");
 
-		expect(response.status).toBe(502);
+		expect(response.status).toBe(500);
 		expect(response.headers.get("Cache-Control")).toBe("no-store");
 		expect(response.headers.get("Pragma")).toBe("no-cache");
 		expect(await response.json()).toEqual({
 			error: {
-				code: "dodo_payments_unavailable",
-				message: "failed to load products",
+				code: "billing_products_unavailable",
+				message: "failed to load billing products",
 			},
 		});
 	});

@@ -116,6 +116,10 @@ export const createAuth = (c: Context<AppBindings>) => {
 					checkout({
 						products: [
 							{
+								productId: "pdt_0NeW1WSlix31wIXxn1XCC",
+								slug: "free-plan",
+							},
+							{
 								productId: "pdt_0NeT4l9x1OIj74GdAQvVH",
 								slug: "pro-plan",
 							},

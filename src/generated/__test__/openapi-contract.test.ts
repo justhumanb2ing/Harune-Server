@@ -16,9 +16,16 @@ function collectEmptyOneOf(node: unknown, path: string[] = []): string[] {
 	const record = node as Record<string, unknown>;
 	const hits: string[] = [];
 
-	if (Array.isArray(record.oneOf) && record.oneOf.some((item) => {
-		return item && typeof item === "object" && Object.keys(item as object).length === 0;
-	})) {
+	if (
+		Array.isArray(record.oneOf) &&
+		record.oneOf.some((item) => {
+			return (
+				item &&
+				typeof item === "object" &&
+				Object.keys(item as object).length === 0
+			);
+		})
+	) {
 		hits.push(path.join("."));
 	}
 
@@ -44,10 +51,10 @@ describe("OpenAPI contract", () => {
 		expect(openApi.paths?.["/profile/pages"]?.get?.operationId).toBe(
 			"listProfilePages",
 		);
-		expect(openApi.paths?.["/profile/me"]?.post?.operationId).toBe(
-			"createProfilePage",
+		expect(openApi.paths?.["/profile/me"]?.put?.operationId).toBe(
+			"updateProfilePage",
 		);
-		expect(openApi.paths?.["/profile/me"]?.post?.requestBody).toBeDefined();
+		expect(openApi.paths?.["/profile/me"]?.put?.requestBody).toBeDefined();
 		expect(openApi.paths?.["/profile/image"]?.post?.operationId).toBe(
 			"uploadProfileImage",
 		);
@@ -66,9 +73,13 @@ describe("OpenAPI contract", () => {
 	});
 
 	it("does not leave default responses behind", () => {
-		for (const [path, methods] of Object.entries(openApi.paths ?? {})) {
-			for (const [method, operation] of Object.entries(methods)) {
-				const responses = (operation as { responses?: Record<string, unknown> }).responses;
+		for (const [_path, methods] of Object.entries(openApi.paths ?? {})) {
+			for (const [_method, operation] of Object.entries(methods)) {
+				const responses = (
+					operation as {
+						responses?: Record<string, unknown>;
+					}
+				).responses;
 				expect(responses?.default).toBeUndefined();
 			}
 		}
@@ -81,23 +92,47 @@ describe("OpenAPI contract", () => {
 
 	it("keeps nullable numeric fields explicit in analytics responses", () => {
 		const analytics = openApi.paths?.["/me/analytics"]?.get?.responses?.["200"];
-		const schema = (analytics as {
-			content?: Record<string, { schema?: Record<string, unknown> }>;
-		})?.content?.["application/json"]?.schema;
+		const schema = (
+			analytics as {
+				content?: Record<string, { schema?: Record<string, unknown> }>;
+			}
+		)?.content?.["application/json"]?.schema;
 
 		expect(schema).toBeDefined();
 		const schemaText = JSON.stringify(schema);
 		expect(schemaText).toContain('"percent":{"type":"number","nullable":true}');
-		expect(schemaText).toContain('"changePercent":{"type":"number","nullable":true}');
+		expect(schemaText).toContain(
+			'"changePercent":{"type":"number","nullable":true}',
+		);
 	});
 
 	it("only exposes supported profile bento variants in the response contract", () => {
-		const profile = openApi.paths?.["/profile/{handle}"]?.get?.responses?.["200"];
-		const schema = (profile as {
-			content?: Record<string, { schema?: { properties?: { bento?: { items?: { oneOf?: Array<{ properties?: { type?: { enum?: string[] } } }> } } } } }>;
-		})?.content?.["application/json"]?.schema;
+		const profile =
+			openApi.paths?.["/profile/{handle}"]?.get?.responses?.["200"];
+		const schema = (
+			profile as {
+				content?: Record<
+					string,
+					{
+						schema?: {
+							properties?: {
+								bento?: {
+									items?: {
+										oneOf?: Array<{
+											properties?: { type?: { enum?: string[] } };
+										}>;
+									};
+								};
+							};
+						};
+					}
+				>;
+			}
+		)?.content?.["application/json"]?.schema;
 		const types =
-			schema?.properties?.bento?.items?.oneOf?.flatMap((item) => item.properties?.type?.enum ?? []) ?? [];
+			schema?.properties?.bento?.items?.oneOf?.flatMap(
+				(item) => item.properties?.type?.enum ?? [],
+			) ?? [];
 
 		expect(types).toEqual(["link", "text", "section", "media", "map"]);
 	});
