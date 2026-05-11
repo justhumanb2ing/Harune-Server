@@ -77,6 +77,16 @@
 - 문서 변경이 있으면 `bun run docs:generate`까지 확인한다.
 - 타입 변경이 있으면 `bunx tsc --noEmit`까지 확인한다.
 
+## 검증 범위 규칙
+
+- `bun x biome check .`처럼 저장소 전체를 무차별 검사하지 않는다.
+- Biome 검사는 항상 이번 작업에서 실제로 바뀐 tracked 파일만 대상으로 한다.
+- 권장 방식은 `git diff --name-only --diff-filter=ACM -- '*.ts' '*.json' '*.jsonc'`로 대상 파일을 뽑아서 검사하는 것이다.
+- `.wrangler/`, `node_modules/`, `dist/`, `src/generated/openapi.json` 같은 생성 산출물과 임시 빌드 파일은 저장소 전체 검사에서 잡음이 되기 쉽다. 이들은 필요할 때만 명시적으로 대상으로 삼는다.
+- `docs:generate`를 돌렸다면 `src/generated/openapi.json`과 그에 연결된 contract test만 다시 확인하고, 그 외 파일은 건드리지 않는다.
+- 생성 스크립트 또는 계약을 바꾼 뒤에는 `docs:generate -> targeted biome -> focused test -> tsc` 순서로 확인한다.
+- 형식 오류가 많아 보일 때는 먼저 `git status --short`와 `git diff --name-only --diff-filter=ACM`로 실제 수정 범위를 확인한 뒤 검사한다.
+
 ## 문서 품질 체크리스트
 
 - 설명이 “무엇을 한다” 수준에서 끝나지 않는가
