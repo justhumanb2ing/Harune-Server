@@ -6834,9 +6834,6 @@
                             "type": "string",
                             "nullable": true
                           },
-                          "linkBlockPosition": {
-                            "type": "number"
-                          },
                           "createdAt": {
                             "type": "string",
                             "format": "date-time"
@@ -6856,7 +6853,6 @@
                           "bio",
                           "image",
                           "backgroundImage",
-                          "linkBlockPosition",
                           "createdAt",
                           "updatedAt"
                         ]
@@ -6881,7 +6877,6 @@
                           "bio": "Link in bio page",
                           "image": "https://cdn.harune.me/avatar.png",
                           "backgroundImage": null,
-                          "linkBlockPosition": 0,
                           "createdAt": "2026-05-07T00:00:00.000Z",
                           "updatedAt": "2026-05-08T01:00:00.000Z"
                         }

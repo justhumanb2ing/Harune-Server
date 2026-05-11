@@ -40,7 +40,6 @@ export type ProfilePageRecord = {
 	bio: string | null;
 	image: string | null;
 	backgroundImage: string | null;
-	linkBlockPosition: number;
 	createdAt: Date;
 	updatedAt: Date;
 };
@@ -621,7 +620,6 @@ export async function findProfilePages(db: Database) {
 			bio: profilePages.bio,
 			image: profilePages.image,
 			backgroundImage: profilePages.backgroundImage,
-			linkBlockPosition: profilePages.linkBlockPosition,
 			createdAt: profilePages.createdAt,
 			updatedAt: profilePages.updatedAt,
 		})

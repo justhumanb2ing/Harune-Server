@@ -108,7 +108,6 @@ function createTestApp({
 		bio: string | null;
 		image: string | null;
 		backgroundImage: string | null;
-		linkBlockPosition: number;
 		createdAt: Date;
 		updatedAt: Date;
 	}>;
@@ -636,7 +635,6 @@ describe("GET /profile/pages", () => {
 				bio: "Second profile",
 				image: "https://cdn.harune.me/avatar-2.png",
 				backgroundImage: null,
-				linkBlockPosition: 3,
 				createdAt: new Date("2026-05-07T00:00:00.000Z"),
 				updatedAt: new Date("2026-05-08T02:00:00.000Z"),
 			},
@@ -650,7 +648,6 @@ describe("GET /profile/pages", () => {
 				bio: null,
 				image: null,
 				backgroundImage: null,
-				linkBlockPosition: 0,
 				createdAt: new Date("2026-05-06T00:00:00.000Z"),
 				updatedAt: new Date("2026-05-08T01:00:00.000Z"),
 			},
@@ -678,7 +675,6 @@ describe("GET /profile/pages", () => {
 					bio: "Second profile",
 					image: "https://cdn.harune.me/avatar-2.png",
 					backgroundImage: null,
-					linkBlockPosition: 3,
 					createdAt: "2026-05-07T00:00:00.000Z",
 					updatedAt: "2026-05-08T02:00:00.000Z",
 				},
@@ -692,7 +688,6 @@ describe("GET /profile/pages", () => {
 					bio: null,
 					image: null,
 					backgroundImage: null,
-					linkBlockPosition: 0,
 					createdAt: "2026-05-06T00:00:00.000Z",
 					updatedAt: "2026-05-08T01:00:00.000Z",
 				},

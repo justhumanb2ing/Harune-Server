@@ -1096,7 +1096,6 @@ function toProfilePageRecordResponse(page: ProfilePageRecord) {
 		bio: page.bio,
 		image: page.image,
 		backgroundImage: page.backgroundImage,
-		linkBlockPosition: page.linkBlockPosition,
 		createdAt: page.createdAt.toISOString(),
 		updatedAt: page.updatedAt.toISOString(),
 	};

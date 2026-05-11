@@ -20,7 +20,6 @@ type ProfilePagesResponse = {
     bio: string | null;
     image: string | null;
     backgroundImage: string | null;
-    linkBlockPosition: number;
     createdAt: string;
     updatedAt: string;
   }[];
@@ -31,7 +30,7 @@ type ProfilePagesResponse = {
 
 - The rows are returned in `updatedAt` descending order, then `createdAt` descending order.
 - `createdAt` and `updatedAt` are serialized as ISO-8601 strings.
-- The response includes every stored column from `profile_page`.
+- The response includes the public list columns from `profile_page`.
 - Successful responses should be returned with `Cache-Control: no-store`.
 
 ### Error Responses

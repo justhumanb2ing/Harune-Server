@@ -261,6 +261,8 @@ handleGet.operationId = "checkHandleAvailability";
 
 const billingProductsGet = openApi.paths?.["/billing/products"]?.get as
 	| {
+			summary?: string;
+			description?: string;
 			parameters?: unknown[];
 			responses?: Record<string, unknown>;
 			operationId?: string;
@@ -304,7 +306,8 @@ billingProductsGet.responses["200"] = {
 								price: {
 									type: "number",
 									nullable: true,
-									description: "Monthly price in cents, or null for free plans.",
+									description:
+										"Monthly price in cents, or null for free plans.",
 								},
 								default: { type: "boolean" },
 								quotas: {
@@ -1836,7 +1839,6 @@ function profilePageRecordSchema() {
 			bio: { type: "string", nullable: true },
 			image: { type: "string", nullable: true },
 			backgroundImage: { type: "string", nullable: true },
-			linkBlockPosition: { type: "number" },
 			createdAt: { type: "string", format: "date-time" },
 			updatedAt: { type: "string", format: "date-time" },
 		},
@@ -1850,7 +1852,6 @@ function profilePageRecordSchema() {
 			"bio",
 			"image",
 			"backgroundImage",
-			"linkBlockPosition",
 			"createdAt",
 			"updatedAt",
 		],
@@ -2202,7 +2203,6 @@ profilePagesGet.responses = {
 									bio: "Link in bio page",
 									image: "https://cdn.harune.me/avatar.png",
 									backgroundImage: null,
-									linkBlockPosition: 0,
 									createdAt: "2026-05-07T00:00:00.000Z",
 									updatedAt: "2026-05-08T01:00:00.000Z",
 								},
