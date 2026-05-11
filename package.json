@@ -3,7 +3,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "wrangler dev",
-		"deploy": "wrangler deploy --minify --secrets-file .env.prod",
+		"deploy": "bun scripts/deploy-prod.ts",
 		"cf-typegen": "wrangler types --env-interface CloudflareBindings",
 		"docs:generate": "hono-docs generate --config ./hono-docs.ts && bun scripts/patch-openapi.ts",
 		"test": "vitest run"
