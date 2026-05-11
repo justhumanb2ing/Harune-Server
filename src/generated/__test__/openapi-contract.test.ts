@@ -136,4 +136,13 @@ describe("OpenAPI contract", () => {
 
 		expect(types).toEqual(["link", "text", "section", "media", "map"]);
 	});
+
+	it("includes profile image crop metadata in public profile responses", () => {
+		const profile =
+			openApi.paths?.["/profile/{handle}"]?.get?.responses?.["200"];
+		const pages = openApi.paths?.["/profile/pages"]?.get?.responses?.["200"];
+
+		expect(JSON.stringify(profile)).toContain('"imageCrop"');
+		expect(JSON.stringify(pages)).toContain('"imageCrop"');
+	});
 });

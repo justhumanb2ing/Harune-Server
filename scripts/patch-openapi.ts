@@ -263,6 +263,8 @@ const billingProductsGet = openApi.paths?.["/billing/products"]?.get as
 	| {
 			parameters?: unknown[];
 			responses?: Record<string, unknown>;
+			summary?: string;
+			description?: string;
 			operationId?: string;
 	  }
 	| undefined;
@@ -304,7 +306,8 @@ billingProductsGet.responses["200"] = {
 								price: {
 									type: "number",
 									nullable: true,
-									description: "Monthly price in cents, or null for free plans.",
+									description:
+										"Monthly price in cents, or null for free plans.",
 								},
 								default: { type: "boolean" },
 								quotas: {
@@ -1527,6 +1530,10 @@ profileGet.responses = {
 								role: { type: "string", nullable: true },
 								bio: { type: "string", nullable: true },
 								image: { type: "string", nullable: true },
+								imageCrop: {
+									...profileImageCropSchema(),
+									nullable: true,
+								},
 								backgroundImage: { type: "string", nullable: true },
 								location: { type: "string", nullable: true },
 								updatedAt: {
@@ -1542,6 +1549,7 @@ profileGet.responses = {
 								"role",
 								"bio",
 								"image",
+								"imageCrop",
 								"backgroundImage",
 								"location",
 								"updatedAt",
@@ -1582,6 +1590,16 @@ profileGet.responses = {
 								role: "Photographer",
 								bio: "Photo community profile",
 								image: "https://cdn.harune.me/avatar.jpg",
+								imageCrop: {
+									x: 12,
+									y: 8,
+									zoom: 1.25,
+									rotate: 0,
+									scaleX: 1,
+									scaleY: 1,
+									aspectRatio: 1,
+									stencil: "circle",
+								},
 								backgroundImage: "https://cdn.harune.me/background.jpg",
 								location: "Seoul, KR",
 								updatedAt: "2026-05-07T00:00:00.000Z",
@@ -1793,6 +1811,33 @@ function profileMapBentoSchema() {
 	};
 }
 
+function profileImageCropSchema() {
+	return {
+		type: "object",
+		additionalProperties: false,
+		properties: {
+			x: { type: "number" },
+			y: { type: "number" },
+			zoom: { type: "number" },
+			rotate: { type: "number" },
+			scaleX: { type: "number" },
+			scaleY: { type: "number" },
+			aspectRatio: { type: "number" },
+			stencil: { type: "string" },
+		},
+		required: [
+			"x",
+			"y",
+			"zoom",
+			"rotate",
+			"scaleX",
+			"scaleY",
+			"aspectRatio",
+			"stencil",
+		],
+	};
+}
+
 function profilePageSchema() {
 	return {
 		type: "object",
@@ -1804,6 +1849,7 @@ function profilePageSchema() {
 			role: { type: "string", nullable: true },
 			bio: { type: "string", nullable: true },
 			image: { type: "string", nullable: true },
+			imageCrop: { ...profileImageCropSchema(), nullable: true },
 			backgroundImage: { type: "string", nullable: true },
 			location: { type: "string", nullable: true },
 			updatedAt: { type: "string", format: "date-time" },
@@ -1816,6 +1862,7 @@ function profilePageSchema() {
 			"role",
 			"bio",
 			"image",
+			"imageCrop",
 			"backgroundImage",
 			"location",
 			"updatedAt",
@@ -1835,6 +1882,7 @@ function profilePageRecordSchema() {
 			role: { type: "string", nullable: true },
 			bio: { type: "string", nullable: true },
 			image: { type: "string", nullable: true },
+			imageCrop: { ...profileImageCropSchema(), nullable: true },
 			backgroundImage: { type: "string", nullable: true },
 			linkBlockPosition: { type: "number" },
 			createdAt: { type: "string", format: "date-time" },
@@ -1849,6 +1897,7 @@ function profilePageRecordSchema() {
 			"role",
 			"bio",
 			"image",
+			"imageCrop",
 			"backgroundImage",
 			"linkBlockPosition",
 			"createdAt",
@@ -1912,6 +1961,7 @@ function profilePageUpdateRequestSchema() {
 			role: { type: "string", nullable: true },
 			bio: { type: "string", nullable: true },
 			image: { type: "string", nullable: true },
+			imageCrop: { ...profileImageCropSchema(), nullable: true },
 			backgroundImage: { type: "string", nullable: true },
 			bento: profileBentoReplaceRequestSchema().properties?.bento,
 		},
@@ -2108,6 +2158,7 @@ function profileImageFinalizeSuccessSchema() {
 			imageKind: { type: "string", enum: ["profile", "background"] },
 			imageUrl: { type: "string" },
 			image: { type: "string", nullable: true },
+			imageCrop: { ...profileImageCropSchema(), nullable: true },
 			backgroundImage: { type: "string", nullable: true },
 			updatedAt: { type: "string", format: "date-time" },
 		},
@@ -2115,6 +2166,7 @@ function profileImageFinalizeSuccessSchema() {
 			"imageKind",
 			"imageUrl",
 			"image",
+			"imageCrop",
 			"backgroundImage",
 			"updatedAt",
 		],
@@ -2178,7 +2230,7 @@ if (!profilePagesGet) {
 
 profilePagesGet.summary = "List profile page rows";
 profilePagesGet.description =
-	"Returns every row from the profile_page table. The endpoint does not require authentication, returns rows in updatedAt descending order then createdAt descending order, serializes timestamps as ISO strings, and returns no-store headers on success.";
+	"Returns every row from the profile_page table. The endpoint does not require authentication, returns rows in updatedAt descending order then createdAt descending order, serializes timestamps as ISO strings, includes the stored `imageCrop` metadata for public rendering, and returns no-store headers on success.";
 profilePagesGet.operationId = "listProfilePages";
 profilePagesGet.tags = ["Profile API"];
 profilePagesGet.responses = {
@@ -2201,6 +2253,16 @@ profilePagesGet.responses = {
 									role: "creator",
 									bio: "Link in bio page",
 									image: "https://cdn.harune.me/avatar.png",
+									imageCrop: {
+										x: 12,
+										y: 8,
+										zoom: 1.25,
+										rotate: 0,
+										scaleX: 1,
+										scaleY: 1,
+										aspectRatio: 1,
+										stencil: "circle",
+									},
 									backgroundImage: null,
 									linkBlockPosition: 0,
 									createdAt: "2026-05-07T00:00:00.000Z",
@@ -2382,6 +2444,7 @@ profileImagePatch.requestBody = {
 				properties: {
 					imageKind: { type: "string", enum: ["profile", "background"] },
 					imageUrl: { type: "string" },
+					imageCrop: { ...profileImageCropSchema(), nullable: true },
 				},
 				required: ["imageKind", "imageUrl"],
 			},
@@ -2391,6 +2454,16 @@ profileImagePatch.requestBody = {
 						imageKind: "profile",
 						imageUrl:
 							"https://pub.example.com/public/users/user-1/profile?v=abc123",
+						imageCrop: {
+							x: 12,
+							y: 8,
+							zoom: 1.25,
+							rotate: 0,
+							scaleX: 1,
+							scaleY: 1,
+							aspectRatio: 1,
+							stencil: "circle",
+						},
 					},
 				},
 			},
@@ -2399,7 +2472,8 @@ profileImagePatch.requestBody = {
 };
 profileImagePatch.responses ??= {};
 profileImagePatch.responses["200"] = {
-	description: "Successful profile image finalize response.",
+	description:
+		"Successful profile image finalize response with committed crop metadata.",
 	content: {
 		"application/json": {
 			schema: profileImageFinalizeSuccessSchema(),
@@ -2409,6 +2483,16 @@ profileImagePatch.responses["200"] = {
 						imageKind: "profile",
 						imageUrl:
 							"https://pub.example.com/public/users/user-1/profile?v=abc123",
+						imageCrop: {
+							x: 12,
+							y: 8,
+							zoom: 1.25,
+							rotate: 0,
+							scaleX: 1,
+							scaleY: 1,
+							aspectRatio: 1,
+							stencil: "circle",
+						},
 						image:
 							"https://pub.example.com/public/users/user-1/profile?v=abc123",
 						backgroundImage: null,
@@ -2699,7 +2783,7 @@ if (!profileMePut) {
 
 profileMePut.summary = "Update my profile page";
 profileMePut.description =
-	"Partially updates the authenticated user's profile page. The server trims text fields, allows null to clear fields, treats empty `role` and `location` strings as null, validates image/backgroundImage as absolute http or https URLs when provided, and can also accept a full `bento` snapshot in the same request so profile fields and bento graph commit together with no-store headers on success. When the authenticated user does not yet have a profile page, the same endpoint accepts the onboarding create payload with `handle` and `name` and creates the page before returning the committed profile snapshot.";
+	"Partially updates the authenticated user's profile page. The server trims text fields, allows null to clear fields, treats empty `role` and `location` strings as null, validates image/backgroundImage as absolute http or https URLs when provided, accepts optional `imageCrop` metadata for the profile image cover renderer, and can also accept a full `bento` snapshot in the same request so profile fields and bento graph commit together with no-store headers on success. When the authenticated user does not yet have a profile page, the same endpoint accepts the onboarding create payload with `handle` and `name` and creates the page before returning the committed profile snapshot.";
 profileMePut.operationId = "updateProfilePage";
 profileMePut.tags = ["Profile API"];
 profileMePut.requestBody = {
@@ -2717,6 +2801,16 @@ profileMePut.requestBody = {
 						role: "Creator",
 						location: "Seoul",
 						image: "https://cdn.harune.me/avatar.png",
+						imageCrop: {
+							x: 12,
+							y: 8,
+							zoom: 1.25,
+							rotate: 0,
+							scaleX: 1,
+							scaleY: 1,
+							aspectRatio: 1,
+							stencil: "circle",
+						},
 					},
 				},
 				updateNameBio: {
@@ -2791,6 +2885,16 @@ profileMePut.responses = {
 								role: "creator",
 								bio: "Link in bio page",
 								image: "https://cdn.harune.me/avatar.png",
+								imageCrop: {
+									x: 12,
+									y: 8,
+									zoom: 1.25,
+									rotate: 0,
+									scaleX: 1,
+									scaleY: 1,
+									aspectRatio: 1,
+									stencil: "circle",
+								},
 								backgroundImage: null,
 								location: "Seoul",
 								updatedAt: "2026-05-08T01:00:00.000Z",
