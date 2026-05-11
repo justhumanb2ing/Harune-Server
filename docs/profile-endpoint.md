@@ -19,16 +19,6 @@ type ProfilePagesResponse = {
     role: string | null;
     bio: string | null;
     image: string | null;
-    imageCrop: {
-      x: number;
-      y: number;
-      zoom: number;
-      rotate: number;
-      scaleX: number;
-      scaleY: number;
-      aspectRatio: number;
-      stencil: string;
-    } | null;
     backgroundImage: string | null;
     linkBlockPosition: number;
     createdAt: string;
@@ -41,7 +31,7 @@ type ProfilePagesResponse = {
 
 - The rows are returned in `updatedAt` descending order, then `createdAt` descending order.
 - `createdAt` and `updatedAt` are serialized as ISO-8601 strings.
-- The response includes every stored column from `profile_page`, including `imageCrop`.
+- The response includes every stored column from `profile_page`.
 - Successful responses should be returned with `Cache-Control: no-store`.
 
 ### Error Responses
@@ -83,16 +73,6 @@ type ProfileResponse = {
     role: string | null;
     bio: string | null;
     image: string | null;
-    imageCrop: {
-      x: number;
-      y: number;
-      zoom: number;
-      rotate: number;
-      scaleX: number;
-      scaleY: number;
-      aspectRatio: number;
-      stencil: string;
-    } | null;
     backgroundImage: string | null;
     location: string | null;
     updatedAt: string;
@@ -109,7 +89,6 @@ type ProfileResponse = {
 ### Response Rules
 
 - `page.updatedAt` is serialized as an ISO-8601 string.
-- `page.imageCrop` is shared with the editor and public renderer so both use the same cover metadata.
 - Every bento item contains both `desktop` and `compact` layout entries.
 - If any required layout row is missing, the request fails with a 500 error.
 - `viewer.canEdit` is `true` only when the current session user owns the page.
