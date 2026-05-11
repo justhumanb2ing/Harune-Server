@@ -10,8 +10,8 @@ export default defineConfig({
 			description: "API documentation for Harune",
 		},
 		servers: [
-			{ url: "http://localhost:8787" },
 			{ url: "https://api.harune.me" },
+			{ url: "http://localhost:8787" },
 		],
 	},
 	outputs: {
