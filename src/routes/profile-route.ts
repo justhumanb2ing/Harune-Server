@@ -58,6 +58,7 @@ import {
 import { getProfile } from "../services/get-profile";
 import type { AppBindings } from "../types/app-bindings";
 import type {
+	ProfileImageCrop,
 	ProfilePageResponse,
 	ProfilePagesResponse,
 	ProfileResponse,
@@ -212,6 +213,62 @@ function parseUploadContentLength(value: unknown) {
 	return typeof value === "number" && Number.isInteger(value) && value > 0
 		? value
 		: null;
+}
+
+function parseProfileImageCrop(value: unknown): ProfileImageCrop | null {
+	if (!isRecord(value)) {
+		return null;
+	}
+
+	const allowedKeys = new Set([
+		"x",
+		"y",
+		"zoom",
+		"rotate",
+		"scaleX",
+		"scaleY",
+		"aspectRatio",
+		"stencil",
+	]);
+
+	for (const key of Object.keys(value)) {
+		if (!allowedKeys.has(key)) {
+			return null;
+		}
+	}
+
+	const x = parseFiniteNumber(value.x);
+	const y = parseFiniteNumber(value.y);
+	const zoom = parseFiniteNumber(value.zoom);
+	const rotate = parseFiniteNumber(value.rotate);
+	const scaleX = parseFiniteNumber(value.scaleX);
+	const scaleY = parseFiniteNumber(value.scaleY);
+	const aspectRatio = parseFiniteNumber(value.aspectRatio);
+	const stencil = parseTrimmedString(value.stencil);
+
+	if (
+		x === null ||
+		y === null ||
+		zoom === null ||
+		rotate === null ||
+		scaleX === null ||
+		scaleY === null ||
+		aspectRatio === null ||
+		!stencil
+	) {
+		return null;
+	}
+
+	return {
+		x,
+		y,
+		zoom,
+		rotate,
+		scaleX,
+		scaleY,
+		aspectRatio,
+		stencil,
+	};
 }
 
 function parseSha256Hex(value: unknown) {
@@ -414,6 +471,7 @@ function parseProfilePagePatch(body: unknown): ProfilePagePatch | null {
 		"role",
 		"bio",
 		"image",
+		"imageCrop",
 		"backgroundImage",
 	]);
 
@@ -469,6 +527,19 @@ function parseProfilePagePatch(body: unknown): ProfilePagePatch | null {
 		patch.image = value;
 	}
 
+	if ("imageCrop" in body) {
+		if (body.imageCrop === undefined) {
+			return null;
+		}
+
+		const value =
+			body.imageCrop === null ? null : parseProfileImageCrop(body.imageCrop);
+		if (value === null && body.imageCrop !== null) {
+			return null;
+		}
+		patch.imageCrop = value;
+	}
+
 	if ("backgroundImage" in body) {
 		const value = parseOptionalNullableUrlField(body.backgroundImage);
 		if (value === null && body.backgroundImage !== null) {
@@ -493,6 +564,7 @@ function parseProfileSaveBody(
 		"role",
 		"bio",
 		"image",
+		"imageCrop",
 		"backgroundImage",
 		"bento",
 	]);
@@ -510,6 +582,7 @@ function parseProfileSaveBody(
 		"role",
 		"bio",
 		"image",
+		"imageCrop",
 		"backgroundImage",
 	] as const) {
 		if (key in body) {
@@ -1011,6 +1084,7 @@ function parseCreateProfilePageBody(body: unknown) {
 		"role",
 		"location",
 		"image",
+		"imageCrop",
 	]);
 
 	for (const key of Object.keys(body)) {
@@ -1058,6 +1132,15 @@ function parseCreateProfilePageBody(body: unknown) {
 		return null;
 	}
 
+	let imageCrop: ProfileImageCrop | null | undefined;
+	if ("imageCrop" in body) {
+		imageCrop =
+			body.imageCrop === null ? null : parseProfileImageCrop(body.imageCrop);
+		if (imageCrop === null && body.imageCrop !== null) {
+			return null;
+		}
+	}
+
 	return {
 		handle,
 		name,
@@ -1065,6 +1148,7 @@ function parseCreateProfilePageBody(body: unknown) {
 		role,
 		location,
 		image,
+		imageCrop,
 	};
 }
 
@@ -1079,6 +1163,7 @@ function toProfilePageResponse(
 		role: page.role ?? null,
 		bio: page.bio ?? null,
 		image: page.image,
+		imageCrop: page.imageCrop,
 		backgroundImage: page.backgroundImage,
 		location: page.location ?? null,
 		updatedAt: page.updatedAt.toISOString(),
@@ -1095,6 +1180,7 @@ function toProfilePageRecordResponse(page: ProfilePageRecord) {
 		role: page.role,
 		bio: page.bio,
 		image: page.image,
+		imageCrop: page.imageCrop,
 		backgroundImage: page.backgroundImage,
 		linkBlockPosition: page.linkBlockPosition,
 		createdAt: page.createdAt.toISOString(),
@@ -1524,6 +1610,7 @@ export function createProfileRoute(
 							role: parsedCreate.role,
 							location: parsedCreate.location,
 							image: parsedCreate.image,
+							imageCrop: parsedCreate.imageCrop,
 						});
 
 						if (!committedPage) {
@@ -1787,6 +1874,24 @@ export function createProfileRoute(
 							v.trim(),
 							v.nonEmpty("imageUrl is required"),
 						),
+						imageCrop: v.optional(
+							v.nullable(
+								v.object({
+									x: v.number(),
+									y: v.number(),
+									zoom: v.number(),
+									rotate: v.number(),
+									scaleX: v.number(),
+									scaleY: v.number(),
+									aspectRatio: v.number(),
+									stencil: v.pipe(
+										v.string(),
+										v.trim(),
+										v.nonEmpty("stencil is required"),
+									),
+								}),
+							),
+						),
 					}),
 					body,
 				);
@@ -1848,6 +1953,7 @@ export function createProfileRoute(
 					session.userId,
 					parsed.output.imageKind,
 					parsed.output.imageUrl,
+					parsed.output.imageCrop,
 				);
 
 				const committedPage = await findPageByUserId(
@@ -1868,6 +1974,7 @@ export function createProfileRoute(
 				const response = c.json({
 					imageKind: parsed.output.imageKind,
 					imageUrl: parsed.output.imageUrl,
+					imageCrop: committedPage.imageCrop,
 					image: committedPage.image,
 					backgroundImage: committedPage.backgroundImage,
 					updatedAt: committedPage.updatedAt.toISOString(),

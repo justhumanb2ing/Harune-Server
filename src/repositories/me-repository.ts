@@ -28,6 +28,7 @@ export async function findMeRowByUserId(db: Database, userId: string) {
 			profilePageHandle: profilePages.handle,
 			profilePageName: profilePages.name,
 			profilePageImage: profilePages.image,
+			profilePageImageCrop: profilePages.imageCrop,
 			profilePageUpdatedAt: profilePages.updatedAt,
 		})
 		.from(users)

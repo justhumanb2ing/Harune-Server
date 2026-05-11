@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
+import { describe, expect, it } from "vitest";
 
 import { handleHonoError } from "../src/lib/error-utils";
 import { createMeRoute } from "../src/routes/me-route";
@@ -76,6 +76,7 @@ describe("GET /me", () => {
 					handle: "maker",
 					name: "Maker",
 					image: "https://example.com/avatar.png",
+					imageCrop: null,
 				},
 				user: {
 					id: "user-1",
@@ -107,6 +108,7 @@ describe("GET /me", () => {
 				handle: "maker",
 				name: "Maker",
 				image: "https://example.com/avatar.png",
+				imageCrop: null,
 			},
 			user: {
 				id: "user-1",

@@ -13,6 +13,7 @@ import {
 	profileSectionBentos,
 	profileTextBentos,
 } from "../schemas/profile";
+import type { ProfileImageCrop } from "../types/profile";
 
 const desktopBentoLayout = alias(profileBentoLayouts, "desktop_bento_layout");
 const compactBentoLayout = alias(profileBentoLayouts, "compact_bento_layout");
@@ -26,6 +27,7 @@ export type ProfilePageSummary = {
 	role?: string | null;
 	bio?: string | null;
 	image: string | null;
+	imageCrop: ProfileImageCrop | null;
 	backgroundImage: string | null;
 	updatedAt: Date;
 };
@@ -39,6 +41,7 @@ export type ProfilePageRecord = {
 	role: string | null;
 	bio: string | null;
 	image: string | null;
+	imageCrop: ProfileImageCrop | null;
 	backgroundImage: string | null;
 	linkBlockPosition: number;
 	createdAt: Date;
@@ -51,6 +54,7 @@ export type ProfilePagePatch = {
 	role?: string | null;
 	bio?: string | null;
 	image?: string | null;
+	imageCrop?: ProfileImageCrop | null;
 	backgroundImage?: string | null;
 };
 
@@ -62,6 +66,7 @@ export type ProfilePageCreateInput = {
 	role?: string | null;
 	bio?: string | null;
 	image?: string | null;
+	imageCrop?: ProfileImageCrop | null;
 };
 
 export type ProfileBentoLayoutSnapshot = {
@@ -468,6 +473,7 @@ export async function findProfileRowsByHandle(db: Database, handle: string) {
 			pageRole: profilePages.role,
 			pageBio: profilePages.bio,
 			pageImage: profilePages.image,
+			pageImageCrop: profilePages.imageCrop,
 			pageBackgroundImage: profilePages.backgroundImage,
 			pageLocation: profilePages.location,
 			pageUpdatedAt: profilePages.updatedAt,
@@ -598,6 +604,7 @@ export async function findProfilePageByUserId(db: Database, userId: string) {
 			role: profilePages.role,
 			bio: profilePages.bio,
 			image: profilePages.image,
+			imageCrop: profilePages.imageCrop,
 			backgroundImage: profilePages.backgroundImage,
 			updatedAt: profilePages.updatedAt,
 		})
@@ -620,6 +627,7 @@ export async function findProfilePages(db: Database) {
 			role: profilePages.role,
 			bio: profilePages.bio,
 			image: profilePages.image,
+			imageCrop: profilePages.imageCrop,
 			backgroundImage: profilePages.backgroundImage,
 			linkBlockPosition: profilePages.linkBlockPosition,
 			createdAt: profilePages.createdAt,
@@ -633,6 +641,7 @@ export async function findProfileRowsByPageId(db: Database, pageId: string) {
 	return db
 		.select({
 			pageId: profilePages.id,
+			pageImageCrop: profilePages.imageCrop,
 			bentoId: profileBentos.id,
 			bentoType: profileBentos.type,
 			desktopLayoutId: desktopBentoLayout.id,
@@ -755,6 +764,10 @@ export async function updateProfilePageByUserId(
 		nextValues.image = patch.image;
 	}
 
+	if (patch.imageCrop !== undefined) {
+		nextValues.imageCrop = patch.imageCrop;
+	}
+
 	if (patch.backgroundImage !== undefined) {
 		nextValues.backgroundImage = patch.backgroundImage;
 	}
@@ -772,6 +785,7 @@ export async function updateProfilePageByUserId(
 			role: profilePages.role,
 			bio: profilePages.bio,
 			image: profilePages.image,
+			imageCrop: profilePages.imageCrop,
 			backgroundImage: profilePages.backgroundImage,
 			updatedAt: profilePages.updatedAt,
 		});
@@ -806,6 +820,10 @@ export async function createProfilePage(
 		values.image = input.image;
 	}
 
+	if (input.imageCrop !== undefined) {
+		values.imageCrop = input.imageCrop;
+	}
+
 	const rows = await db.insert(profilePages).values(values).returning({
 		id: profilePages.id,
 		userId: profilePages.userId,
@@ -815,6 +833,7 @@ export async function createProfilePage(
 		role: profilePages.role,
 		bio: profilePages.bio,
 		image: profilePages.image,
+		imageCrop: profilePages.imageCrop,
 		backgroundImage: profilePages.backgroundImage,
 		updatedAt: profilePages.updatedAt,
 	});
@@ -1207,6 +1226,7 @@ export async function updateProfilePageHandleById(
 			role: profilePages.role,
 			bio: profilePages.bio,
 			image: profilePages.image,
+			imageCrop: profilePages.imageCrop,
 			backgroundImage: profilePages.backgroundImage,
 			updatedAt: profilePages.updatedAt,
 		});
@@ -1219,6 +1239,7 @@ export async function updateProfilePageImageByUserId(
 	userId: string,
 	imageKind: "profile" | "background",
 	imageUrl: string,
+	imageCrop?: ProfileImageCrop | null,
 ) {
 	await db
 		.update(profilePages)
@@ -1226,6 +1247,7 @@ export async function updateProfilePageImageByUserId(
 			...(imageKind === "profile"
 				? { image: imageUrl }
 				: { backgroundImage: imageUrl }),
+			...(imageCrop !== undefined ? { imageCrop } : {}),
 			updatedAt: new Date(),
 		})
 		.where(eq(profilePages.userId, userId));
