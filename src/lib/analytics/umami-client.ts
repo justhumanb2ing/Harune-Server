@@ -1,9 +1,11 @@
-import { buildProfilePageAnalyticsPath, PROFILE_PAGE_ANALYTICS_EVENT_NAMES } from "./profile";
 import type { AppBindings } from "../../types/app-bindings";
+import {
+	buildProfilePageAnalyticsPath,
+	PROFILE_PAGE_ANALYTICS_EVENT_NAMES,
+} from "./profile";
 
 const UMAMI_CLOUD_API_ENDPOINT = "https://api.umami.is/v1";
 const UMAMI_CLOUD_SCRIPT_HOST = "cloud.umami.is";
-const ONE_DAY_IN_SECONDS = 60 * 60 * 24;
 
 export type UmamiReportingConfig = {
 	apiEndpoint: string;
@@ -41,7 +43,9 @@ const deriveSelfHostedApiEndpoint = (scriptSrc?: string) => {
 	}
 };
 
-export const getUmamiReportingConfig = (env: AppBindings["Bindings"]): UmamiReportingConfig => {
+export const getUmamiReportingConfig = (
+	env: AppBindings["Bindings"],
+): UmamiReportingConfig => {
 	const websiteId = env.UMAMI_WEBSITE_ID;
 
 	if (!websiteId) {
@@ -58,7 +62,9 @@ export const getUmamiReportingConfig = (env: AppBindings["Bindings"]): UmamiRepo
 	}
 
 	if (env.UMAMI_API_TOKEN) {
-		const apiEndpoint = env.UMAMI_API_ENDPOINT || deriveSelfHostedApiEndpoint(env.UMAMI_SCRIPT_SRC);
+		const apiEndpoint =
+			env.UMAMI_API_ENDPOINT ||
+			deriveSelfHostedApiEndpoint(env.UMAMI_SCRIPT_SRC);
 
 		if (!apiEndpoint) {
 			return null;
@@ -92,7 +98,9 @@ export const fetchUmamiEventSeries = async ({
 	timezone,
 	unit,
 }: FetchUmamiEventSeriesParams): Promise<UmamiEventSeriesRow[]> => {
-	const url = new URL(`${config.apiEndpoint}/websites/${config.websiteId}/events/series`);
+	const url = new URL(
+		`${config.apiEndpoint}/websites/${config.websiteId}/events/series`,
+	);
 	url.searchParams.set("endAt", String(endAt));
 	url.searchParams.set("filters", JSON.stringify({ path }));
 	url.searchParams.set("path", path);
@@ -145,7 +153,9 @@ export const fetchUmamiEventDataValues = async ({
 	propertyName,
 	startAt,
 }: FetchUmamiEventDataValuesParams): Promise<UmamiEventDataValueRow[]> => {
-	const url = new URL(`${config.apiEndpoint}/websites/${config.websiteId}/event-data/values`);
+	const url = new URL(
+		`${config.apiEndpoint}/websites/${config.websiteId}/event-data/values`,
+	);
 	url.searchParams.set("endAt", String(endAt));
 	url.searchParams.set("event", event);
 	url.searchParams.set("filters", JSON.stringify({ path }));

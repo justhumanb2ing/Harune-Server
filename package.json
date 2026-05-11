@@ -1,36 +1,36 @@
 {
-  "name": "server",
-  "type": "module",
-  "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy --minify --secrets-file .env.prod",
-    "cf-typegen": "wrangler types --env-interface CloudflareBindings",
-    "docs:generate": "hono-docs generate --config ./hono-docs.ts && bun scripts/patch-openapi.ts",
-    "test": "vitest run"
-  },
-  "dependencies": {
-    "@aws-sdk/client-s3": "^3.1045.0",
-    "@aws-sdk/s3-request-presigner": "^3.1045.0",
-    "@better-auth/drizzle-adapter": "^1.6.9",
-    "@dodopayments/better-auth": "^1.6.2",
-    "@hono/standard-validator": "^0.2.2",
-    "@scalar/hono-api-reference": "^0.10.14",
-    "@upstash/redis": "^1.38.0",
-    "@valibot/to-json-schema": "^1.7.0",
-    "better-auth": "^1.6.9",
-    "dodopayments": "^2.31.1",
-    "drizzle-orm": "^0.45.2",
-    "hono": "^4.12.18",
-    "pg": "^8.20.0",
-    "postgres": "^3.4.9",
-    "valibot": "^1.4.0"
-  },
-  "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.16.3",
-    "@cloudflare/workers-types": "^4.20260507.1",
-    "@rcmade/hono-docs": "^1.0.32",
-    "@types/pg": "^8.20.0",
-    "vitest": "^4.1.0",
-    "wrangler": "^4.4.0"
-  }
+	"name": "server",
+	"type": "module",
+	"scripts": {
+		"dev": "wrangler dev",
+		"deploy": "wrangler deploy --minify --secrets-file .env.prod",
+		"cf-typegen": "wrangler types --env-interface CloudflareBindings",
+		"docs:generate": "hono-docs generate --config ./hono-docs.ts && bun scripts/patch-openapi.ts",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"@aws-sdk/client-s3": "^3.1045.0",
+		"@aws-sdk/s3-request-presigner": "^3.1045.0",
+		"@better-auth/drizzle-adapter": "^1.6.9",
+		"@dodopayments/better-auth": "^1.6.2",
+		"@hono/standard-validator": "^0.2.2",
+		"@scalar/hono-api-reference": "^0.10.14",
+		"@upstash/redis": "^1.38.0",
+		"@valibot/to-json-schema": "^1.7.0",
+		"better-auth": "^1.6.9",
+		"dodopayments": "^2.31.1",
+		"drizzle-orm": "^0.45.2",
+		"hono": "^4.12.18",
+		"pg": "^8.20.0",
+		"postgres": "^3.4.9",
+		"valibot": "^1.4.0"
+	},
+	"devDependencies": {
+		"@cloudflare/vitest-pool-workers": "^0.16.3",
+		"@cloudflare/workers-types": "^4.20260507.1",
+		"@rcmade/hono-docs": "^1.0.32",
+		"@types/pg": "^8.20.0",
+		"vitest": "^4.1.0",
+		"wrangler": "^4.4.0"
+	}
 }
