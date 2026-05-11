@@ -1,27 +1,4 @@
-```txt
-npm install
-npm run dev
-```
+# Server for harune.me
 
-```txt
-npm run deploy
-```
-
-Production deploy registers secrets from `.env.prod` first, then deploys:
-
-```txt
-bun run deploy:prod
-```
-
-[For generating/synchronizing types based on your Worker configuration run](https://developers.cloudflare.com/workers/wrangler/commands/#types):
-
-```txt
-npm run cf-typegen
-```
-
-Pass the `CloudflareBindings` as generics when instantiation `Hono`:
-
-```ts
-// src/index.ts
-const app = new Hono<{ Bindings: CloudflareBindings }>()
-```
+- [API Docs](https://api.harune.me/docs/scalar)
+- [OpenAPI Spec](https://api.harune.me/docs/openapi)
