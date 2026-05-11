@@ -27,6 +27,8 @@
 	],
 	"compatibility_flags": ["nodejs_compat"],
 	"vars": {
+		"PROFILE_MEDIA_BUCKET_NAME": "umbrella",
+		"R2_ACCOUNT_ID": "849b4ba384d03f3c7d2bea5ed1ab9a3c",
 		"R2_PUBLIC_BASE_URL": "https://cdn.harune.me"
 	},
 	"triggers": {
