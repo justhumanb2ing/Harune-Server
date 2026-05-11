@@ -12,7 +12,6 @@ import {
 	sha256Hex,
 } from "../../lib/profile-media";
 import type { AppBindings } from "../../types/app-bindings";
-import type { ProfileImageCrop } from "../../types/profile";
 import { createProfileRoute } from "../profile-route";
 
 type SessionState = {
@@ -96,7 +95,6 @@ function createTestApp({
 		handle: string;
 		name: string | null;
 		image: string | null;
-		imageCrop: ProfileImageCrop | null;
 		backgroundImage: string | null;
 		updatedAt: Date;
 	} | null;
@@ -109,7 +107,6 @@ function createTestApp({
 		role: string | null;
 		bio: string | null;
 		image: string | null;
-		imageCrop: ProfileImageCrop | null;
 		backgroundImage: string | null;
 		linkBlockPosition: number;
 		createdAt: Date;
@@ -126,7 +123,6 @@ function createTestApp({
 		handle: "maker",
 		name: "Maker",
 		image: null,
-		imageCrop: null,
 		backgroundImage: null,
 		updatedAt: new Date("2026-05-08T00:00:00.000Z"),
 	};
@@ -145,7 +141,6 @@ function createTestApp({
 			userId,
 			imageKind,
 			imageUrl,
-			imageCrop,
 		) => {
 			if (!currentPage || currentPage.userId !== userId) {
 				return;
@@ -157,7 +152,6 @@ function createTestApp({
 				...(imageKind === "profile"
 					? { image: imageUrl }
 					: { backgroundImage: imageUrl }),
-				...(imageCrop !== undefined ? { imageCrop } : {}),
 			};
 		},
 		findProfilePages: async () => {
@@ -220,7 +214,6 @@ function createEditorTestApp({
 		role: string | null;
 		bio: string | null;
 		image: string | null;
-		imageCrop: ProfileImageCrop | null;
 		backgroundImage: string | null;
 		updatedAt: Date;
 	} | null;
@@ -250,7 +243,6 @@ function createEditorTestApp({
 		role: "creator",
 		bio: "Bio",
 		image: null,
-		imageCrop: null,
 		backgroundImage: null,
 		updatedAt: new Date("2026-05-08T00:00:00.000Z"),
 	};
@@ -301,7 +293,6 @@ function createEditorTestApp({
 							role: currentPage.role,
 							bio: currentPage.bio,
 							image: currentPage.image,
-							imageCrop: currentPage.imageCrop,
 							backgroundImage: currentPage.backgroundImage,
 							location: currentPage.location,
 							updatedAt: currentPage.updatedAt.toISOString(),
@@ -364,7 +355,6 @@ function createCreateTestApp({
 		role: string | null;
 		bio: string | null;
 		image: string | null;
-		imageCrop: ProfileImageCrop | null;
 		backgroundImage: string | null;
 		updatedAt: Date;
 	} | null;
@@ -424,7 +414,6 @@ function createCreateTestApp({
 				role: input.role ?? null,
 				bio: input.bio ?? null,
 				image: input.image ?? null,
-				imageCrop: input.imageCrop ?? null,
 				backgroundImage: null,
 				updatedAt: new Date("2026-05-08T01:00:00.000Z"),
 			};
@@ -446,7 +435,6 @@ function createCreateTestApp({
 							role: currentPage.role,
 							bio: currentPage.bio,
 							image: currentPage.image,
-							imageCrop: currentPage.imageCrop,
 							backgroundImage: currentPage.backgroundImage,
 							location: currentPage.location,
 							updatedAt: currentPage.updatedAt.toISOString(),
@@ -498,7 +486,6 @@ describe("GET /profile/:handle", () => {
 			pageRole: null,
 			pageBio: null,
 			pageImage: null,
-			pageImageCrop: null,
 			pageBackgroundImage: null,
 			pageLocation: null,
 			pageUpdatedAt: new Date("2026-05-08T00:00:00.000Z"),
@@ -562,7 +549,6 @@ describe("GET /profile/:handle", () => {
 			pageRole: null,
 			pageBio: null,
 			pageImage: null,
-			pageImageCrop: null,
 			pageBackgroundImage: null,
 			pageLocation: null,
 			pageUpdatedAt: new Date("2026-05-08T00:00:00.000Z"),
@@ -649,7 +635,6 @@ describe("GET /profile/pages", () => {
 				role: "creator",
 				bio: "Second profile",
 				image: "https://cdn.harune.me/avatar-2.png",
-				imageCrop: null,
 				backgroundImage: null,
 				linkBlockPosition: 3,
 				createdAt: new Date("2026-05-07T00:00:00.000Z"),
@@ -664,7 +649,6 @@ describe("GET /profile/pages", () => {
 				role: null,
 				bio: null,
 				image: null,
-				imageCrop: null,
 				backgroundImage: null,
 				linkBlockPosition: 0,
 				createdAt: new Date("2026-05-06T00:00:00.000Z"),
@@ -693,7 +677,6 @@ describe("GET /profile/pages", () => {
 					role: "creator",
 					bio: "Second profile",
 					image: "https://cdn.harune.me/avatar-2.png",
-					imageCrop: null,
 					backgroundImage: null,
 					linkBlockPosition: 3,
 					createdAt: "2026-05-07T00:00:00.000Z",
@@ -708,7 +691,6 @@ describe("GET /profile/pages", () => {
 					role: null,
 					bio: null,
 					image: null,
-					imageCrop: null,
 					backgroundImage: null,
 					linkBlockPosition: 0,
 					createdAt: "2026-05-06T00:00:00.000Z",
@@ -859,16 +841,6 @@ describe("profile mutation routes", () => {
 				body: JSON.stringify({
 					imageKind: "profile",
 					imageUrl,
-					imageCrop: {
-						x: 12,
-						y: 8,
-						zoom: 1.25,
-						rotate: 0,
-						scaleX: 1,
-						scaleY: 1,
-						aspectRatio: 1,
-						stencil: "circle",
-					},
 				}),
 				headers: {
 					"content-type": "application/json",
@@ -886,31 +858,11 @@ describe("profile mutation routes", () => {
 		expect(json).toEqual({
 			imageKind: "profile",
 			imageUrl,
-			imageCrop: {
-				x: 12,
-				y: 8,
-				zoom: 1.25,
-				rotate: 0,
-				scaleX: 1,
-				scaleY: 1,
-				aspectRatio: 1,
-				stencil: "circle",
-			},
 			image: imageUrl,
 			backgroundImage: null,
 			updatedAt: "2026-05-08T01:00:00.000Z",
 		});
 		expect(getCurrentPage()?.image).toBe(imageUrl);
-		expect(getCurrentPage()?.imageCrop).toEqual({
-			x: 12,
-			y: 8,
-			zoom: 1.25,
-			rotate: 0,
-			scaleX: 1,
-			scaleY: 1,
-			aspectRatio: 1,
-			stencil: "circle",
-		});
 	});
 
 	it("returns 403 when the finalized imageUrl belongs to another user", async () => {
@@ -1250,16 +1202,6 @@ describe("PUT /profile/me onboarding create", () => {
 				role: "   ",
 				location: "   ",
 				image: "https://cdn.harune.me/avatar.png",
-				imageCrop: {
-					x: 2,
-					y: 4,
-					zoom: 1.4,
-					rotate: 0,
-					scaleX: 1,
-					scaleY: 1,
-					aspectRatio: 1,
-					stencil: "circle",
-				},
 			}),
 			headers: {
 				"content-type": "application/json",
@@ -1279,16 +1221,6 @@ describe("PUT /profile/me onboarding create", () => {
 				role: null,
 				bio: "Bio",
 				image: "https://cdn.harune.me/avatar.png",
-				imageCrop: {
-					x: 2,
-					y: 4,
-					zoom: 1.4,
-					rotate: 0,
-					scaleX: 1,
-					scaleY: 1,
-					aspectRatio: 1,
-					stencil: "circle",
-				},
 				backgroundImage: null,
 				location: null,
 				updatedAt: "2026-05-08T01:00:00.000Z",
@@ -1308,16 +1240,6 @@ describe("PUT /profile/me onboarding create", () => {
 			role: null,
 			location: null,
 			image: "https://cdn.harune.me/avatar.png",
-			imageCrop: {
-				x: 2,
-				y: 4,
-				zoom: 1.4,
-				rotate: 0,
-				scaleX: 1,
-				scaleY: 1,
-				aspectRatio: 1,
-				stencil: "circle",
-			},
 		});
 		expect(getCurrentPage()?.handle).toBe("maker_one");
 	});
@@ -1389,7 +1311,6 @@ describe("PUT /profile/me onboarding create", () => {
 				role: null,
 				bio: null,
 				image: null,
-				imageCrop: null,
 				backgroundImage: null,
 				updatedAt: new Date("2026-05-08T00:00:00.000Z"),
 			},
@@ -1492,16 +1413,6 @@ describe("PUT /profile/me", () => {
 				role: null,
 				bio: "Updated bio",
 				image: null,
-				imageCrop: {
-					x: 1,
-					y: 2,
-					zoom: 1.1,
-					rotate: 0,
-					scaleX: 1,
-					scaleY: 1,
-					aspectRatio: 1,
-					stencil: "circle",
-				},
 				backgroundImage: null,
 				location: null,
 				updatedAt: "2026-05-08T01:00:00.000Z",
@@ -1523,16 +1434,6 @@ describe("PUT /profile/me", () => {
 					name: "Maker",
 					bio: "Bio",
 					updatedAt: "2026-05-08T00:00:00.000Z",
-					imageCrop: {
-						x: 1,
-						y: 2,
-						zoom: 1.1,
-						rotate: 0,
-						scaleX: 1,
-						scaleY: 1,
-						aspectRatio: 1,
-						stencil: "circle",
-					},
 				},
 			}),
 			bucket,
@@ -1545,16 +1446,6 @@ describe("PUT /profile/me", () => {
 				bio: "Updated bio",
 				role: "   ",
 				location: "   ",
-				imageCrop: {
-					x: 1,
-					y: 2,
-					zoom: 1.1,
-					rotate: 0,
-					scaleX: 1,
-					scaleY: 1,
-					aspectRatio: 1,
-					stencil: "circle",
-				},
 			}),
 			headers: {
 				"content-type": "application/json",
@@ -1570,16 +1461,6 @@ describe("PUT /profile/me", () => {
 			bio: "Updated bio",
 			role: null,
 			location: null,
-			imageCrop: {
-				x: 1,
-				y: 2,
-				zoom: 1.1,
-				rotate: 0,
-				scaleX: 1,
-				scaleY: 1,
-				aspectRatio: 1,
-				stencil: "circle",
-			},
 		});
 	});
 
@@ -1665,7 +1546,6 @@ describe("PUT /profile/me", () => {
 				role: "creator",
 				bio: "Updated bio",
 				image: null,
-				imageCrop: null,
 				backgroundImage: null,
 				location: "Seoul",
 				updatedAt: "2026-05-08T01:00:00.000Z",

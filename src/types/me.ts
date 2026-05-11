@@ -1,5 +1,4 @@
 import type { Quotas } from "../schemas/plan";
-import type { ProfileImageCrop } from "./profile";
 
 export type MeResponse = {
 	currentPlan: {
@@ -14,7 +13,6 @@ export type MeResponse = {
 		handle: string;
 		name: string | null;
 		image: string | null;
-		imageCrop: ProfileImageCrop | null;
 	} | null;
 	user: {
 		id: string;

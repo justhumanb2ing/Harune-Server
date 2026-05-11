@@ -22,7 +22,6 @@ function buildMeRow(overrides: Partial<MeRow> = {}): MeRow {
 		profilePageHandle: "maker",
 		profilePageName: "Maker",
 		profilePageImage: "https://example.com/avatar.png",
-		profilePageImageCrop: null,
 		profilePageUpdatedAt: new Date("2026-05-07T00:00:00.000Z"),
 		...overrides,
 	};
@@ -55,7 +54,6 @@ describe("getMe", () => {
 				handle: "maker",
 				name: "Maker",
 				image: "https://example.com/avatar.png",
-				imageCrop: null,
 			},
 			user: {
 				id: "user-1",
@@ -100,7 +98,6 @@ describe("getMe", () => {
 				handle: "maker",
 				name: "Maker",
 				image: "https://example.com/avatar.png",
-				imageCrop: null,
 			},
 			user: {
 				id: "user-1",

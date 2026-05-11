@@ -51,7 +51,6 @@ function buildPage(row: ProfileRow): ProfileResponse["page"] {
 		role: row.pageRole,
 		bio: row.pageBio,
 		image: row.pageImage,
-		imageCrop: row.pageImageCrop,
 		backgroundImage: row.pageBackgroundImage,
 		location: row.pageLocation,
 		updatedAt: row.pageUpdatedAt.toISOString(),

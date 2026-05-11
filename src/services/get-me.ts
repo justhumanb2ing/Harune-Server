@@ -160,7 +160,6 @@ function buildProfilePage(row: MeRow): MeResponse["profilePage"] {
 		),
 		name: row.profilePageName ?? null,
 		image: row.profilePageImage ?? null,
-		imageCrop: row.profilePageImageCrop ?? null,
 	};
 }
 
