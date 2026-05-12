@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
+import { describe, expect, it } from "vitest";
 
 import { handleHonoError } from "../src/lib/error-utils";
 import { createMeRoute } from "../src/routes/me-route";
@@ -123,10 +123,7 @@ describe("GET /me", () => {
 
 	it("returns the analytics response for the current user and disables caching", async () => {
 		const analyticsResponse = {
-			profilePageId: "page-1",
-			state: "ready",
-			summaries: {},
-			timezone: "Asia/Seoul",
+			visitors: 123,
 		} as unknown as ProfileAnalyticsResponse;
 		const app = createTestApp({
 			analyticsResponse,

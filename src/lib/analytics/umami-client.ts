@@ -20,9 +20,20 @@ type UmamiEventSeriesRow = {
 	y: number;
 };
 
+type UmamiPageviewSeriesRow = {
+	x: string;
+	y: number;
+};
+
 type UmamiEventDataValueRow = {
 	total: number;
 	value: string;
+};
+
+type UmamiWebsiteStatsResponse = {
+	visitors?: {
+		value?: number;
+	};
 };
 
 const deriveSelfHostedApiEndpoint = (scriptSrc?: string) => {
@@ -134,6 +145,124 @@ export const fetchUmamiEventSeries = async ({
 			typeof (row as UmamiEventSeriesRow).y === "number" &&
 			typeof (row as UmamiEventSeriesRow).t === "string",
 	);
+};
+
+type FetchUmamiPageviewSeriesParams = {
+	config: Exclude<UmamiReportingConfig, null>;
+	endAt: number;
+	path: string;
+	startAt: number;
+	timezone: string;
+	unit: "day" | "hour";
+};
+
+export const fetchUmamiPageviewSeries = async ({
+	config,
+	endAt,
+	path,
+	startAt,
+	timezone,
+	unit,
+}: FetchUmamiPageviewSeriesParams): Promise<{
+	pageviews: UmamiPageviewSeriesRow[];
+	sessions: UmamiPageviewSeriesRow[];
+}> => {
+	const url = new URL(
+		`${config.apiEndpoint}/websites/${config.websiteId}/pageviews`,
+	);
+	url.searchParams.set("endAt", String(endAt));
+	url.searchParams.set("filters", JSON.stringify({ path }));
+	url.searchParams.set("path", path);
+	url.searchParams.set("startAt", String(startAt));
+	url.searchParams.set("timezone", timezone);
+	url.searchParams.set("unit", unit);
+	url.searchParams.set("url", path);
+
+	const response = await fetch(url, {
+		headers: {
+			Accept: "application/json",
+			[config.authHeaderName]: config.authHeaderValue,
+		},
+	});
+
+	if (!response.ok) {
+		throw new Error(`Umami request failed with status ${response.status}`);
+	}
+
+	const data = (await response.json()) as unknown;
+
+	if (!data || typeof data !== "object") {
+		return {
+			pageviews: [],
+			sessions: [],
+		};
+	}
+
+	const record = data as Record<string, unknown>;
+	const parseRows = (rows: unknown): UmamiPageviewSeriesRow[] => {
+		if (!Array.isArray(rows)) {
+			return [];
+		}
+
+		return rows.filter(
+			(row): row is UmamiPageviewSeriesRow =>
+				typeof row === "object" &&
+				row !== null &&
+				typeof (row as UmamiPageviewSeriesRow).x === "string" &&
+				typeof (row as UmamiPageviewSeriesRow).y === "number",
+		);
+	};
+
+	return {
+		pageviews: parseRows(record.pageviews),
+		sessions: parseRows(record.sessions),
+	};
+};
+
+type FetchUmamiWebsiteStatsParams = {
+	config: Exclude<UmamiReportingConfig, null>;
+	endAt: number;
+	path: string;
+	startAt: number;
+};
+
+export const fetchUmamiWebsiteStats = async ({
+	config,
+	endAt,
+	path,
+	startAt,
+}: FetchUmamiWebsiteStatsParams): Promise<{
+	visitors: number;
+}> => {
+	const url = new URL(
+		`${config.apiEndpoint}/websites/${config.websiteId}/sessions/stats`,
+	);
+	url.searchParams.set("endAt", String(endAt));
+	url.searchParams.set("filters", JSON.stringify({ path }));
+	url.searchParams.set("startAt", String(startAt));
+
+	const response = await fetch(url, {
+		headers: {
+			Accept: "application/json",
+			[config.authHeaderName]: config.authHeaderValue,
+		},
+	});
+
+	if (!response.ok) {
+		throw new Error(`Umami request failed with status ${response.status}`);
+	}
+
+	const data = (await response.json()) as unknown;
+
+	if (!data || typeof data !== "object") {
+		return { visitors: 0 };
+	}
+
+	const stats = data as UmamiWebsiteStatsResponse;
+
+	return {
+		visitors: stats.visitors?.value ?? 0,
+	};
 };
 
 type FetchUmamiEventDataValuesParams = {

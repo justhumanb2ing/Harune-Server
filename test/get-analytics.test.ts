@@ -22,24 +22,16 @@ describe("getAnalytics", () => {
 			},
 			{
 				findOwnedProfilePageByUserId: async () => ({ id: "page-1" }),
-				getProfileAnalyticsResponse: async (input) => {
-					calls.push(input);
+				getProfileAnalyticsResponse: async (_input) => {
+					calls.push(_input);
 					return {
-						profilePageId: "page-1",
-						state: "ready",
-						summaries: {} as never,
-						timezone: "Asia/Seoul",
+						visitors: 42,
 					} as ProfileAnalyticsResponse;
 				},
 			},
 		);
 
-		expect(response).toEqual({
-			profilePageId: "page-1",
-			state: "ready",
-			summaries: {},
-			timezone: "Asia/Seoul",
-		});
+		expect(response).toEqual({ visitors: 42 });
 		expect(calls).toEqual([
 			{
 				env: {
@@ -60,22 +52,14 @@ describe("getAnalytics", () => {
 			},
 			{
 				findOwnedProfilePageByUserId: async () => null,
-				getProfileAnalyticsResponse: async (input) => {
+				getProfileAnalyticsResponse: async (_input) => {
 					return {
-						profilePageId: null,
-						state: "no-profile",
-						summaries: {} as never,
-						timezone: "UTC",
+						visitors: 0,
 					} as ProfileAnalyticsResponse;
 				},
 			},
 		);
 
-		expect(response).toEqual({
-			profilePageId: null,
-			state: "no-profile",
-			summaries: {},
-			timezone: "UTC",
-		});
+		expect(response).toEqual({ visitors: 0 });
 	});
 });

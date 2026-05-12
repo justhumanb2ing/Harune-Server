@@ -90,7 +90,7 @@ describe("OpenAPI contract", () => {
 		expect(hits).toEqual([]);
 	});
 
-	it("keeps nullable numeric fields explicit in analytics responses", () => {
+	it("keeps the analytics response trimmed to today's visitors only", () => {
 		const analytics = openApi.paths?.["/me/analytics"]?.get?.responses?.["200"];
 		const schema = (
 			analytics as {
@@ -100,10 +100,10 @@ describe("OpenAPI contract", () => {
 
 		expect(schema).toBeDefined();
 		const schemaText = JSON.stringify(schema);
-		expect(schemaText).toContain('"percent":{"type":"number","nullable":true}');
-		expect(schemaText).toContain(
-			'"changePercent":{"type":"number","nullable":true}',
-		);
+		expect(schemaText).toContain('"visitors":{"type":"number"}');
+		expect(schemaText).not.toContain('"pageViews"');
+		expect(schemaText).not.toContain('"state"');
+		expect(schemaText).not.toContain('"summaries"');
 	});
 
 	it("only exposes supported profile bento variants in the response contract", () => {
