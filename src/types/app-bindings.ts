@@ -10,6 +10,8 @@ export interface AppBindings extends Env {
 		BETTER_AUTH_SECRET: string;
 		BETTER_AUTH_URL?: string;
 		HARUNE_APP_ORIGIN?: string;
+		RESEND_API_KEY?: string;
+		RESEND_FROM_EMAIL?: string;
 		GOOGLE_CLIENT_ID: string;
 		GOOGLE_CLIENT_SECRET: string;
 		GITHUB_TOKEN?: string;

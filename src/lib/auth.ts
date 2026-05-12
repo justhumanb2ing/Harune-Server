@@ -16,6 +16,7 @@ import { createDB } from "./db";
 import { createDodoPaymentsClient } from "./dodo-payments";
 import { jwtOptions } from "./jwt";
 import { hashedPassword } from "./password";
+import { sendResendEmail } from "./resend";
 
 function isHaruneProductionAuthUrl(authUrl?: string) {
 	return (
@@ -28,6 +29,35 @@ function getDodoPaymentsSuccessUrl(c: Context<AppBindings>) {
 	const appOrigin = c.env.HARUNE_APP_ORIGIN ?? "http://localhost:3000";
 
 	return new URL("/payment/success", appOrigin).toString();
+}
+
+function getExecutionContext(c: Context<AppBindings>) {
+	try {
+		return c.executionCtx;
+	} catch {
+		return undefined;
+	}
+}
+
+function queueEmailDelivery(
+	c: Context<AppBindings>,
+	promise: Promise<unknown>,
+	label: string,
+) {
+	const executionCtx = getExecutionContext(c);
+
+	if (executionCtx) {
+		executionCtx.waitUntil(
+			promise.catch((error) => {
+				console.error(`Failed to send ${label}:`, error);
+			}),
+		);
+		return;
+	}
+
+	void promise.catch((error) => {
+		console.error(`Failed to send ${label}:`, error);
+	});
 }
 
 export function getAuthAdvancedConfig(c: Context<AppBindings>) {
@@ -53,6 +83,7 @@ export const createAuth = (c: Context<AppBindings>) => {
 	const dodoPaymentsClient = createDodoPaymentsClient(c);
 	const db = createDB(c);
 	const dodoWebhookHandlers = createDodoSubscriptionWebhookHandlers(db);
+	const resendApiKey = c.env.RESEND_API_KEY;
 
 	return betterAuth({
 		appName: "Harune",
@@ -68,6 +99,24 @@ export const createAuth = (c: Context<AppBindings>) => {
 			minPasswordLength: 8,
 			password: hashedPassword,
 		},
+		emailVerification: {
+			sendVerificationEmail: async ({ user, url }) => {
+				queueEmailDelivery(
+					c,
+					sendResendEmail({
+						apiKey: resendApiKey,
+						from: c.env.RESEND_FROM_EMAIL,
+						to: user.email,
+						subject: "Verify your Harune email",
+						headline: "Verify your Harune email",
+						body: "Use the button below to confirm this email address and continue using Harune.",
+						actionLabel: "Verify email",
+						actionUrl: url,
+					}),
+					"email verification email",
+				);
+			},
+		},
 		socialProviders: {
 			google: {
 				clientId: c.env.GOOGLE_CLIENT_ID as string,
@@ -77,6 +126,25 @@ export const createAuth = (c: Context<AppBindings>) => {
 		user: {
 			fields: {
 				emailVerified: "emailVerifiedBool",
+			},
+			deleteUser: {
+				enabled: true,
+				sendDeleteAccountVerification: async ({ user, url }) => {
+					queueEmailDelivery(
+						c,
+						sendResendEmail({
+							apiKey: resendApiKey,
+							from: c.env.RESEND_FROM_EMAIL,
+							to: user.email,
+							subject: "Confirm your Harune account deletion",
+							headline: "Confirm your Harune account deletion",
+							body: "Use the button below to permanently delete your Harune account. This action cannot be undone.",
+							actionLabel: "Delete account",
+							actionUrl: url,
+						}),
+						"delete account verification email",
+					);
+				},
 			},
 		},
 		account: {
