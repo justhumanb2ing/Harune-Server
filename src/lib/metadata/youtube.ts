@@ -4,11 +4,8 @@ import type {
 	NormalizedMetadata,
 	YoutubeChannelMetadata,
 } from "../../types/metadata";
-import { fetchHeadHtml } from "./head-html";
-import { pickBestFavicon } from "./html";
 
 const YOUTUBE_API_ENDPOINT = "https://www.googleapis.com/youtube/v3/channels";
-const YOUTUBE_FAVICON = "https://www.youtube.com/favicon.ico";
 const YOUTUBE_CHANNEL_HOSTS = new Set([
 	"youtube.com",
 	"www.youtube.com",
@@ -119,7 +116,7 @@ export async function fetchYoutubeMetadata(
 	options: {
 		apiKey?: string | null;
 		now?: Date;
-		page?: (() => Promise<{ url: string; html: string }>) | null;
+		base: NormalizedMetadata;
 	},
 ): Promise<NormalizedMetadata> {
 	const candidate = extractYoutubeChannelCandidate(inputUrl);
@@ -180,35 +177,15 @@ export async function fetchYoutubeMetadata(
 			continue;
 		}
 
-		const snippet = channel.snippet ?? {};
-		const statistics = channel.statistics ?? {};
-		const channelUrl = `https://www.youtube.com/channel/${channel.id}`;
-		const title = getString(snippet, "title");
-		const description = getString(snippet, "description");
-		const image = pickBestYoutubeThumbnailUrl(snippet);
-		const page = options.page
-			? await options.page()
-			: await fetchHeadHtml(new URL(channelUrl));
-		const favicon = pickBestFavicon(page.html, page.url) ?? YOUTUBE_FAVICON;
-		const fetchedAt = (options.now ?? new Date()).toISOString();
-		const providerMetadata: YoutubeChannelMetadata = {
-			provider: "youtube",
-			viewType: "youtube_channel",
-			fetchedAt,
-			payload: {
-				snippet,
-				statistics,
-			},
-		};
+		const providerMetadata = createYoutubeProviderMetadata(
+			channel.snippet ?? {},
+			channel.statistics ?? {},
+			options.now ?? new Date(),
+		);
 
 		return {
-			url: inputUrl.toString(),
-			canonicalUrl: channelUrl,
-			title,
-			description,
-			image,
-			siteName: "YouTube",
-			favicon,
+			...options.base,
+			canonicalUrl: `https://www.youtube.com/channel/${channel.id}`,
 			provider: "youtube",
 			providerMetadata,
 		};
@@ -220,40 +197,18 @@ export async function fetchYoutubeMetadata(
 	});
 }
 
-function getString(
-	record: Record<string, unknown>,
-	key: string,
-): string | null {
-	const value = record[key];
-	return typeof value === "string" ? value : null;
-}
-
-function pickBestYoutubeThumbnailUrl(
+function createYoutubeProviderMetadata(
 	snippet: Record<string, unknown>,
-): string | null {
-	const thumbnails = snippet.thumbnails;
-
-	if (
-		!thumbnails ||
-		typeof thumbnails !== "object" ||
-		Array.isArray(thumbnails)
-	) {
-		return null;
-	}
-
-	const thumbnailRecord = thumbnails as Record<
-		string,
-		{ url?: unknown } | Record<string, unknown>
-	>;
-
-	for (const key of ["maxres", "standard", "high", "medium", "default"]) {
-		const candidate = thumbnailRecord[key];
-		const url =
-			candidate && typeof candidate === "object" ? candidate.url : null;
-		if (typeof url === "string" && url.trim()) {
-			return url;
-		}
-	}
-
-	return null;
+	statistics: Record<string, unknown>,
+	now: Date,
+): YoutubeChannelMetadata {
+	return {
+		provider: "youtube",
+		viewType: "youtube_channel",
+		fetchedAt: now.toISOString(),
+		payload: {
+			snippet,
+			statistics,
+		},
+	};
 }

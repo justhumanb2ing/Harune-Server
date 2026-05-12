@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { extractMetadata } from "../html";
 import {
 	extractYoutubeChannelCandidate,
 	fetchYoutubeMetadata,
@@ -37,24 +38,18 @@ describe("youtube metadata", () => {
 		).toBe(false);
 	});
 
-	it("tries id, handle, and username lookups until one returns a channel", async () => {
-		const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
-			new Response(JSON.stringify({ items: [] }), {
-				status: 200,
-				headers: {
-					"content-type": "application/json",
-				},
-			}) as Response,
+	it("preserves html base metadata and enriches it with youtube provider data", async () => {
+		const base = extractMetadata(
+			`<!doctype html><html><head>
+				<title>YouTube Creators</title>
+				<meta name="description" content="Official channel for creators">
+				<meta property="og:image" content="https://i.ytimg.com/base.jpg">
+				<link rel="icon" href="/favicon.ico">
+				<link rel="icon" href="/s/desktop/14cba078/img/favicon_144x144.png" sizes="144x144">
+			</head><body></body></html>`,
+			"https://www.youtube.com/channel/UCkRfArvrzheW2E7b6SVT7vQ",
 		);
-		fetchSpy.mockResolvedValueOnce(
-			new Response(JSON.stringify({ items: [] }), {
-				status: 200,
-				headers: {
-					"content-type": "application/json",
-				},
-			}) as Response,
-		);
-		fetchSpy.mockResolvedValueOnce(
+		const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
 			new Response(
 				JSON.stringify({
 					items: [
@@ -81,126 +76,23 @@ describe("youtube metadata", () => {
 				},
 			) as Response,
 		);
-		fetchSpy.mockResolvedValueOnce(
-			new Response(
-				`<!doctype html><html><head>
-					<link rel="icon" href="/favicon.ico">
-					<link rel="icon" href="/s/desktop/14cba078/img/favicon_144x144.png" sizes="144x144">
-				</head><body></body></html>`,
-				{
-					status: 200,
-					headers: {
-						"content-type": "text/html; charset=utf-8",
-					},
-				},
-			) as Response,
-		);
 
 		const metadata = await fetchYoutubeMetadata(
-			new URL("https://www.youtube.com/c/GoogleDevelopers"),
+			new URL("https://www.youtube.com/channel/UCkRfArvrzheW2E7b6SVT7vQ"),
 			{
 				apiKey: "youtube-key",
+				base,
+				now: new Date("2026-05-12T12:00:00.000Z"),
 			},
 		);
 
-		expect(fetchSpy).toHaveBeenCalledTimes(4);
-		expect(String(fetchSpy.mock.calls[0]?.[0])).toContain(
-			"forHandle=GoogleDevelopers",
-		);
-		expect(String(fetchSpy.mock.calls[1]?.[0])).toContain(
-			"forUsername=GoogleDevelopers",
-		);
-		expect(String(fetchSpy.mock.calls[2]?.[0])).toContain(
-			"id=GoogleDevelopers",
-		);
-		expect(metadata.providerMetadata?.provider).toBe("youtube");
-		expect(metadata.providerMetadata?.viewType).toBe("youtube_channel");
-	});
-
-	it("uses the first channels.list item and keeps snippet/statistics only in provider metadata", async () => {
-		const now = new Date("2026-05-12T12:00:00.000Z");
-		const fetchSpy = vi
-			.spyOn(globalThis, "fetch")
-			.mockResolvedValueOnce(
-				new Response(
-					JSON.stringify({
-						items: [
-							{
-								id: "UCkRfArvrzheW2E7b6SVT7vQ",
-								snippet: {
-									title: "YouTube Creators",
-									description: "Official channel for creators",
-									thumbnails: {
-										default: {
-											url: "https://i.ytimg.com/default.jpg",
-										},
-										high: {
-											url: "https://i.ytimg.com/high.jpg",
-										},
-									},
-								},
-								statistics: {
-									viewCount: 123456,
-									subscriberCount: 7890,
-									hiddenSubscriberCount: false,
-									videoCount: 42,
-								},
-							},
-							{
-								id: "UCignored",
-								snippet: {
-									title: "Should not be used",
-								},
-								statistics: {
-									viewCount: 1,
-								},
-							},
-						],
-					}),
-					{
-						status: 200,
-						headers: {
-							"content-type": "application/json",
-						},
-					},
-				) as Response,
-			)
-			.mockResolvedValueOnce(
-				new Response(
-					`<!doctype html><html><head>
-						<link rel="icon" href="https://www.youtube.com/favicon.ico">
-						<link rel="icon" href="https://www.youtube.com/s/desktop/14cba078/img/favicon_144x144.png" sizes="144x144">
-					</head><body></body></html>`,
-					{
-						status: 200,
-						headers: {
-							"content-type": "text/html; charset=utf-8",
-						},
-					},
-				) as Response,
-			);
-
-		const metadata = await fetchYoutubeMetadata(
-			new URL("https://www.youtube.com/@youtubecreators/videos"),
-			{
-				apiKey: "youtube-key",
-				now,
-			},
-		);
-
-		expect(fetchSpy).toHaveBeenCalledTimes(2);
+		expect(fetchSpy).toHaveBeenCalledTimes(1);
 		expect(String(fetchSpy.mock.calls[0]?.[0])).toBe(
-			"https://www.googleapis.com/youtube/v3/channels?part=snippet%2Cstatistics&key=youtube-key&forHandle=youtubecreators",
+			"https://www.googleapis.com/youtube/v3/channels?part=snippet%2Cstatistics&key=youtube-key&id=UCkRfArvrzheW2E7b6SVT7vQ",
 		);
 		expect(metadata).toEqual({
-			url: "https://www.youtube.com/@youtubecreators/videos",
+			...base,
 			canonicalUrl: "https://www.youtube.com/channel/UCkRfArvrzheW2E7b6SVT7vQ",
-			title: "YouTube Creators",
-			description: "Official channel for creators",
-			image: "https://i.ytimg.com/high.jpg",
-			siteName: "YouTube",
-			favicon:
-				"https://www.youtube.com/s/desktop/14cba078/img/favicon_144x144.png",
 			provider: "youtube",
 			providerMetadata: {
 				provider: "youtube",
@@ -210,14 +102,6 @@ describe("youtube metadata", () => {
 					snippet: {
 						title: "YouTube Creators",
 						description: "Official channel for creators",
-						thumbnails: {
-							default: {
-								url: "https://i.ytimg.com/default.jpg",
-							},
-							high: {
-								url: "https://i.ytimg.com/high.jpg",
-							},
-						},
 					},
 					statistics: {
 						viewCount: 123456,
