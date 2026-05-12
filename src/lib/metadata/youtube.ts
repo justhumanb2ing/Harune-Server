@@ -4,6 +4,8 @@ import type {
 	NormalizedMetadata,
 	YoutubeChannelMetadata,
 } from "../../types/metadata";
+import { fetchHeadHtml } from "./head-html";
+import { pickBestFavicon } from "./html";
 
 const YOUTUBE_API_ENDPOINT = "https://www.googleapis.com/youtube/v3/channels";
 const YOUTUBE_FAVICON = "https://www.youtube.com/favicon.ico";
@@ -117,6 +119,7 @@ export async function fetchYoutubeMetadata(
 	options: {
 		apiKey?: string | null;
 		now?: Date;
+		page?: (() => Promise<{ url: string; html: string }>) | null;
 	},
 ): Promise<NormalizedMetadata> {
 	const candidate = extractYoutubeChannelCandidate(inputUrl);
@@ -183,6 +186,10 @@ export async function fetchYoutubeMetadata(
 		const title = getString(snippet, "title");
 		const description = getString(snippet, "description");
 		const image = pickBestYoutubeThumbnailUrl(snippet);
+		const page = options.page
+			? await options.page()
+			: await fetchHeadHtml(new URL(channelUrl));
+		const favicon = pickBestFavicon(page.html, page.url) ?? YOUTUBE_FAVICON;
 		const fetchedAt = (options.now ?? new Date()).toISOString();
 		const providerMetadata: YoutubeChannelMetadata = {
 			provider: "youtube",
@@ -201,7 +208,7 @@ export async function fetchYoutubeMetadata(
 			description,
 			image,
 			siteName: "YouTube",
-			favicon: YOUTUBE_FAVICON,
+			favicon,
 			provider: "youtube",
 			providerMetadata,
 		};

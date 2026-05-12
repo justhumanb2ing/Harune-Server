@@ -81,6 +81,20 @@ describe("youtube metadata", () => {
 				},
 			) as Response,
 		);
+		fetchSpy.mockResolvedValueOnce(
+			new Response(
+				`<!doctype html><html><head>
+					<link rel="icon" href="/favicon.ico">
+					<link rel="icon" href="/s/desktop/14cba078/img/favicon_144x144.png" sizes="144x144">
+				</head><body></body></html>`,
+				{
+					status: 200,
+					headers: {
+						"content-type": "text/html; charset=utf-8",
+					},
+				},
+			) as Response,
+		);
 
 		const metadata = await fetchYoutubeMetadata(
 			new URL("https://www.youtube.com/c/GoogleDevelopers"),
@@ -89,7 +103,7 @@ describe("youtube metadata", () => {
 			},
 		);
 
-		expect(fetchSpy).toHaveBeenCalledTimes(3);
+		expect(fetchSpy).toHaveBeenCalledTimes(4);
 		expect(String(fetchSpy.mock.calls[0]?.[0])).toContain(
 			"forHandle=GoogleDevelopers",
 		);
@@ -105,50 +119,66 @@ describe("youtube metadata", () => {
 
 	it("uses the first channels.list item and keeps snippet/statistics only in provider metadata", async () => {
 		const now = new Date("2026-05-12T12:00:00.000Z");
-		const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-			new Response(
-				JSON.stringify({
-					items: [
-						{
-							id: "UCkRfArvrzheW2E7b6SVT7vQ",
-							snippet: {
-								title: "YouTube Creators",
-								description: "Official channel for creators",
-								thumbnails: {
-									default: {
-										url: "https://i.ytimg.com/default.jpg",
-									},
-									high: {
-										url: "https://i.ytimg.com/high.jpg",
+		const fetchSpy = vi
+			.spyOn(globalThis, "fetch")
+			.mockResolvedValueOnce(
+				new Response(
+					JSON.stringify({
+						items: [
+							{
+								id: "UCkRfArvrzheW2E7b6SVT7vQ",
+								snippet: {
+									title: "YouTube Creators",
+									description: "Official channel for creators",
+									thumbnails: {
+										default: {
+											url: "https://i.ytimg.com/default.jpg",
+										},
+										high: {
+											url: "https://i.ytimg.com/high.jpg",
+										},
 									},
 								},
+								statistics: {
+									viewCount: 123456,
+									subscriberCount: 7890,
+									hiddenSubscriberCount: false,
+									videoCount: 42,
+								},
 							},
-							statistics: {
-								viewCount: 123456,
-								subscriberCount: 7890,
-								hiddenSubscriberCount: false,
-								videoCount: 42,
+							{
+								id: "UCignored",
+								snippet: {
+									title: "Should not be used",
+								},
+								statistics: {
+									viewCount: 1,
+								},
 							},
+						],
+					}),
+					{
+						status: 200,
+						headers: {
+							"content-type": "application/json",
 						},
-						{
-							id: "UCignored",
-							snippet: {
-								title: "Should not be used",
-							},
-							statistics: {
-								viewCount: 1,
-							},
-						},
-					],
-				}),
-				{
-					status: 200,
-					headers: {
-						"content-type": "application/json",
 					},
-				},
-			) as Response,
-		);
+				) as Response,
+			)
+			.mockResolvedValueOnce(
+				new Response(
+					`<!doctype html><html><head>
+						<link rel="icon" href="https://www.youtube.com/favicon.ico">
+						<link rel="icon" href="https://www.youtube.com/s/desktop/14cba078/img/favicon_144x144.png" sizes="144x144">
+					</head><body></body></html>`,
+					{
+						status: 200,
+						headers: {
+							"content-type": "text/html; charset=utf-8",
+						},
+					},
+				) as Response,
+			);
 
 		const metadata = await fetchYoutubeMetadata(
 			new URL("https://www.youtube.com/@youtubecreators/videos"),
@@ -158,7 +188,7 @@ describe("youtube metadata", () => {
 			},
 		);
 
-		expect(fetchSpy).toHaveBeenCalledTimes(1);
+		expect(fetchSpy).toHaveBeenCalledTimes(2);
 		expect(String(fetchSpy.mock.calls[0]?.[0])).toBe(
 			"https://www.googleapis.com/youtube/v3/channels?part=snippet%2Cstatistics&key=youtube-key&forHandle=youtubecreators",
 		);
@@ -169,7 +199,8 @@ describe("youtube metadata", () => {
 			description: "Official channel for creators",
 			image: "https://i.ytimg.com/high.jpg",
 			siteName: "YouTube",
-			favicon: "https://www.youtube.com/favicon.ico",
+			favicon:
+				"https://www.youtube.com/s/desktop/14cba078/img/favicon_144x144.png",
 			provider: "youtube",
 			providerMetadata: {
 				provider: "youtube",
