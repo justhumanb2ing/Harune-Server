@@ -5,7 +5,6 @@ import {
 	fetchGithubMetadata,
 	isGithubProfileUrl,
 } from "../github";
-import { extractMetadata } from "../html";
 
 afterEach(() => {
 	vi.restoreAllMocks();
@@ -32,8 +31,9 @@ describe("github metadata", () => {
 		).toBeNull();
 	});
 
-	it("preserves html base metadata and enriches it with github provider data", async () => {
+	it("builds a 60 day contribution metadata payload from GitHub GraphQL", async () => {
 		const now = new Date("2026-05-12T12:00:00.000Z");
+
 		const githubDays = Array.from({ length: 60 }, (_, index) => {
 			const day = new Date(now);
 			day.setUTCDate(day.getUTCDate() - (59 - index));
@@ -47,17 +47,8 @@ describe("github metadata", () => {
 				weekday: (index + 1) % 7,
 			};
 		});
-		const base = extractMetadata(
-			`<!doctype html><html><head>
-				<title>The Octocat</title>
-				<meta name="description" content="GitHub profile for octocat">
-				<meta property="og:image" content="https://example.com/base-avatar.png">
-				<link rel="icon" href="/favicon.ico">
-			</head><body></body></html>`,
-			"https://github.com/octocat",
-		);
 
-		const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+		vi.spyOn(globalThis, "fetch").mockResolvedValue(
 			new Response(
 				JSON.stringify({
 					data: {
@@ -104,32 +95,30 @@ describe("github metadata", () => {
 			{
 				token: "github-token",
 				now,
-				base,
 			},
 		);
 
-		expect(fetchSpy).toHaveBeenCalledTimes(1);
-		expect(metadata).toEqual({
-			...base,
-			canonicalUrl: "https://github.com/octocat",
+		expect(metadata.provider).toBe("github");
+		expect(metadata.title).toBe("The Octocat");
+		expect(metadata.image).toBe(
+			"https://avatars.githubusercontent.com/u/583231?v=4",
+		);
+		expect(metadata.providerMetadata).toEqual({
 			provider: "github",
-			providerMetadata: {
-				provider: "github",
-				viewType: "github_contributions_60d",
-				fetchedAt: "2026-05-12T12:00:00.000Z",
-				payload: {
-					login: "octocat",
-					name: "The Octocat",
-					avatarUrl: "https://avatars.githubusercontent.com/u/583231?v=4",
-					profileUrl: "https://github.com/octocat",
-					rangeStart: "2026-03-14",
-					rangeEnd: "2026-05-12",
-					totalContributions: githubDays.reduce(
-						(total, day) => total + day.contributionCount,
-						0,
-					),
-					days: githubDays,
-				},
+			viewType: "github_contributions_60d",
+			fetchedAt: "2026-05-12T12:00:00.000Z",
+			payload: {
+				login: "octocat",
+				name: "The Octocat",
+				avatarUrl: "https://avatars.githubusercontent.com/u/583231?v=4",
+				profileUrl: "https://github.com/octocat",
+				rangeStart: "2026-03-14",
+				rangeEnd: "2026-05-12",
+				totalContributions: githubDays.reduce(
+					(total, day) => total + day.contributionCount,
+					0,
+				),
+				days: githubDays,
 			},
 		});
 	});

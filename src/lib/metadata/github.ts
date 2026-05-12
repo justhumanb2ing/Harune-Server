@@ -7,6 +7,7 @@ import type {
 } from "../../types/metadata";
 
 const GITHUB_GRAPHQL_ENDPOINT = "https://api.github.com/graphql";
+const GITHUB_FAVICON = "https://github.githubassets.com/favicons/favicon.svg";
 const GITHUB_PROFILE_HOSTS = new Set(["github.com", "www.github.com"]);
 const GITHUB_RESERVED_SEGMENTS = new Set([
 	"about",
@@ -92,7 +93,6 @@ export async function fetchGithubMetadata(
 	options: {
 		token?: string | null;
 		now?: Date;
-		base: NormalizedMetadata;
 	},
 ): Promise<NormalizedMetadata> {
 	const login = extractGithubLogin(inputUrl);
@@ -209,8 +209,13 @@ export async function fetchGithubMetadata(
 	};
 
 	return {
-		...options.base,
+		url: profileUrl,
 		canonicalUrl: profileUrl,
+		title: user.name ?? user.login,
+		description: null,
+		image: user.avatarUrl ?? null,
+		siteName: "GitHub",
+		favicon: GITHUB_FAVICON,
 		provider: "github",
 		providerMetadata: metadata,
 	};
