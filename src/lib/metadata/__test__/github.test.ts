@@ -111,6 +111,9 @@ describe("github metadata", () => {
 		expect(fetchSpy).toHaveBeenCalledTimes(1);
 		expect(metadata).toEqual({
 			...base,
+			title: "The Octocat",
+			image: "https://avatars.githubusercontent.com/u/583231?v=4",
+			siteName: "GitHub",
 			canonicalUrl: "https://github.com/octocat",
 			provider: "github",
 			providerMetadata: {

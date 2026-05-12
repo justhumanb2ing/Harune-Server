@@ -58,6 +58,11 @@ describe("youtube metadata", () => {
 							snippet: {
 								title: "YouTube Creators",
 								description: "Official channel for creators",
+								thumbnails: {
+									high: {
+										url: "https://i.ytimg.com/high.jpg",
+									},
+								},
 							},
 							statistics: {
 								viewCount: 123456,
@@ -92,6 +97,10 @@ describe("youtube metadata", () => {
 		);
 		expect(metadata).toEqual({
 			...base,
+			title: "YouTube Creators",
+			description: "Official channel for creators",
+			image: "https://i.ytimg.com/high.jpg",
+			siteName: "YouTube",
 			canonicalUrl: "https://www.youtube.com/channel/UCkRfArvrzheW2E7b6SVT7vQ",
 			provider: "youtube",
 			providerMetadata: {
@@ -102,6 +111,11 @@ describe("youtube metadata", () => {
 					snippet: {
 						title: "YouTube Creators",
 						description: "Official channel for creators",
+						thumbnails: {
+							high: {
+								url: "https://i.ytimg.com/high.jpg",
+							},
+						},
 					},
 					statistics: {
 						viewCount: 123456,

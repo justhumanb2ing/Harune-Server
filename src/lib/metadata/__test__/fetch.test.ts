@@ -37,6 +37,11 @@ describe("metadata fetch orchestration", () => {
 								snippet: {
 									title: "YouTube Creators",
 									description: "Official channel for creators",
+									thumbnails: {
+										high: {
+											url: "https://i.ytimg.com/high.jpg",
+										},
+									},
 								},
 								statistics: {
 									viewCount: 123456,
@@ -72,7 +77,7 @@ describe("metadata fetch orchestration", () => {
 			canonicalUrl: "https://www.youtube.com/channel/UCkRfArvrzheW2E7b6SVT7vQ",
 			title: "YouTube Creators",
 			description: "Official channel for creators",
-			image: "https://i.ytimg.com/base.jpg",
+			image: "https://i.ytimg.com/high.jpg",
 			siteName: "YouTube",
 			favicon:
 				"https://www.youtube.com/s/desktop/14cba078/img/favicon_144x144.png",

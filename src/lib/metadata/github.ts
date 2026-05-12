@@ -207,9 +207,13 @@ export async function fetchGithubMetadata(
 			days,
 		},
 	};
+	const title = user.name ?? user.login;
 
 	return {
 		...options.base,
+		title,
+		image: user.avatarUrl ?? options.base.image,
+		siteName: "GitHub",
 		canonicalUrl: profileUrl,
 		provider: "github",
 		providerMetadata: metadata,
