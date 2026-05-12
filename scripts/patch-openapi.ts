@@ -117,6 +117,37 @@ metadataGet.responses["200"] = {
 						},
 					},
 				},
+				youtubeChannel: {
+					summary: "YouTube channel metadata from channels.list",
+					value: {
+						url: "https://www.youtube.com/@youtubecreators",
+						canonicalUrl:
+							"https://www.youtube.com/channel/UCkRfArvrzheW2E7b6SVT7vQ",
+						title: "YouTube Creators",
+						description: "Official channel for creators",
+						image: "https://i.ytimg.com/vi/VIDEO_ID/hqdefault.jpg",
+						siteName: "YouTube",
+						favicon: "https://www.youtube.com/favicon.ico",
+						provider: "youtube",
+						providerMetadata: {
+							provider: "youtube",
+							viewType: "youtube_channel",
+							fetchedAt: "2026-05-12T00:00:00.000Z",
+							payload: {
+								snippet: {
+									title: "YouTube Creators",
+									description: "Official channel for creators",
+								},
+								statistics: {
+									viewCount: 123456,
+									subscriberCount: 7890,
+									hiddenSubscriberCount: false,
+									videoCount: 42,
+								},
+							},
+						},
+					},
+				},
 			},
 		},
 	},

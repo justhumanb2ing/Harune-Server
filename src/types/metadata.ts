@@ -7,7 +7,11 @@ export type NormalizedMetadata = {
 	siteName: string | null;
 	favicon: string | null;
 	provider: string | null;
-	providerMetadata: ProviderMetadata | null;
+	providerMetadata:
+		| ProviderMetadata
+		| GithubContributionMetadata
+		| YoutubeChannelMetadata
+		| null;
 };
 
 export type ProviderMetadata = {
@@ -15,6 +19,15 @@ export type ProviderMetadata = {
 	viewType: string;
 	fetchedAt: string;
 	payload: Record<string, unknown>;
+};
+
+export type YoutubeChannelMetadata = ProviderMetadata & {
+	provider: "youtube";
+	viewType: "youtube_channel";
+	payload: {
+		snippet: Record<string, unknown>;
+		statistics: Record<string, unknown>;
+	};
 };
 
 export type GithubContributionDay = {

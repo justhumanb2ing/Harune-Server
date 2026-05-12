@@ -9,6 +9,7 @@
 - GitHub contribution 데이터는 최근 60일만 저장한다.
 - refresh는 하지 않는다.
 - provider별 UI 분기는 프론트엔드에서 처리한다.
+- YouTube 채널 링크는 `channels.list`의 첫 번째 `items`만 저장한다.
 
 이 조건이면 단일 JSONB 컬럼이 가장 단순하고 충분하다.
 
@@ -27,6 +28,29 @@ type LinkBentoMetadata = {
   viewType: string;
   fetchedAt: string;
   payload: Record<string, unknown>;
+};
+```
+
+`/metadata` 응답도 같은 envelope를 쓴다. 실제 코드에서는 provider별로 아래 타입으로 좁혀진다.
+
+```ts
+type NormalizedMetadata = {
+  // ...
+  providerMetadata:
+    | ProviderMetadata
+    | GithubContributionMetadata
+    | YoutubeChannelMetadata
+    | null;
+};
+
+type YoutubeChannelMetadata = {
+  provider: "youtube";
+  viewType: "youtube_channel";
+  fetchedAt: string;
+  payload: {
+    snippet: Record<string, unknown>;
+    statistics: Record<string, unknown>;
+  };
 };
 ```
 
@@ -75,6 +99,42 @@ GitHub 링크가 들어오면 `/metadata`에서 GitHub GraphQL API를 호출하�
 - 나중에 provider별 집계나 search가 생기면 별도 테이블로 분리하는 편이 낫다.
 - GitHub GraphQL은 토큰이 필요하므로 서버 env에 `GITHUB_TOKEN`이 있어야 한다.
 
+## YouTube 저장 규칙
+
+YouTube 채널 링크가 들어오면 `/metadata`에서 YouTube Data API v3 `channels.list`를 호출한다.
+
+요구사항은 다음과 같다.
+
+- 채널 링크만 처리한다.
+- `part=snippet,statistics`를 사용한다.
+- 응답의 `items[0]`만 사용한다.
+- 저장 payload에는 `snippet`과 `statistics`만 넣는다.
+- YouTube API 키는 서버 env의 `YOUTUBE_API_KEY`를 사용한다.
+- `/metadata` 응답의 `providerMetadata`는 `YoutubeChannelMetadata` 타입으로 내려간다.
+- 즉, `provider`는 `"youtube"`, `viewType`은 `"youtube_channel"`로 고정된다.
+
+권장 payload는 아래 정도면 충분하다.
+
+```ts
+{
+  provider: "youtube",
+  viewType: "youtube_channel",
+  fetchedAt: "2026-05-12T00:00:00.000Z",
+  payload: {
+    snippet: {
+      title: "YouTube Creators",
+      description: "..."
+    },
+    statistics: {
+      viewCount: 123456,
+      subscriberCount: 7890,
+      hiddenSubscriberCount: false,
+      videoCount: 42
+    }
+  }
+}
+```
+
 ## 결론
 
-현재 요구에서는 `profile_link_bento.metadata` JSONB 한 칸으로 시작하고, GitHub contribution payload만 60일 기준으로 저장하는 것이 맞다.
+현재 요구에서는 `profile_link_bento.metadata` JSONB 한 칸으로 시작하고, GitHub contribution payload와 YouTube channel payload를 provider별로 분기해 저장하는 것이 맞다.

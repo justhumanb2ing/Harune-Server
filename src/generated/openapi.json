@@ -161,6 +161,36 @@
                         }
                       }
                     }
+                  },
+                  "youtubeChannel": {
+                    "summary": "YouTube channel metadata from channels.list",
+                    "value": {
+                      "url": "https://www.youtube.com/@youtubecreators",
+                      "canonicalUrl": "https://www.youtube.com/channel/UCkRfArvrzheW2E7b6SVT7vQ",
+                      "title": "YouTube Creators",
+                      "description": "Official channel for creators",
+                      "image": "https://i.ytimg.com/vi/VIDEO_ID/hqdefault.jpg",
+                      "siteName": "YouTube",
+                      "favicon": "https://www.youtube.com/favicon.ico",
+                      "provider": "youtube",
+                      "providerMetadata": {
+                        "provider": "youtube",
+                        "viewType": "youtube_channel",
+                        "fetchedAt": "2026-05-12T00:00:00.000Z",
+                        "payload": {
+                          "snippet": {
+                            "title": "YouTube Creators",
+                            "description": "Official channel for creators"
+                          },
+                          "statistics": {
+                            "viewCount": 123456,
+                            "subscriberCount": 7890,
+                            "hiddenSubscriberCount": false,
+                            "videoCount": 42
+                          }
+                        }
+                      }
+                    }
                   }
                 }
               }
@@ -393,7 +423,7 @@
             }
           }
         },
-        "description": "Returns metadata extracted from the target URL.\n\nRules:\n- GitHub profile URLs also include a provider metadata payload with the recent 60-day contribution calendar\n- GitHub enrichment requires `GITHUB_TOKEN`\n- Non-GitHub URLs keep the generic metadata response and leave provider fields null",
+        "description": "Returns metadata extracted from the target URL.\n\nRules:\n- GitHub profile URLs also include a provider metadata payload with the recent 60-day contribution calendar\n- GitHub enrichment requires `GITHUB_TOKEN`\n- YouTube channel URLs also include a provider metadata payload from `channels.list` and the server tries `id`, `forHandle`, and `forUsername` until one returns a channel\n- YouTube responses narrow `providerMetadata` to `provider: \"youtube\"`, `viewType: \"youtube_channel\"`, and a payload containing `snippet` and `statistics`\n- YouTube enrichment requires `YOUTUBE_API_KEY`\n- Non-provider URLs keep the generic metadata response and leave provider fields null",
         "tags": [
           "Metadata API"
         ],
