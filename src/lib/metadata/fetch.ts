@@ -19,22 +19,34 @@ export async function fetchMetadata(
 	const page = await fetchHeadHtml(initialUrl);
 	const html = page.html || (await fetchFullDocument(new URL(page.url)));
 	const baseMetadata = extractMetadata(html, page.url);
+	const provider = detectMetadataProvider(initialUrl);
 
+	switch (provider) {
+		case "github":
+			return fetchGithubMetadata(initialUrl, {
+				token: options?.githubToken ?? null,
+				base: baseMetadata,
+			});
+		case "youtube":
+			return fetchYoutubeMetadata(initialUrl, {
+				apiKey: options?.youtubeApiKey ?? null,
+				base: baseMetadata,
+			});
+		case null:
+			return baseMetadata;
+	}
+}
+
+function detectMetadataProvider(initialUrl: URL): "github" | "youtube" | null {
 	if (isGithubProfileUrl(initialUrl)) {
-		return fetchGithubMetadata(initialUrl, {
-			token: options?.githubToken ?? null,
-			base: baseMetadata,
-		});
+		return "github";
 	}
 
 	if (isYoutubeChannelUrl(initialUrl)) {
-		return fetchYoutubeMetadata(initialUrl, {
-			apiKey: options?.youtubeApiKey ?? null,
-			base: baseMetadata,
-		});
+		return "youtube";
 	}
 
-	return baseMetadata;
+	return null;
 }
 
 async function fetchFullDocument(url: URL): Promise<string> {
