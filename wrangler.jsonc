@@ -29,7 +29,10 @@
 	"vars": {
 		"PROFILE_MEDIA_BUCKET_NAME": "umbrella",
 		"R2_ACCOUNT_ID": "849b4ba384d03f3c7d2bea5ed1ab9a3c",
-		"R2_PUBLIC_BASE_URL": "https://cdn.harune.me"
+		"R2_PUBLIC_BASE_URL": "https://cdn.harune.me",
+		"UMAMI_API_ENDPOINT": "https://api.umami.is/v1",
+		"UMAMI_SCRIPT_SRC": "https://cloud.umami.is/script.js",
+		"UMAMI_WEBSITE_ID": "c6d6da3b-2144-4194-a7a8-397fb884026b"
 	},
 	"triggers": {
 		"crons": ["0 * * * *"]
@@ -45,7 +48,8 @@
 			"UPSTASH_REDIS_REST_TOKEN",
 			"DODO_PAYMENTS_API_KEY",
 			"DODO_PAYMENTS_WEBHOOK_SECRET",
-			"GITHUB_TOKEN"
+			"GITHUB_TOKEN",
+			"UMAMI_API_KEY"
 		]
 	},
 	"placement": {
