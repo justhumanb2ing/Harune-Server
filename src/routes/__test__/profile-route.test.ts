@@ -1580,4 +1580,75 @@ describe("PUT /profile/me", () => {
 		);
 		expect(bucket.bucket.delete).toHaveBeenCalledWith(tempObjectKey);
 	});
+
+	it("persists link metadata from the submitted bento payload", async () => {
+		const bucket = createMockBucket();
+		const { app, getLastSyncedBentos } = createEditorTestApp({
+			session: { userId: "user-1" },
+			bucket,
+		});
+
+		const response = await app.request("/profile/me", {
+			method: "PUT",
+			body: JSON.stringify({
+				bento: [
+					{
+						id: "link-bento-1",
+						type: "link",
+						layout: {
+							desktop: { x: 0, y: 0, w: 2, h: 1 },
+							compact: { x: 0, y: 0, w: 2, h: 1 },
+						},
+						content: {
+							title: "GitHub",
+							description: "GitHub profile",
+							favicon: "https://github.githubassets.com/favicons/favicon.svg",
+							thumbnail: null,
+							url: "https://github.com/octocat",
+							metadata: {
+								provider: "github",
+								viewType: "github_contributions_31d",
+								fetchedAt: "2026-05-12T00:00:00.000Z",
+								payload: {
+									login: "octocat",
+									totalContributions: 31,
+								},
+							},
+						},
+					},
+				],
+			}),
+			headers: {
+				"content-type": "application/json",
+			},
+		});
+
+		expect(response.status).toBe(200);
+		expect(getLastSyncedBentos()).toEqual([
+			{
+				id: "link-bento-1",
+				type: "link",
+				layout: {
+					desktop: { x: 0, y: 0, w: 2, h: 1 },
+					compact: { x: 0, y: 0, w: 2, h: 1 },
+				},
+				content: {
+					title: "GitHub",
+					description: "GitHub profile",
+					favicon: "https://github.githubassets.com/favicons/favicon.svg",
+					thumbnail: null,
+					url: "https://github.com/octocat",
+					metadata: {
+						provider: "github",
+						viewType: "github_contributions_31d",
+						fetchedAt: "2026-05-12T00:00:00.000Z",
+						payload: {
+							login: "octocat",
+							totalContributions: 31,
+						},
+					},
+				},
+			},
+		]);
+	});
 });

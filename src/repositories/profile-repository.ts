@@ -13,6 +13,7 @@ import {
 	profileSectionBentos,
 	profileTextBentos,
 } from "../schemas/profile";
+import type { LinkBentoMetadata } from "../types/profile";
 
 const desktopBentoLayout = alias(profileBentoLayouts, "desktop_bento_layout");
 const compactBentoLayout = alias(profileBentoLayouts, "compact_bento_layout");
@@ -89,6 +90,7 @@ export type ProfileBentoSnapshot =
 				favicon: string | null;
 				thumbnail: string | null;
 				url: string;
+				metadata: LinkBentoMetadata | null;
 			};
 	  }
 	| {
@@ -158,6 +160,7 @@ export type ProfileBentoRow = {
 	linkFavicon: string | null;
 	linkThumbnail: string | null;
 	linkUrl: string | null;
+	linkMetadata: Record<string, unknown> | null;
 	textBentoId: string | null;
 	textContent: string | null;
 	sectionBentoId: string | null;
@@ -280,20 +283,21 @@ function buildProfileBentoSnapshot(
 				id: requireValue(id, `profile link bento ${row.bentoId} is missing id`),
 				type: "link",
 				layout,
-				content: {
-					title: requireValue(
-						row.linkTitle,
-						`profile link bento ${row.bentoId} is missing content`,
-					),
+					content: {
+						title: requireValue(
+							row.linkTitle,
+							`profile link bento ${row.bentoId} is missing content`,
+						),
 					description: row.linkDescription,
 					favicon: row.linkFavicon,
 					thumbnail: row.linkThumbnail,
-					url: requireValue(
-						row.linkUrl,
-						`profile link bento ${row.bentoId} is missing content`,
-					),
-				},
-			};
+						url: requireValue(
+							row.linkUrl,
+							`profile link bento ${row.bentoId} is missing content`,
+						),
+						metadata: (row.linkMetadata ?? null) as LinkBentoMetadata | null,
+					},
+				};
 		case "text":
 			if (!row.textBentoId) {
 				throw profileInvariantError(
@@ -488,6 +492,7 @@ export async function findProfileRowsByHandle(db: Database, handle: string) {
 			linkFavicon: profileLinkBentos.favicon,
 			linkThumbnail: profileLinkBentos.thumbnail,
 			linkUrl: profileLinkBentos.url,
+			linkMetadata: profileLinkBentos.metadata,
 			textBentoId: profileTextBentos.id,
 			textContent: profileTextBentos.content,
 			sectionBentoId: profileSectionBentos.id,
@@ -651,6 +656,7 @@ export async function findProfileRowsByPageId(db: Database, pageId: string) {
 			linkFavicon: profileLinkBentos.favicon,
 			linkThumbnail: profileLinkBentos.thumbnail,
 			linkUrl: profileLinkBentos.url,
+			linkMetadata: profileLinkBentos.metadata,
 			textBentoId: profileTextBentos.id,
 			textContent: profileTextBentos.content,
 			sectionBentoId: profileSectionBentos.id,
@@ -926,6 +932,7 @@ export async function syncProfileBentoGraph(
 			favicon: string | null;
 			thumbnail: string | null;
 			url: string;
+			metadata: LinkBentoMetadata | null;
 		}> = [];
 		const textRows: Array<{
 			bentoId: string;
@@ -1006,6 +1013,7 @@ export async function syncProfileBentoGraph(
 						favicon: bento.content.favicon,
 						thumbnail: bento.content.thumbnail,
 						url: bento.content.url,
+						metadata: bento.content.metadata ?? null,
 					});
 					break;
 				case "text":
@@ -1086,15 +1094,16 @@ export async function syncProfileBentoGraph(
 				.values(linkRows)
 				.onConflictDoUpdate({
 					target: profileLinkBentos.bentoId,
-					set: {
-						title: sql`excluded."title"`,
-						description: sql`excluded."description"`,
-						favicon: sql`excluded."favicon"`,
-						thumbnail: sql`excluded."thumbnail"`,
-						url: sql`excluded."url"`,
-						updatedAt: now,
-					},
-				});
+						set: {
+							title: sql`excluded."title"`,
+							description: sql`excluded."description"`,
+							favicon: sql`excluded."favicon"`,
+							thumbnail: sql`excluded."thumbnail"`,
+							url: sql`excluded."url"`,
+							metadata: sql`excluded."metadata"`,
+							updatedAt: now,
+						},
+					});
 		}
 
 		if (textRows.length > 0) {

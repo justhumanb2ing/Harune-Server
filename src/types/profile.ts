@@ -27,7 +27,15 @@ export type ProfileLinkBento = {
 		favicon: string | null;
 		thumbnail: string | null;
 		url: string;
+		metadata: LinkBentoMetadata | null;
 	};
+};
+
+export type LinkBentoMetadata = {
+	provider: string;
+	viewType: string;
+	fetchedAt: string;
+	payload: Record<string, unknown>;
 };
 
 export type ProfileTextBento = {

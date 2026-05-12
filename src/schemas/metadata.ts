@@ -20,6 +20,15 @@ export const metadataResponseSchema = v.object({
   image: v.nullable(v.pipe(v.string(), v.url())),
   siteName: v.nullable(v.string()),
   favicon: v.nullable(v.pipe(v.string(), v.url())),
+  provider: v.nullable(v.string()),
+  providerMetadata: v.nullable(
+    v.object({
+      provider: v.string(),
+      viewType: v.string(),
+      fetchedAt: v.string(),
+      payload: v.record(v.string(), v.unknown()),
+    }),
+  ),
 })
 
 const metadataErrorCodeSchema = v.picklist([

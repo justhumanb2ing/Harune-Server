@@ -58,6 +58,7 @@ import {
 import { getProfile } from "../services/get-profile";
 import type { AppBindings } from "../types/app-bindings";
 import type {
+	LinkBentoMetadata,
 	ProfilePageResponse,
 	ProfilePagesResponse,
 	ProfileResponse,
@@ -74,6 +75,7 @@ type ParsedProfileBentoItem =
 				favicon: string | null;
 				thumbnail: string | null;
 				url: string;
+				metadata: LinkBentoMetadata | null;
 			};
 	  }
 	| {
@@ -1202,7 +1204,16 @@ function parseLinkBentoContent(value: unknown) {
 					? null
 					: parseOptionalNullableUrlField(value.thumbnail),
 		url,
+		metadata: parseOptionalLinkBentoMetadata(value.metadata),
 	};
+}
+
+function parseOptionalLinkBentoMetadata(value: unknown) {
+	if (value === undefined || value === null) {
+		return null;
+	}
+
+	return isRecord(value) ? (value as LinkBentoMetadata) : null;
 }
 
 function parseTextBentoContent(value: unknown) {

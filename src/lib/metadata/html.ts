@@ -40,6 +40,8 @@ export function extractMetadata(html: string, pageUrl: string): NormalizedMetada
     image,
     siteName,
     favicon,
+    provider: null,
+    providerMetadata: null,
   }
 }
 

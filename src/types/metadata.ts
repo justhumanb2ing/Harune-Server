@@ -6,6 +6,38 @@ export type NormalizedMetadata = {
   image: string | null
   siteName: string | null
   favicon: string | null
+  provider: string | null
+  providerMetadata: ProviderMetadata | null
+}
+
+export type ProviderMetadata = {
+  provider: string
+  viewType: string
+  fetchedAt: string
+  payload: Record<string, unknown>
+}
+
+export type GithubContributionDay = {
+  date: string
+  contributionCount: number
+  contributionLevel: string
+  color: string
+  weekday: number
+}
+
+export type GithubContributionMetadata = ProviderMetadata & {
+  provider: 'github'
+  viewType: 'github_contributions_31d'
+  payload: {
+    login: string
+    name: string | null
+    avatarUrl: string | null
+    profileUrl: string
+    rangeStart: string
+    rangeEnd: string
+    totalContributions: number
+    days: GithubContributionDay[]
+  }
 }
 
 export type MetadataErrorDetails = Record<string, string | number | boolean | null>

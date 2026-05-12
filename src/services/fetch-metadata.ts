@@ -15,6 +15,13 @@ export async function fetchMetadata(
   const cacheStore = createMetadataCacheStore(c.env)
   return v.parse(
     metadataResponseSchema,
-    await resolveMetadataWithCache(url, () => getMetdata(url), cacheStore),
+    await resolveMetadataWithCache(
+      url,
+      () =>
+        getMetdata(url, {
+          githubToken: c.env.GITHUB_TOKEN ?? null,
+        }),
+      cacheStore,
+    ),
   )
 }

@@ -2,6 +2,7 @@ import { type SQL, sql } from "drizzle-orm";
 import {
 	type AnyPgColumn,
 	doublePrecision,
+	jsonb,
 	index,
 	integer,
 	pgEnum,
@@ -210,6 +211,7 @@ export const profileLinkBentos = pgTable(
 		favicon: text("favicon"),
 		thumbnail: text("thumbnail"),
 		url: text("url").notNull(),
+		metadata: jsonb("metadata").$type<Record<string, unknown> | null>().default(null),
 		createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
 		updatedAt: timestamp("updatedAt", { mode: "date" }).defaultNow().notNull(),
 	},

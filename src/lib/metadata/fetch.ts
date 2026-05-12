@@ -1,6 +1,7 @@
 import { HTTPException } from 'hono/http-exception'
 import type { NormalizedMetadata } from '../../types/metadata'
 import { extractMetadata } from './html'
+import { fetchGithubMetadata, isGithubProfileUrl } from './github'
 import { resolveAndValidateUrl } from './url'
 
 const MAX_HTML_BYTES = 1_500_000
@@ -9,7 +10,18 @@ const MAX_REDIRECTS = 5
 const USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/<major>.0.0.0 Safari/537.36'
 
-export async function fetchMetadata(initialUrl: URL): Promise<NormalizedMetadata> {
+export async function fetchMetadata(
+  initialUrl: URL,
+  options?: {
+    githubToken?: string | null
+  },
+): Promise<NormalizedMetadata> {
+  if (isGithubProfileUrl(initialUrl)) {
+    return fetchGithubMetadata(initialUrl, {
+      token: options?.githubToken ?? null,
+    })
+  }
+
   let currentUrl = initialUrl
 
   for (let redirectCount = 0; redirectCount <= MAX_REDIRECTS; redirectCount += 1) {

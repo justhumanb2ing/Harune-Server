@@ -68,6 +68,35 @@
                     "favicon": {
                       "type": "string",
                       "nullable": true
+                    },
+                    "provider": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "providerMetadata": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "provider": {
+                          "type": "string"
+                        },
+                        "viewType": {
+                          "type": "string"
+                        },
+                        "fetchedAt": {
+                          "type": "string"
+                        },
+                        "payload": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
+                      },
+                      "required": [
+                        "provider",
+                        "viewType",
+                        "fetchedAt",
+                        "payload"
+                      ]
                     }
                   },
                   "required": [
@@ -77,8 +106,62 @@
                     "description",
                     "image",
                     "siteName",
-                    "favicon"
+                    "favicon",
+                    "provider",
+                    "providerMetadata"
                   ]
+                },
+                "examples": {
+                  "genericMetadata": {
+                    "summary": "Generic webpage metadata",
+                    "value": {
+                      "url": "https://example.com/article",
+                      "canonicalUrl": "https://example.com/article",
+                      "title": "Example article",
+                      "description": "Example description",
+                      "image": "https://example.com/og-image.png",
+                      "siteName": "Example",
+                      "favicon": "https://example.com/favicon.ico",
+                      "provider": null,
+                      "providerMetadata": null
+                    }
+                  },
+                  "githubContributions": {
+                    "summary": "GitHub profile with 31-day contribution calendar",
+                    "value": {
+                      "url": "https://github.com/octocat",
+                      "canonicalUrl": "https://github.com/octocat",
+                      "title": "The Octocat",
+                      "description": null,
+                      "image": "https://avatars.githubusercontent.com/u/583231?v=4",
+                      "siteName": "GitHub",
+                      "favicon": "https://github.githubassets.com/favicons/favicon.svg",
+                      "provider": "github",
+                      "providerMetadata": {
+                        "provider": "github",
+                        "viewType": "github_contributions_31d",
+                        "fetchedAt": "2026-05-12T00:00:00.000Z",
+                        "payload": {
+                          "login": "octocat",
+                          "name": "The Octocat",
+                          "avatarUrl": "https://avatars.githubusercontent.com/u/583231?v=4",
+                          "profileUrl": "https://github.com/octocat",
+                          "rangeStart": "2026-04-12",
+                          "rangeEnd": "2026-05-12",
+                          "totalContributions": 31,
+                          "days": [
+                            {
+                              "date": "2026-05-12",
+                              "contributionCount": 4,
+                              "contributionLevel": "FIRST_QUARTILE",
+                              "color": "#39d353",
+                              "weekday": 2
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -310,7 +393,7 @@
             }
           }
         },
-        "description": "Returns metadata extracted from the target URL.",
+        "description": "Returns metadata extracted from the target URL.\n\nRules:\n- GitHub profile URLs also include a provider metadata payload with the recent 31-day contribution calendar\n- GitHub enrichment requires `GITHUB_TOKEN`\n- Non-GitHub URLs keep the generic metadata response and leave provider fields null",
         "tags": [
           "Metadata API"
         ],

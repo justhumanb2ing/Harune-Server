@@ -12,6 +12,7 @@ export interface AppBindings extends Env {
 		HARUNE_APP_ORIGIN?: string;
 		GOOGLE_CLIENT_ID: string;
 		GOOGLE_CLIENT_SECRET: string;
+		GITHUB_TOKEN?: string;
 		HYPERDRIVE: Hyperdrive;
 		UMAMI_SCRIPT_SRC?: string;
 		UMAMI_WEBSITE_ID?: string;

@@ -336,4 +336,61 @@ describe("syncProfileBentoGraph", () => {
 
 		expect(getInsertValues(operations, "profile_bento")).toBeUndefined();
 	});
+
+	it("persists link bento metadata alongside the link content", async () => {
+		const { db, operations } = createMockDb([]);
+
+		await syncProfileBentoGraph(db as never, "page-1", [
+			{
+				id: "link-bento-1",
+				type: "link",
+				layout: {
+					desktop: { x: 0, y: 0, w: 2, h: 1 },
+					compact: { x: 0, y: 0, w: 2, h: 1 },
+				},
+				content: {
+					title: "GitHub",
+					description: "GitHub profile",
+					favicon: "https://github.githubassets.com/favicons/favicon.svg",
+					thumbnail: null,
+					url: "https://github.com/octocat",
+					metadata: {
+						provider: "github",
+						viewType: "github_contributions_31d",
+						fetchedAt: "2026-05-12T00:00:00.000Z",
+						payload: {
+							login: "octocat",
+						},
+					},
+				},
+			},
+		]);
+
+		expect(
+			operations.map((operation) => `${operation.kind}:${operation.table}`),
+		).toEqual([
+			"insert:profile_bento",
+			"insert:profile_bento_layout",
+			"insert:profile_link_bento",
+		]);
+
+		expect(getInsertValues(operations, "profile_link_bento")).toEqual([
+			{
+				bentoId: "link-bento-1",
+				title: "GitHub",
+				description: "GitHub profile",
+				favicon: "https://github.githubassets.com/favicons/favicon.svg",
+				thumbnail: null,
+				url: "https://github.com/octocat",
+				metadata: {
+					provider: "github",
+					viewType: "github_contributions_31d",
+					fetchedAt: "2026-05-12T00:00:00.000Z",
+					payload: {
+						login: "octocat",
+					},
+				},
+			},
+		]);
+	});
 });
