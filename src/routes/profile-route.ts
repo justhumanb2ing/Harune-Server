@@ -457,7 +457,7 @@ function parseProfilePagePatch(body: unknown): ProfilePagePatch | null {
 
 	if ("bio" in body) {
 		const value = parseOptionalNullableTextField(body.bio);
-		if (value === null && body.bio !== null) {
+		if (value === null && body.bio !== null && !isBlankTextField(body.bio)) {
 			return null;
 		}
 		patch.bio = value;
@@ -1038,19 +1038,20 @@ function parseCreateProfilePageBody(body: unknown) {
 	}
 
 	const bio = parseOptionalCreateTextField(body.bio, 280);
-	if (bio === null) {
+	if (bio === null && body.bio !== null && !isBlankTextField(body.bio)) {
 		return null;
 	}
 
 	const role = parseOptionalNullableEmptyTextField(body.role);
-	if (body.role === null || (role === null && !isBlankTextField(body.role))) {
+	if (role === null && body.role !== null && !isBlankTextField(body.role)) {
 		return null;
 	}
 
 	const location = parseOptionalNullableEmptyTextField(body.location);
 	if (
-		body.location === null ||
-		(location === null && !isBlankTextField(body.location))
+		location === null &&
+		body.location !== null &&
+		!isBlankTextField(body.location)
 	) {
 		return null;
 	}

@@ -2768,7 +2768,7 @@ if (!profileMePut) {
 
 profileMePut.summary = "Update my profile page";
 profileMePut.description =
-	"Partially updates the authenticated user's profile page. The server trims text fields, allows null to clear fields, treats empty `role` and `location` strings as null, validates image/backgroundImage as absolute http or https URLs when provided, and can also accept a full `bento` snapshot in the same request so profile fields and bento graph commit together with no-store headers on success. When the authenticated user does not yet have a profile page, the same endpoint accepts the onboarding create payload with `handle` and `name` and creates the page before returning the committed profile snapshot.";
+	"Partially updates the authenticated user's profile page. The server trims text fields, allows null to clear fields, treats empty `bio`, `role`, and `location` strings as null, validates image/backgroundImage as absolute http or https URLs when provided, and can also accept a full `bento` snapshot in the same request so profile fields and bento graph commit together with no-store headers on success. When the authenticated user does not yet have a profile page, the same endpoint accepts the onboarding create payload with `handle` and `name` and creates the page before returning the committed profile snapshot.";
 profileMePut.operationId = "updateProfilePage";
 profileMePut.tags = ["Profile API"];
 profileMePut.requestBody = {
@@ -2783,8 +2783,8 @@ profileMePut.requestBody = {
 						handle: "maker_one",
 						name: "Maker One",
 						bio: "Bio",
-						role: "Creator",
-						location: "Seoul",
+						role: null,
+						location: null,
 						image: "https://cdn.harune.me/avatar.png",
 					},
 				},
@@ -2834,6 +2834,7 @@ profileMePut.requestBody = {
 				blankOptionalFields: {
 					summary: "Clear optional text fields with blanks",
 					value: {
+						bio: "   ",
 						role: "   ",
 						location: "   ",
 					},

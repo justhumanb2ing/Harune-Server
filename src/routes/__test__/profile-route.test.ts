@@ -1239,6 +1239,74 @@ describe("PUT /profile/me onboarding create", () => {
 		expect(getCurrentPage()?.handle).toBe("maker_one");
 	});
 
+	it("accepts a blank bio when creating a profile page", async () => {
+		const bucket = createMockBucket();
+		const { app, getLastCreatedInput } = createCreateTestApp({
+			session: { userId: "user-1" },
+			bucket,
+		});
+
+		const response = await app.request("/profile/me", {
+			method: "PUT",
+			body: JSON.stringify({
+				handle: "maker_blank_bio",
+				name: "Maker Blank Bio",
+				bio: "   ",
+			}),
+			headers: {
+				"content-type": "application/json",
+			},
+		});
+		const json = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(json.page.bio).toBe(null);
+		expect(getLastCreatedInput()).toEqual({
+			userId: "user-1",
+			handle: "maker_blank_bio",
+			name: "Maker Blank Bio",
+			bio: null,
+			role: undefined,
+			location: undefined,
+			image: undefined,
+		});
+	});
+
+	it("accepts null role and location when creating a profile page", async () => {
+		const bucket = createMockBucket();
+		const { app, getLastCreatedInput } = createCreateTestApp({
+			session: { userId: "user-1" },
+			bucket,
+		});
+
+		const response = await app.request("/profile/me", {
+			method: "PUT",
+			body: JSON.stringify({
+				handle: "maker_nulls",
+				name: "Maker Nulls",
+				role: null,
+				location: null,
+			}),
+			headers: {
+				"content-type": "application/json",
+			},
+		});
+		const json = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(json.page.role).toBe(null);
+		expect(json.page.location).toBe(null);
+		expect(getLastCreatedInput()).toEqual({
+			userId: "user-1",
+			handle: "maker_nulls",
+			name: "Maker Nulls",
+			bio: undefined,
+			role: null,
+			location: null,
+			image: undefined,
+		});
+	});
+
 	it("returns 400 for invalid profile creation input", async () => {
 		const bucket = createMockBucket();
 		const { app } = createCreateTestApp({
@@ -1251,6 +1319,34 @@ describe("PUT /profile/me onboarding create", () => {
 			body: JSON.stringify({
 				handle: "app",
 				name: "",
+			}),
+			headers: {
+				"content-type": "application/json",
+			},
+		});
+
+		expect(response.status).toBe(400);
+		expect(await response.json()).toEqual({
+			error: {
+				code: "validation_error",
+				message: "invalid request",
+			},
+		});
+	});
+
+	it("returns 400 for invalid null-like profile creation input", async () => {
+		const bucket = createMockBucket();
+		const { app } = createCreateTestApp({
+			session: { userId: "user-1" },
+			bucket,
+		});
+
+		const response = await app.request("/profile/me", {
+			method: "PUT",
+			body: JSON.stringify({
+				handle: "maker",
+				name: "Maker",
+				role: 0,
 			}),
 			headers: {
 				"content-type": "application/json",
@@ -1456,6 +1552,55 @@ describe("PUT /profile/me", () => {
 			bio: "Updated bio",
 			role: null,
 			location: null,
+		});
+	});
+
+	it("allows a blank bio to clear the saved value", async () => {
+		const bucket = createMockBucket();
+		const expectedResponse = {
+			page: {
+				id: "page-1",
+				userId: "user-1",
+				handle: "maker",
+				name: "Updated Maker",
+				role: "creator",
+				bio: null,
+				image: null,
+				backgroundImage: null,
+				location: "Seoul",
+				updatedAt: "2026-05-08T01:00:00.000Z",
+			},
+			bento: [],
+			viewer: {
+				isAuthenticated: true,
+				userId: "user-1",
+				canEdit: true,
+			},
+		};
+
+		const { app, getLastPatch } = createEditorTestApp({
+			session: { userId: "user-1" },
+			getProfile: async () => expectedResponse,
+			bucket,
+		});
+
+		const response = await app.request("/profile/me", {
+			method: "PUT",
+			body: JSON.stringify({
+				name: "Updated Maker",
+				bio: "   ",
+			}),
+			headers: {
+				"content-type": "application/json",
+			},
+		});
+		const json = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(json).toEqual(expectedResponse);
+		expect(getLastPatch()).toEqual({
+			name: "Updated Maker",
+			bio: null,
 		});
 	});
 
