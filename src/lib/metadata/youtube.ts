@@ -177,24 +177,14 @@ export async function fetchYoutubeMetadata(
 			continue;
 		}
 
-		const snippet = channel.snippet ?? {};
-		const statistics = channel.statistics ?? {};
 		const providerMetadata = createYoutubeProviderMetadata(
-			snippet,
-			statistics,
+			channel.snippet ?? {},
+			channel.statistics ?? {},
 			options.now ?? new Date(),
 		);
-		const title = getString(snippet, "title") ?? options.base.title;
-		const description =
-			getString(snippet, "description") ?? options.base.description;
-		const image = pickBestYoutubeThumbnailUrl(snippet) ?? options.base.image;
 
 		return {
 			...options.base,
-			title,
-			description,
-			image,
-			siteName: "YouTube",
 			canonicalUrl: `https://www.youtube.com/channel/${channel.id}`,
 			provider: "youtube",
 			providerMetadata,
@@ -221,42 +211,4 @@ function createYoutubeProviderMetadata(
 			statistics,
 		},
 	};
-}
-
-function getString(
-	record: Record<string, unknown>,
-	key: string,
-): string | null {
-	const value = record[key];
-	return typeof value === "string" ? value : null;
-}
-
-function pickBestYoutubeThumbnailUrl(
-	snippet: Record<string, unknown>,
-): string | null {
-	const thumbnails = snippet.thumbnails;
-
-	if (
-		!thumbnails ||
-		typeof thumbnails !== "object" ||
-		Array.isArray(thumbnails)
-	) {
-		return null;
-	}
-
-	const thumbnailRecord = thumbnails as Record<
-		string,
-		{ url?: unknown } | Record<string, unknown>
-	>;
-
-	for (const key of ["maxres", "standard", "high", "medium", "default"]) {
-		const candidate = thumbnailRecord[key];
-		const url =
-			candidate && typeof candidate === "object" ? candidate.url : null;
-		if (typeof url === "string" && url.trim()) {
-			return url;
-		}
-	}
-
-	return null;
 }
