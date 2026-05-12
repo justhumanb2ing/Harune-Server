@@ -51,12 +51,7 @@ metadataGet.responses["200"] = {
 								additionalProperties: true,
 							},
 						},
-						required: [
-							"provider",
-							"viewType",
-							"fetchedAt",
-							"payload",
-						],
+						required: ["provider", "viewType", "fetchedAt", "payload"],
 					},
 				},
 				required: [
@@ -87,7 +82,7 @@ metadataGet.responses["200"] = {
 					},
 				},
 				githubContributions: {
-					summary: "GitHub profile with 31-day contribution calendar",
+					summary: "GitHub profile with 60-day contribution calendar",
 					value: {
 						url: "https://github.com/octocat",
 						canonicalUrl: "https://github.com/octocat",
@@ -99,13 +94,12 @@ metadataGet.responses["200"] = {
 						provider: "github",
 						providerMetadata: {
 							provider: "github",
-							viewType: "github_contributions_31d",
+							viewType: "github_contributions_60d",
 							fetchedAt: "2026-05-12T00:00:00.000Z",
 							payload: {
 								login: "octocat",
 								name: "The Octocat",
-								avatarUrl:
-									"https://avatars.githubusercontent.com/u/583231?v=4",
+								avatarUrl: "https://avatars.githubusercontent.com/u/583231?v=4",
 								profileUrl: "https://github.com/octocat",
 								rangeStart: "2026-04-12",
 								rangeEnd: "2026-05-12",

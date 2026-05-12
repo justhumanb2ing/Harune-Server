@@ -127,7 +127,7 @@
                     }
                   },
                   "githubContributions": {
-                    "summary": "GitHub profile with 31-day contribution calendar",
+                    "summary": "GitHub profile with 60-day contribution calendar",
                     "value": {
                       "url": "https://github.com/octocat",
                       "canonicalUrl": "https://github.com/octocat",
@@ -139,7 +139,7 @@
                       "provider": "github",
                       "providerMetadata": {
                         "provider": "github",
-                        "viewType": "github_contributions_31d",
+                        "viewType": "github_contributions_60d",
                         "fetchedAt": "2026-05-12T00:00:00.000Z",
                         "payload": {
                           "login": "octocat",
@@ -393,7 +393,7 @@
             }
           }
         },
-        "description": "Returns metadata extracted from the target URL.\n\nRules:\n- GitHub profile URLs also include a provider metadata payload with the recent 31-day contribution calendar\n- GitHub enrichment requires `GITHUB_TOKEN`\n- Non-GitHub URLs keep the generic metadata response and leave provider fields null",
+        "description": "Returns metadata extracted from the target URL.\n\nRules:\n- GitHub profile URLs also include a provider metadata payload with the recent 60-day contribution calendar\n- GitHub enrichment requires `GITHUB_TOKEN`\n- Non-GitHub URLs keep the generic metadata response and leave provider fields null",
         "tags": [
           "Metadata API"
         ],

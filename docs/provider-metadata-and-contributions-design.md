@@ -6,7 +6,7 @@
 
 지금 요구는 다음과 같다.
 
-- GitHub contribution 데이터는 최근 31일만 저장한다.
+- GitHub contribution 데이터는 최근 60일만 저장한다.
 - refresh는 하지 않는다.
 - provider별 UI 분기는 프론트엔드에서 처리한다.
 
@@ -32,14 +32,14 @@ type LinkBentoMetadata = {
 
 ## GitHub 저장 규칙
 
-GitHub 링크가 들어오면 `/metadata`에서 GitHub GraphQL API를 호출하고, 최근 31일 contribution calendar를 만든다.
+GitHub 링크가 들어오면 `/metadata`에서 GitHub GraphQL API를 호출하고, 최근 60일 contribution calendar를 만든다.
 
 권장 payload는 아래 정도면 충분하다.
 
 ```ts
 {
   provider: "github",
-  viewType: "github_contributions_31d",
+  viewType: "github_contributions_60d",
   fetchedAt: "2026-05-12T00:00:00.000Z",
   payload: {
     login: "octocat",
@@ -77,4 +77,4 @@ GitHub 링크가 들어오면 `/metadata`에서 GitHub GraphQL API를 호출하�
 
 ## 결론
 
-현재 요구에서는 `profile_link_bento.metadata` JSONB 한 칸으로 시작하고, GitHub contribution payload만 31일 기준으로 저장하는 것이 맞다.
+현재 요구에서는 `profile_link_bento.metadata` JSONB 한 칸으로 시작하고, GitHub contribution payload만 60일 기준으로 저장하는 것이 맞다.

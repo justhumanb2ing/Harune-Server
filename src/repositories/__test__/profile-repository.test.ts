@@ -356,7 +356,7 @@ describe("syncProfileBentoGraph", () => {
 					url: "https://github.com/octocat",
 					metadata: {
 						provider: "github",
-						viewType: "github_contributions_31d",
+						viewType: "github_contributions_60d",
 						fetchedAt: "2026-05-12T00:00:00.000Z",
 						payload: {
 							login: "octocat",
@@ -384,7 +384,7 @@ describe("syncProfileBentoGraph", () => {
 				url: "https://github.com/octocat",
 				metadata: {
 					provider: "github",
-					viewType: "github_contributions_31d",
+					viewType: "github_contributions_60d",
 					fetchedAt: "2026-05-12T00:00:00.000Z",
 					payload: {
 						login: "octocat",
