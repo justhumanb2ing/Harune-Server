@@ -160,6 +160,7 @@ export type ProfileBentoRow = {
 	linkFavicon: string | null;
 	linkThumbnail: string | null;
 	linkUrl: string | null;
+	linkDomain: string | null;
 	linkMetadata: Record<string, unknown> | null;
 	textBentoId: string | null;
 	textContent: string | null;
@@ -283,21 +284,21 @@ function buildProfileBentoSnapshot(
 				id: requireValue(id, `profile link bento ${row.bentoId} is missing id`),
 				type: "link",
 				layout,
-					content: {
-						title: requireValue(
-							row.linkTitle,
-							`profile link bento ${row.bentoId} is missing content`,
-						),
+				content: {
+					title: requireValue(
+						row.linkTitle,
+						`profile link bento ${row.bentoId} is missing content`,
+					),
 					description: row.linkDescription,
 					favicon: row.linkFavicon,
 					thumbnail: row.linkThumbnail,
-						url: requireValue(
-							row.linkUrl,
-							`profile link bento ${row.bentoId} is missing content`,
-						),
-						metadata: (row.linkMetadata ?? null) as LinkBentoMetadata | null,
-					},
-				};
+					url: requireValue(
+						row.linkUrl,
+						`profile link bento ${row.bentoId} is missing content`,
+					),
+					metadata: normalizeLinkBentoMetadata(row),
+				},
+			};
 		case "text":
 			if (!row.textBentoId) {
 				throw profileInvariantError(
@@ -453,6 +454,23 @@ function buildProfileBentoGraphSignature(bentos: ProfileBentoSnapshot[]) {
 	);
 }
 
+function normalizeLinkBentoMetadata(
+	row: Pick<ProfileBentoRow, "linkDomain" | "linkMetadata">,
+): LinkBentoMetadata | null {
+	if (!row.linkMetadata && row.linkDomain === null) {
+		return null;
+	}
+
+	const metadata = (row.linkMetadata ?? {}) as Record<string, unknown>;
+
+	return {
+		...metadata,
+		domain:
+			row.linkDomain ??
+			(typeof metadata.domain === "string" ? metadata.domain : null),
+	} as LinkBentoMetadata;
+}
+
 export async function findProfileBentoSnapshotsByPageId(
 	db: Database,
 	pageId: string,
@@ -492,6 +510,7 @@ export async function findProfileRowsByHandle(db: Database, handle: string) {
 			linkFavicon: profileLinkBentos.favicon,
 			linkThumbnail: profileLinkBentos.thumbnail,
 			linkUrl: profileLinkBentos.url,
+			linkDomain: profileLinkBentos.domain,
 			linkMetadata: profileLinkBentos.metadata,
 			textBentoId: profileTextBentos.id,
 			textContent: profileTextBentos.content,
@@ -656,6 +675,7 @@ export async function findProfileRowsByPageId(db: Database, pageId: string) {
 			linkFavicon: profileLinkBentos.favicon,
 			linkThumbnail: profileLinkBentos.thumbnail,
 			linkUrl: profileLinkBentos.url,
+			linkDomain: profileLinkBentos.domain,
 			linkMetadata: profileLinkBentos.metadata,
 			textBentoId: profileTextBentos.id,
 			textContent: profileTextBentos.content,
@@ -932,6 +952,7 @@ export async function syncProfileBentoGraph(
 			favicon: string | null;
 			thumbnail: string | null;
 			url: string;
+			domain: string | null;
 			metadata: LinkBentoMetadata | null;
 		}> = [];
 		const textRows: Array<{
@@ -1013,6 +1034,7 @@ export async function syncProfileBentoGraph(
 						favicon: bento.content.favicon,
 						thumbnail: bento.content.thumbnail,
 						url: bento.content.url,
+						domain: bento.content.metadata?.domain ?? null,
 						metadata: bento.content.metadata ?? null,
 					});
 					break;
@@ -1094,16 +1116,17 @@ export async function syncProfileBentoGraph(
 				.values(linkRows)
 				.onConflictDoUpdate({
 					target: profileLinkBentos.bentoId,
-						set: {
-							title: sql`excluded."title"`,
-							description: sql`excluded."description"`,
-							favicon: sql`excluded."favicon"`,
-							thumbnail: sql`excluded."thumbnail"`,
-							url: sql`excluded."url"`,
-							metadata: sql`excluded."metadata"`,
-							updatedAt: now,
-						},
-					});
+					set: {
+						title: sql`excluded."title"`,
+						description: sql`excluded."description"`,
+						favicon: sql`excluded."favicon"`,
+						thumbnail: sql`excluded."thumbnail"`,
+						url: sql`excluded."url"`,
+						domain: sql`excluded."domain"`,
+						metadata: sql`excluded."metadata"`,
+						updatedAt: now,
+					},
+				});
 		}
 
 		if (textRows.length > 0) {

@@ -2,7 +2,8 @@
 
 ## 결정
 
-외부 링크의 provider 데이터는 별도 테이블로 쪼개지 않고 `profile_link_bento.metadata` `jsonb` 컬럼 하나에 저장한다.
+외부 링크의 provider 데이터는 별도 테이블로 쪼개지 않고 `profile_link_bento.metadata` `jsonb` 컬럼에 저장한다.
+도메인은 검색/표시용으로 `profile_link_bento.domain` `text` 컬럼에도 함께 저장한다.
 
 지금 요구는 다음과 같다.
 
@@ -18,7 +19,7 @@
 `profile_link_bento`는 아래처럼 쓴다.
 
 - 기존 컬럼: `title`, `description`, `favicon`, `thumbnail`, `url`
-- 추가 컬럼: `metadata`
+- 추가 컬럼: `domain`, `metadata`
 
 `metadata`에는 provider 공통 envelope를 넣는다.
 
@@ -98,6 +99,7 @@ GitHub 링크가 들어오면 `/metadata`에서 GitHub GraphQL API를 호출하�
 - `metadata`가 커지면 조회 필터링이나 집계는 불편해진다.
 - 나중에 provider별 집계나 search가 생기면 별도 테이블로 분리하는 편이 낫다.
 - GitHub GraphQL은 토큰이 필요하므로 서버 env에 `GITHUB_TOKEN`이 있어야 한다.
+- `domain`은 정규화된 hostname을 담는 중복 컬럼이라, 필요하면 표시/필터링에서 먼저 사용하고 `metadata.domain`은 응답 호환성용으로 유지한다.
 
 ## YouTube 저장 규칙
 
@@ -137,4 +139,4 @@ YouTube 채널 링크가 들어오면 `/metadata`에서 YouTube Data API v3 `cha
 
 ## 결론
 
-현재 요구에서는 `profile_link_bento.metadata` JSONB 한 칸으로 시작하고, GitHub contribution payload와 YouTube channel payload를 provider별로 분기해 저장하는 것이 맞다.
+현재 요구에서는 `profile_link_bento.metadata` JSONB를 유지하면서, 정규화된 hostname은 `profile_link_bento.domain` 컬럼에 별도로 저장하는 것이 맞다.

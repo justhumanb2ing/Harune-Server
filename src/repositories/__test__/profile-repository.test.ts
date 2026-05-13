@@ -383,6 +383,7 @@ describe("syncProfileBentoGraph", () => {
 				favicon: "https://github.githubassets.com/favicons/favicon.svg",
 				thumbnail: null,
 				url: "https://github.com/octocat",
+				domain: "github.com",
 				metadata: {
 					provider: "github",
 					viewType: "github_contributions_60d",
