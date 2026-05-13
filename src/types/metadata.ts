@@ -1,6 +1,6 @@
 export type NormalizedMetadata = {
 	url: string;
-	canonicalUrl: string | null;
+	domain: string;
 	title: string | null;
 	description: string | null;
 	image: string | null;

@@ -4,6 +4,7 @@ import type {
 	NormalizedMetadata,
 	YoutubeChannelMetadata,
 } from "../../types/metadata";
+import { deriveDomainFromUrl } from "./domain";
 import { fetchHeadHtml } from "./head-html";
 import { pickBestFavicon } from "./html";
 
@@ -203,7 +204,7 @@ export async function fetchYoutubeMetadata(
 
 		return {
 			url: inputUrl.toString(),
-			canonicalUrl: channelUrl,
+			domain: deriveDomainFromUrl(inputUrl.toString()),
 			title,
 			description,
 			image,

@@ -3,6 +3,7 @@ import type {
 	ImageCandidate,
 	NormalizedMetadata,
 } from "../../types/metadata";
+import { deriveDomainFromUrl } from "./domain";
 import { deriveSiteNameFromUrl } from "./site-name";
 
 export function extractMetadata(
@@ -30,18 +31,12 @@ export function extractMetadata(
 		deriveSiteNameFromUrl(pageUrl),
 	);
 
-	const canonicalUrl = firstDefined(
-		findCanonicalUrl(html, pageUrl),
-		getMetaContents(html, ["og:url"]),
-		pageUrl,
-	);
-
 	const image = pickBestImage(html, pageUrl);
 	const favicon = pickBestFavicon(html, pageUrl);
 
 	return {
 		url: pageUrl,
-		canonicalUrl,
+		domain: deriveDomainFromUrl(pageUrl),
 		title: titleFromMeta,
 		description,
 		image,
@@ -73,27 +68,6 @@ function getMetaContents(html: string, keys: string[]): string | null {
 		if (key && content && targetKeys.has(key)) {
 			return cleanText(decodeHtmlEntities(content));
 		}
-	}
-
-	return null;
-}
-
-function findCanonicalUrl(html: string, pageUrl: string): string | null {
-	const linkTags = html.match(/<link\b[^>]*>/gi) ?? [];
-
-	for (const tag of linkTags) {
-		const attrs = parseAttributes(tag);
-		const rel = (attrs.rel ?? "").toLowerCase().split(/\s+/);
-		if (!rel.includes("canonical")) {
-			continue;
-		}
-
-		const href = attrs.href;
-		if (!href) {
-			continue;
-		}
-
-		return resolveUrl(href, pageUrl);
 	}
 
 	return null;

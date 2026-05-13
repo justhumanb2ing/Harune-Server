@@ -136,4 +136,26 @@ describe("OpenAPI contract", () => {
 
 		expect(types).toEqual(["link", "text", "section", "media", "map"]);
 	});
+
+	it("returns metadata domain instead of canonicalUrl", () => {
+		const metadata = openApi.paths?.["/metadata"]?.get?.responses?.["200"];
+		const schema = (
+			metadata as {
+				content?: Record<
+					string,
+					{
+						schema?: {
+							properties?: Record<string, { type?: string }>;
+							required?: string[];
+						};
+					}
+				>;
+			}
+		)?.content?.["application/json"]?.schema;
+
+		expect(schema?.properties?.domain?.type).toBe("string");
+		expect(schema?.properties?.canonicalUrl).toBeUndefined();
+		expect(schema?.required).toContain("domain");
+		expect(schema?.required).not.toContain("canonicalUrl");
+	});
 });

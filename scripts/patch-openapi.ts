@@ -32,7 +32,7 @@ metadataGet.responses["200"] = {
 				type: "object",
 				properties: {
 					url: { type: "string" },
-					canonicalUrl: { type: "string", nullable: true },
+					domain: { type: "string" },
 					title: { type: "string", nullable: true },
 					description: { type: "string", nullable: true },
 					image: { type: "string", nullable: true },
@@ -56,7 +56,7 @@ metadataGet.responses["200"] = {
 				},
 				required: [
 					"url",
-					"canonicalUrl",
+					"domain",
 					"title",
 					"description",
 					"image",
@@ -71,7 +71,7 @@ metadataGet.responses["200"] = {
 					summary: "Generic webpage metadata",
 					value: {
 						url: "https://example.com/article",
-						canonicalUrl: "https://example.com/article",
+						domain: "example.com",
 						title: "Example article",
 						description: "Example description",
 						image: "https://example.com/og-image.png",
@@ -85,7 +85,7 @@ metadataGet.responses["200"] = {
 					summary: "GitHub profile with 60-day contribution calendar",
 					value: {
 						url: "https://github.com/octocat",
-						canonicalUrl: "https://github.com/octocat",
+						domain: "github.com",
 						title: "The Octocat",
 						description: null,
 						image: "https://avatars.githubusercontent.com/u/583231?v=4",
@@ -121,8 +121,7 @@ metadataGet.responses["200"] = {
 					summary: "YouTube channel metadata from channels.list",
 					value: {
 						url: "https://www.youtube.com/@youtubecreators",
-						canonicalUrl:
-							"https://www.youtube.com/channel/UCkRfArvrzheW2E7b6SVT7vQ",
+						domain: "youtube.com",
 						title: "YouTube Creators",
 						description: "Official channel for creators",
 						image: "https://i.ytimg.com/vi/VIDEO_ID/hqdefault.jpg",

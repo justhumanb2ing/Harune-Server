@@ -194,7 +194,7 @@ describe("youtube metadata", () => {
 		);
 		expect(metadata).toEqual({
 			url: "https://www.youtube.com/@youtubecreators/videos",
-			canonicalUrl: "https://www.youtube.com/channel/UCkRfArvrzheW2E7b6SVT7vQ",
+			domain: "youtube.com",
 			title: "YouTube Creators",
 			description: "Official channel for creators",
 			image: "https://i.ytimg.com/high.jpg",

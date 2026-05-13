@@ -99,6 +99,7 @@ describe("github metadata", () => {
 		);
 
 		expect(metadata.provider).toBe("github");
+		expect(metadata.domain).toBe("github.com");
 		expect(metadata.title).toBe("The Octocat");
 		expect(metadata.image).toBe(
 			"https://avatars.githubusercontent.com/u/583231?v=4",

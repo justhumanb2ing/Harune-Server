@@ -35,6 +35,7 @@ export type LinkBentoMetadata = {
 	provider: string;
 	viewType: string;
 	fetchedAt: string;
+	domain: string | null;
 	payload: Record<string, unknown>;
 };
 

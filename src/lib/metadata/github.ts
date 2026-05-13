@@ -5,6 +5,7 @@ import type {
 	GithubContributionMetadata,
 	NormalizedMetadata,
 } from "../../types/metadata";
+import { deriveDomainFromUrl } from "./domain";
 
 const GITHUB_GRAPHQL_ENDPOINT = "https://api.github.com/graphql";
 const GITHUB_FAVICON = "https://github.githubassets.com/favicons/favicon.svg";
@@ -210,7 +211,7 @@ export async function fetchGithubMetadata(
 
 	return {
 		url: profileUrl,
-		canonicalUrl: profileUrl,
+		domain: deriveDomainFromUrl(profileUrl),
 		title: user.name ?? user.login,
 		description: null,
 		image: user.avatarUrl ?? null,

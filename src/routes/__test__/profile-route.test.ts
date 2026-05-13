@@ -1754,6 +1754,7 @@ describe("PUT /profile/me", () => {
 								provider: "github",
 								viewType: "github_contributions_60d",
 								fetchedAt: "2026-05-12T00:00:00.000Z",
+								domain: "github.com",
 								payload: {
 									login: "octocat",
 									totalContributions: 31,
@@ -1787,6 +1788,7 @@ describe("PUT /profile/me", () => {
 						provider: "github",
 						viewType: "github_contributions_60d",
 						fetchedAt: "2026-05-12T00:00:00.000Z",
+						domain: "github.com",
 						payload: {
 							login: "octocat",
 							totalContributions: 31,
