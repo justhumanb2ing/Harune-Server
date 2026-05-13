@@ -90,7 +90,8 @@ metadataGet.responses["200"] = {
 						description: null,
 						image: "https://avatars.githubusercontent.com/u/583231?v=4",
 						siteName: "GitHub",
-						favicon: "https://github.githubassets.com/favicons/favicon.svg",
+						favicon:
+							"https://cdn.harune.me/public/assets/link-provider-icon/github.svg",
 						provider: "github",
 						providerMetadata: {
 							provider: "github",
@@ -126,7 +127,8 @@ metadataGet.responses["200"] = {
 						description: "Official channel for creators",
 						image: "https://i.ytimg.com/vi/VIDEO_ID/hqdefault.jpg",
 						siteName: "YouTube",
-						favicon: "https://www.youtube.com/favicon.ico",
+						favicon:
+							"https://cdn.harune.me/public/assets/link-provider-icon/youtube.svg",
 						provider: "youtube",
 						providerMetadata: {
 							provider: "youtube",

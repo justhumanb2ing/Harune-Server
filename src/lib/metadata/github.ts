@@ -6,6 +6,7 @@ import type {
 	NormalizedMetadata,
 } from "../../types/metadata";
 import { deriveDomainFromUrl } from "./domain";
+import { resolveProviderFaviconUrl } from "./provider-icon";
 
 const GITHUB_GRAPHQL_ENDPOINT = "https://api.github.com/graphql";
 const GITHUB_FAVICON = "https://github.githubassets.com/favicons/favicon.svg";
@@ -216,7 +217,7 @@ export async function fetchGithubMetadata(
 		description: null,
 		image: user.avatarUrl ?? null,
 		siteName: "GitHub",
-		favicon: GITHUB_FAVICON,
+		favicon: resolveProviderFaviconUrl(profileUrl) ?? GITHUB_FAVICON,
 		provider: "github",
 		providerMetadata: metadata,
 	};

@@ -200,7 +200,7 @@ describe("youtube metadata", () => {
 			image: "https://i.ytimg.com/high.jpg",
 			siteName: "YouTube",
 			favicon:
-				"https://www.youtube.com/s/desktop/14cba078/img/favicon_144x144.png",
+				"https://cdn.harune.me/public/assets/link-provider-icon/youtube.svg",
 			provider: "youtube",
 			providerMetadata: {
 				provider: "youtube",

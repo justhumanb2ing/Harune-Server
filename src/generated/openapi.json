@@ -134,7 +134,7 @@
                       "description": null,
                       "image": "https://avatars.githubusercontent.com/u/583231?v=4",
                       "siteName": "GitHub",
-                      "favicon": "https://github.githubassets.com/favicons/favicon.svg",
+                      "favicon": "https://cdn.harune.me/public/assets/link-provider-icon/github.svg",
                       "provider": "github",
                       "providerMetadata": {
                         "provider": "github",
@@ -170,7 +170,7 @@
                       "description": "Official channel for creators",
                       "image": "https://i.ytimg.com/vi/VIDEO_ID/hqdefault.jpg",
                       "siteName": "YouTube",
-                      "favicon": "https://www.youtube.com/favicon.ico",
+                      "favicon": "https://cdn.harune.me/public/assets/link-provider-icon/youtube.svg",
                       "provider": "youtube",
                       "providerMetadata": {
                         "provider": "youtube",
@@ -422,7 +422,7 @@
             }
           }
         },
-        "description": "Returns metadata extracted from the target URL.\n\nRules:\n- `domain` is the normalized hostname from the resolved URL with common prefixes like `www.` removed\n- GitHub profile URLs also include a provider metadata payload with the recent 60-day contribution calendar\n- GitHub enrichment requires `GITHUB_TOKEN`\n- YouTube channel URLs also include a provider metadata payload from `channels.list` and the server tries `id`, `forHandle`, and `forUsername` until one returns a channel\n- YouTube responses narrow `providerMetadata` to `provider: \"youtube\"`, `viewType: \"youtube_channel\"`, and a payload containing `snippet` and `statistics`\n- YouTube enrichment requires `YOUTUBE_API_KEY`\n- Non-provider URLs keep the generic metadata response and leave provider fields null",
+        "description": "Returns metadata extracted from the target URL.\n\nRules:\n- `domain` is the normalized hostname from the resolved URL with common prefixes like `www.` removed\n- Supported provider URLs return the canonical R2 favicon URL instead of a fetched page favicon\n- GitHub profile URLs also include a provider metadata payload with the recent 60-day contribution calendar\n- GitHub enrichment requires `GITHUB_TOKEN`\n- YouTube channel URLs also include a provider metadata payload from `channels.list` and the server tries `id`, `forHandle`, and `forUsername` until one returns a channel\n- YouTube responses narrow `providerMetadata` to `provider: \"youtube\"`, `viewType: \"youtube_channel\"`, and a payload containing `snippet` and `statistics`\n- YouTube enrichment requires `YOUTUBE_API_KEY`\n- Non-provider URLs keep the generic metadata response and leave provider fields null",
         "tags": [
           "Metadata API"
         ],

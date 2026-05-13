@@ -4,6 +4,7 @@ import type {
 	NormalizedMetadata,
 } from "../../types/metadata";
 import { deriveDomainFromUrl } from "./domain";
+import { resolveProviderFaviconUrl } from "./provider-icon";
 import { deriveSiteNameFromUrl } from "./site-name";
 
 export function extractMetadata(
@@ -32,7 +33,8 @@ export function extractMetadata(
 	);
 
 	const image = pickBestImage(html, pageUrl);
-	const favicon = pickBestFavicon(html, pageUrl);
+	const favicon =
+		resolveProviderFaviconUrl(pageUrl) ?? pickBestFavicon(html, pageUrl);
 
 	return {
 		url: pageUrl,

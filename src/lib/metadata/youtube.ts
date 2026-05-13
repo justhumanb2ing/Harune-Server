@@ -7,6 +7,7 @@ import type {
 import { deriveDomainFromUrl } from "./domain";
 import { fetchHeadHtml } from "./head-html";
 import { pickBestFavicon } from "./html";
+import { resolveProviderFaviconUrl } from "./provider-icon";
 
 const YOUTUBE_API_ENDPOINT = "https://www.googleapis.com/youtube/v3/channels";
 const YOUTUBE_FAVICON = "https://www.youtube.com/favicon.ico";
@@ -190,7 +191,10 @@ export async function fetchYoutubeMetadata(
 		const page = options.page
 			? await options.page()
 			: await fetchHeadHtml(new URL(channelUrl));
-		const favicon = pickBestFavicon(page.html, page.url) ?? YOUTUBE_FAVICON;
+		const favicon =
+			resolveProviderFaviconUrl(channelUrl) ??
+			pickBestFavicon(page.html, page.url) ??
+			YOUTUBE_FAVICON;
 		const fetchedAt = (options.now ?? new Date()).toISOString();
 		const providerMetadata: YoutubeChannelMetadata = {
 			provider: "youtube",

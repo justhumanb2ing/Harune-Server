@@ -122,5 +122,8 @@ describe("github metadata", () => {
 				days: githubDays,
 			},
 		});
+		expect(metadata.favicon).toBe(
+			"https://cdn.harune.me/public/assets/link-provider-icon/github.svg",
+		);
 	});
 });
