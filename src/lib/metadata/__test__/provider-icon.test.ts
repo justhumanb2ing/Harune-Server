@@ -10,6 +10,11 @@ describe("metadata provider icons", () => {
 			"https://cdn.harune.me/public/assets/link-provider-icon/instagram.svg",
 		);
 		expect(
+			resolveProviderFaviconUrl(new URL("https://www.facebook.com/zuck")),
+		).toBe(
+			"https://cdn.harune.me/public/assets/link-provider-icon/facebook.svg",
+		);
+		expect(
 			resolveProviderFaviconUrl(new URL("https://open.spotify.com/track/123")),
 		).toBe(
 			"https://cdn.harune.me/public/assets/link-provider-icon/spotify.svg",

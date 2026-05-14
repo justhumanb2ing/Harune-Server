@@ -9,6 +9,7 @@ const PROVIDER_ICON_HOSTS = [
 	{ icon: "figma.svg", hosts: ["figma.com"] },
 	{ icon: "github.svg", hosts: ["github.com"] },
 	{ icon: "gumroad.svg", hosts: ["gumroad.com"] },
+	{ icon: "facebook.svg", hosts: ["facebook.com"] },
 	{ icon: "instagram.svg", hosts: ["instagram.com"] },
 	{ icon: "kofi.svg", hosts: ["ko-fi.com", "kofi.com"] },
 	{ icon: "linkedin.svg", hosts: ["linkedin.com"] },
