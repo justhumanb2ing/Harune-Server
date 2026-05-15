@@ -19,6 +19,14 @@ type ProfilePagesResponse = {
     role: string | null;
     bio: string | null;
     image: string | null;
+    imageCrop: {
+      croppedAreaPixels: {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+      };
+    } | null;
     backgroundImage: string | null;
     createdAt: string;
     updatedAt: string;
@@ -72,6 +80,14 @@ type ProfileResponse = {
     role: string | null;
     bio: string | null;
     image: string | null;
+    imageCrop: {
+      croppedAreaPixels: {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+      };
+    } | null;
     backgroundImage: string | null;
     location: string | null;
     updatedAt: string;
@@ -155,6 +171,7 @@ Returned when profile data is internally inconsistent, for example if a required
 - `viewer.canEdit` is `true` only when the authenticated session user owns the profile page.
 - The endpoint is safe to call anonymously.
 - The profile body is assembled from database joins rather than from a separate metadata cache.
+- `imageCrop` stores the selected crop rectangle when present.
 - `link.content.metadata` carries provider payload when the link was enriched via `/metadata`.
 
 ## `PUT /profile/me/bento`

@@ -59,6 +59,7 @@ import { getProfile } from "../services/get-profile";
 import type { AppBindings } from "../types/app-bindings";
 import type {
 	LinkBentoMetadata,
+	ProfileImageCrop,
 	ProfilePageResponse,
 	ProfilePagesResponse,
 	ProfileResponse,
@@ -214,6 +215,31 @@ function parseUploadContentLength(value: unknown) {
 	return typeof value === "number" && Number.isInteger(value) && value > 0
 		? value
 		: null;
+}
+
+function parseProfileImageCrop(value: unknown): ProfileImageCrop | null {
+	if (!isRecord(value) || !isRecord(value.croppedAreaPixels)) {
+		return null;
+	}
+
+	const croppedAreaPixels = value.croppedAreaPixels;
+	const x = parseFiniteNumber(croppedAreaPixels.x);
+	const y = parseFiniteNumber(croppedAreaPixels.y);
+	const width = parseFiniteNumber(croppedAreaPixels.width);
+	const height = parseFiniteNumber(croppedAreaPixels.height);
+
+	if (x === null || y === null || width === null || height === null) {
+		return null;
+	}
+
+	return {
+		croppedAreaPixels: {
+			x,
+			y,
+			width,
+			height,
+		},
+	};
 }
 
 function parseSha256Hex(value: unknown) {
@@ -416,6 +442,7 @@ function parseProfilePagePatch(body: unknown): ProfilePagePatch | null {
 		"role",
 		"bio",
 		"image",
+		"imageCrop",
 		"backgroundImage",
 	]);
 
@@ -471,6 +498,19 @@ function parseProfilePagePatch(body: unknown): ProfilePagePatch | null {
 		patch.image = value;
 	}
 
+	if ("imageCrop" in body) {
+		if (body.imageCrop === undefined) {
+			return null;
+		}
+
+		const value =
+			body.imageCrop === null ? null : parseProfileImageCrop(body.imageCrop);
+		if (value === null && body.imageCrop !== null) {
+			return null;
+		}
+		patch.imageCrop = value;
+	}
+
 	if ("backgroundImage" in body) {
 		const value = parseOptionalNullableUrlField(body.backgroundImage);
 		if (value === null && body.backgroundImage !== null) {
@@ -495,6 +535,7 @@ function parseProfileSaveBody(
 		"role",
 		"bio",
 		"image",
+		"imageCrop",
 		"backgroundImage",
 		"bento",
 	]);
@@ -512,6 +553,7 @@ function parseProfileSaveBody(
 		"role",
 		"bio",
 		"image",
+		"imageCrop",
 		"backgroundImage",
 	] as const) {
 		if (key in body) {
@@ -1013,6 +1055,7 @@ function parseCreateProfilePageBody(body: unknown) {
 		"role",
 		"location",
 		"image",
+		"imageCrop",
 	]);
 
 	for (const key of Object.keys(body)) {
@@ -1061,6 +1104,15 @@ function parseCreateProfilePageBody(body: unknown) {
 		return null;
 	}
 
+	let imageCrop: ProfileImageCrop | null | undefined;
+	if ("imageCrop" in body) {
+		imageCrop =
+			body.imageCrop === null ? null : parseProfileImageCrop(body.imageCrop);
+		if (imageCrop === null && body.imageCrop !== null) {
+			return null;
+		}
+	}
+
 	return {
 		handle,
 		name,
@@ -1068,6 +1120,7 @@ function parseCreateProfilePageBody(body: unknown) {
 		role,
 		location,
 		image,
+		imageCrop,
 	};
 }
 
@@ -1082,6 +1135,7 @@ function toProfilePageResponse(
 		role: page.role ?? null,
 		bio: page.bio ?? null,
 		image: page.image,
+		imageCrop: page.imageCrop,
 		backgroundImage: page.backgroundImage,
 		location: page.location ?? null,
 		updatedAt: page.updatedAt.toISOString(),
@@ -1098,6 +1152,7 @@ function toProfilePageRecordResponse(page: ProfilePageRecord) {
 		role: page.role,
 		bio: page.bio,
 		image: page.image,
+		imageCrop: page.imageCrop,
 		backgroundImage: page.backgroundImage,
 		createdAt: page.createdAt.toISOString(),
 		updatedAt: page.updatedAt.toISOString(),
@@ -1535,6 +1590,7 @@ export function createProfileRoute(
 							role: parsedCreate.role,
 							location: parsedCreate.location,
 							image: parsedCreate.image,
+							imageCrop: parsedCreate.imageCrop,
 						});
 
 						if (!committedPage) {
@@ -1798,6 +1854,18 @@ export function createProfileRoute(
 							v.trim(),
 							v.nonEmpty("imageUrl is required"),
 						),
+						imageCrop: v.optional(
+							v.nullable(
+								v.object({
+									croppedAreaPixels: v.object({
+										x: v.number(),
+										y: v.number(),
+										width: v.number(),
+										height: v.number(),
+									}),
+								}),
+							),
+						),
 					}),
 					body,
 				);
@@ -1859,6 +1927,7 @@ export function createProfileRoute(
 					session.userId,
 					parsed.output.imageKind,
 					parsed.output.imageUrl,
+					parsed.output.imageCrop,
 				);
 
 				const committedPage = await findPageByUserId(
@@ -1879,6 +1948,7 @@ export function createProfileRoute(
 				const response = c.json({
 					imageKind: parsed.output.imageKind,
 					imageUrl: parsed.output.imageUrl,
+					imageCrop: committedPage.imageCrop,
 					image: committedPage.image,
 					backgroundImage: committedPage.backgroundImage,
 					updatedAt: committedPage.updatedAt.toISOString(),

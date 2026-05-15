@@ -9,6 +9,25 @@ type OpenApiDocument = {
 const raw = await readFile(openApiPath, "utf8");
 const openApi = JSON.parse(raw) as OpenApiDocument;
 
+function profileImageCropSchema() {
+	return {
+		type: "object",
+		properties: {
+			croppedAreaPixels: {
+				type: "object",
+				properties: {
+					x: { type: "number" },
+					y: { type: "number" },
+					width: { type: "number" },
+					height: { type: "number" },
+				},
+				required: ["x", "y", "width", "height"],
+			},
+		},
+		required: ["croppedAreaPixels"],
+	};
+}
+
 const metadataGet = openApi.paths?.["/metadata"]?.get as
 	| {
 			parameters?: unknown[];
@@ -717,8 +736,9 @@ handlePatch.responses["200"] = {
 							handle: { type: "string" },
 							name: { type: "string", nullable: true },
 							image: { type: "string", nullable: true },
+							imageCrop: { ...profileImageCropSchema(), nullable: true },
 						},
-						required: ["id", "handle", "name", "image"],
+						required: ["id", "handle", "name", "image", "imageCrop"],
 					},
 				},
 				required: ["previousHandle", "profilePage"],
@@ -733,6 +753,7 @@ handlePatch.responses["200"] = {
 							handle: "new_handle",
 							name: "Harune",
 							image: "https://cdn.harune.me/avatar.png",
+							imageCrop: null,
 						},
 					},
 				},
@@ -745,6 +766,7 @@ handlePatch.responses["200"] = {
 							handle: "current_handle",
 							name: "Harune",
 							image: "https://cdn.harune.me/avatar.png",
+							imageCrop: null,
 						},
 					},
 				},
@@ -1025,8 +1047,9 @@ meGet.responses = {
 								handle: { type: "string" },
 								name: { type: "string", nullable: true },
 								image: { type: "string", nullable: true },
+								imageCrop: { ...profileImageCropSchema(), nullable: true },
 							},
-							required: ["id", "handle", "name", "image"],
+							required: ["id", "handle", "name", "image", "imageCrop"],
 						},
 						user: {
 							type: "object",
@@ -1078,6 +1101,7 @@ meGet.responses = {
 								handle: "harune",
 								name: "Harune",
 								image: "https://cdn.harune.me/avatar.png",
+								imageCrop: null,
 							},
 							user: {
 								id: "user_123",
@@ -1342,6 +1366,7 @@ profileGet.responses = {
 								role: { type: "string", nullable: true },
 								bio: { type: "string", nullable: true },
 								image: { type: "string", nullable: true },
+								imageCrop: { ...profileImageCropSchema(), nullable: true },
 								backgroundImage: { type: "string", nullable: true },
 								location: { type: "string", nullable: true },
 								updatedAt: {
@@ -1357,6 +1382,7 @@ profileGet.responses = {
 								"role",
 								"bio",
 								"image",
+								"imageCrop",
 								"backgroundImage",
 								"location",
 								"updatedAt",
@@ -1397,6 +1423,7 @@ profileGet.responses = {
 								role: "Photographer",
 								bio: "Photo community profile",
 								image: "https://cdn.harune.me/avatar.jpg",
+								imageCrop: null,
 								backgroundImage: "https://cdn.harune.me/background.jpg",
 								location: "Seoul, KR",
 								updatedAt: "2026-05-07T00:00:00.000Z",
@@ -1619,6 +1646,7 @@ function profilePageSchema() {
 			role: { type: "string", nullable: true },
 			bio: { type: "string", nullable: true },
 			image: { type: "string", nullable: true },
+			imageCrop: { ...profileImageCropSchema(), nullable: true },
 			backgroundImage: { type: "string", nullable: true },
 			location: { type: "string", nullable: true },
 			updatedAt: { type: "string", format: "date-time" },
@@ -1631,6 +1659,7 @@ function profilePageSchema() {
 			"role",
 			"bio",
 			"image",
+			"imageCrop",
 			"backgroundImage",
 			"location",
 			"updatedAt",
@@ -1650,6 +1679,7 @@ function profilePageRecordSchema() {
 			role: { type: "string", nullable: true },
 			bio: { type: "string", nullable: true },
 			image: { type: "string", nullable: true },
+			imageCrop: { ...profileImageCropSchema(), nullable: true },
 			backgroundImage: { type: "string", nullable: true },
 			createdAt: { type: "string", format: "date-time" },
 			updatedAt: { type: "string", format: "date-time" },
@@ -1663,6 +1693,7 @@ function profilePageRecordSchema() {
 			"role",
 			"bio",
 			"image",
+			"imageCrop",
 			"backgroundImage",
 			"createdAt",
 			"updatedAt",
@@ -1725,6 +1756,7 @@ function profilePageUpdateRequestSchema() {
 			role: { type: "string", nullable: true },
 			bio: { type: "string", nullable: true },
 			image: { type: "string", nullable: true },
+			imageCrop: { ...profileImageCropSchema(), nullable: true },
 			backgroundImage: { type: "string", nullable: true },
 			bento: profileBentoReplaceRequestSchema().properties?.bento,
 		},
@@ -1921,6 +1953,7 @@ function profileImageFinalizeSuccessSchema() {
 			imageKind: { type: "string", enum: ["profile", "background"] },
 			imageUrl: { type: "string" },
 			image: { type: "string", nullable: true },
+			imageCrop: { ...profileImageCropSchema(), nullable: true },
 			backgroundImage: { type: "string", nullable: true },
 			updatedAt: { type: "string", format: "date-time" },
 		},
@@ -1928,6 +1961,7 @@ function profileImageFinalizeSuccessSchema() {
 			"imageKind",
 			"imageUrl",
 			"image",
+			"imageCrop",
 			"backgroundImage",
 			"updatedAt",
 		],
@@ -2014,6 +2048,7 @@ profilePagesGet.responses = {
 									role: "creator",
 									bio: "Link in bio page",
 									image: "https://cdn.harune.me/avatar.png",
+									imageCrop: null,
 									backgroundImage: null,
 									createdAt: "2026-05-07T00:00:00.000Z",
 									updatedAt: "2026-05-08T01:00:00.000Z",
@@ -2194,6 +2229,7 @@ profileImagePatch.requestBody = {
 				properties: {
 					imageKind: { type: "string", enum: ["profile", "background"] },
 					imageUrl: { type: "string" },
+					imageCrop: { ...profileImageCropSchema(), nullable: true },
 				},
 				required: ["imageKind", "imageUrl"],
 			},
@@ -2203,6 +2239,14 @@ profileImagePatch.requestBody = {
 						imageKind: "profile",
 						imageUrl:
 							"https://pub.example.com/public/users/user-1/profile?v=abc123",
+						imageCrop: {
+							croppedAreaPixels: {
+								x: 12,
+								y: 24,
+								width: 360,
+								height: 360,
+							},
+						},
 					},
 				},
 			},
@@ -2223,6 +2267,14 @@ profileImagePatch.responses["200"] = {
 							"https://pub.example.com/public/users/user-1/profile?v=abc123",
 						image:
 							"https://pub.example.com/public/users/user-1/profile?v=abc123",
+						imageCrop: {
+							croppedAreaPixels: {
+								x: 12,
+								y: 24,
+								width: 360,
+								height: 360,
+							},
+						},
 						backgroundImage: null,
 						updatedAt: "2026-05-08T01:00:00.000Z",
 					},

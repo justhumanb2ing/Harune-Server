@@ -13,6 +13,7 @@ import {
 	uniqueIndex,
 } from "drizzle-orm/pg-core";
 
+import type { ProfileImageCrop } from "../types/profile";
 import { users } from "./base";
 
 const authenticatedWriteRole = "authenticated";
@@ -113,6 +114,10 @@ export const profileMediaTypeEnum = pgEnum("profile_media_type", [
 	"video",
 ]);
 
+export const profileImageCropSchema = jsonb(
+	"imageCrop",
+).$type<ProfileImageCrop | null>();
+
 export const profilePages = pgTable(
 	"profile_page",
 	{
@@ -128,6 +133,7 @@ export const profilePages = pgTable(
 		role: text("role"),
 		bio: text("bio"),
 		image: text("image"),
+		imageCrop: profileImageCropSchema,
 		backgroundImage: text("backgroundImage"),
 		createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
 		updatedAt: timestamp("updatedAt", { mode: "date" }).defaultNow().notNull(),

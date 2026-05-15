@@ -95,6 +95,14 @@ function createTestApp({
 		handle: string;
 		name: string | null;
 		image: string | null;
+		imageCrop: {
+			croppedAreaPixels: {
+				x: number;
+				y: number;
+				width: number;
+				height: number;
+			};
+		} | null;
 		backgroundImage: string | null;
 		updatedAt: Date;
 	} | null;
@@ -107,6 +115,14 @@ function createTestApp({
 		role: string | null;
 		bio: string | null;
 		image: string | null;
+		imageCrop: {
+			croppedAreaPixels: {
+				x: number;
+				y: number;
+				width: number;
+				height: number;
+			};
+		} | null;
 		backgroundImage: string | null;
 		createdAt: Date;
 		updatedAt: Date;
@@ -122,6 +138,7 @@ function createTestApp({
 		handle: "maker",
 		name: "Maker",
 		image: null,
+		imageCrop: null,
 		backgroundImage: null,
 		updatedAt: new Date("2026-05-08T00:00:00.000Z"),
 	};
@@ -140,6 +157,7 @@ function createTestApp({
 			userId,
 			imageKind,
 			imageUrl,
+			imageCrop,
 		) => {
 			if (!currentPage || currentPage.userId !== userId) {
 				return;
@@ -149,7 +167,7 @@ function createTestApp({
 				...currentPage,
 				updatedAt: new Date("2026-05-08T01:00:00.000Z"),
 				...(imageKind === "profile"
-					? { image: imageUrl }
+					? { image: imageUrl, imageCrop: imageCrop ?? null }
 					: { backgroundImage: imageUrl }),
 			};
 		},
@@ -213,6 +231,14 @@ function createEditorTestApp({
 		role: string | null;
 		bio: string | null;
 		image: string | null;
+		imageCrop: {
+			croppedAreaPixels: {
+				x: number;
+				y: number;
+				width: number;
+				height: number;
+			};
+		} | null;
 		backgroundImage: string | null;
 		updatedAt: Date;
 	} | null;
@@ -242,6 +268,7 @@ function createEditorTestApp({
 		role: "creator",
 		bio: "Bio",
 		image: null,
+		imageCrop: null,
 		backgroundImage: null,
 		updatedAt: new Date("2026-05-08T00:00:00.000Z"),
 	};
@@ -413,6 +440,7 @@ function createCreateTestApp({
 				role: input.role ?? null,
 				bio: input.bio ?? null,
 				image: input.image ?? null,
+				imageCrop: input.imageCrop ?? null,
 				backgroundImage: null,
 				updatedAt: new Date("2026-05-08T01:00:00.000Z"),
 			};
@@ -434,6 +462,7 @@ function createCreateTestApp({
 							role: currentPage.role,
 							bio: currentPage.bio,
 							image: currentPage.image,
+							imageCrop: currentPage.imageCrop,
 							backgroundImage: currentPage.backgroundImage,
 							location: currentPage.location,
 							updatedAt: currentPage.updatedAt.toISOString(),
@@ -485,6 +514,7 @@ describe("GET /profile/:handle", () => {
 			pageRole: null,
 			pageBio: null,
 			pageImage: null,
+			pageImageCrop: null,
 			pageBackgroundImage: null,
 			pageLocation: null,
 			pageUpdatedAt: new Date("2026-05-08T00:00:00.000Z"),
@@ -548,6 +578,7 @@ describe("GET /profile/:handle", () => {
 			pageRole: null,
 			pageBio: null,
 			pageImage: null,
+			pageImageCrop: null,
 			pageBackgroundImage: null,
 			pageLocation: null,
 			pageUpdatedAt: new Date("2026-05-08T00:00:00.000Z"),
@@ -634,6 +665,7 @@ describe("GET /profile/pages", () => {
 				role: "creator",
 				bio: "Second profile",
 				image: "https://cdn.harune.me/avatar-2.png",
+				imageCrop: null,
 				backgroundImage: null,
 				createdAt: new Date("2026-05-07T00:00:00.000Z"),
 				updatedAt: new Date("2026-05-08T02:00:00.000Z"),
@@ -647,6 +679,7 @@ describe("GET /profile/pages", () => {
 				role: null,
 				bio: null,
 				image: null,
+				imageCrop: null,
 				backgroundImage: null,
 				createdAt: new Date("2026-05-06T00:00:00.000Z"),
 				updatedAt: new Date("2026-05-08T01:00:00.000Z"),
@@ -674,6 +707,7 @@ describe("GET /profile/pages", () => {
 					role: "creator",
 					bio: "Second profile",
 					image: "https://cdn.harune.me/avatar-2.png",
+					imageCrop: null,
 					backgroundImage: null,
 					createdAt: "2026-05-07T00:00:00.000Z",
 					updatedAt: "2026-05-08T02:00:00.000Z",
@@ -687,6 +721,7 @@ describe("GET /profile/pages", () => {
 					role: null,
 					bio: null,
 					image: null,
+					imageCrop: null,
 					backgroundImage: null,
 					createdAt: "2026-05-06T00:00:00.000Z",
 					updatedAt: "2026-05-08T01:00:00.000Z",
@@ -812,6 +847,14 @@ describe("profile mutation routes", () => {
 		const bucket = createMockBucket();
 		const imageFixture = await createImageFixture();
 		const objectKey = getProfileImageObjectKey("user-1", "profile");
+		const imageCrop = {
+			croppedAreaPixels: {
+				x: 12,
+				y: 24,
+				width: 360,
+				height: 360,
+			},
+		};
 		await bucket.bucket.put(
 			objectKey,
 			new Uint8Array(await imageFixture.file.arrayBuffer()),
@@ -836,6 +879,7 @@ describe("profile mutation routes", () => {
 				body: JSON.stringify({
 					imageKind: "profile",
 					imageUrl,
+					imageCrop,
 				}),
 				headers: {
 					"content-type": "application/json",
@@ -853,11 +897,13 @@ describe("profile mutation routes", () => {
 		expect(json).toEqual({
 			imageKind: "profile",
 			imageUrl,
+			imageCrop,
 			image: imageUrl,
 			backgroundImage: null,
 			updatedAt: "2026-05-08T01:00:00.000Z",
 		});
 		expect(getCurrentPage()?.image).toBe(imageUrl);
+		expect(getCurrentPage()?.imageCrop).toEqual(imageCrop);
 	});
 
 	it("returns 403 when the finalized imageUrl belongs to another user", async () => {
@@ -1216,6 +1262,7 @@ describe("PUT /profile/me onboarding create", () => {
 				role: null,
 				bio: "Bio",
 				image: "https://cdn.harune.me/avatar.png",
+				imageCrop: null,
 				backgroundImage: null,
 				location: null,
 				updatedAt: "2026-05-08T01:00:00.000Z",
@@ -1402,6 +1449,7 @@ describe("PUT /profile/me onboarding create", () => {
 				role: null,
 				bio: null,
 				image: null,
+				imageCrop: null,
 				backgroundImage: null,
 				updatedAt: new Date("2026-05-08T00:00:00.000Z"),
 			},
@@ -1504,6 +1552,7 @@ describe("PUT /profile/me", () => {
 				role: null,
 				bio: "Updated bio",
 				image: null,
+				imageCrop: null,
 				backgroundImage: null,
 				location: null,
 				updatedAt: "2026-05-08T01:00:00.000Z",
@@ -1566,6 +1615,7 @@ describe("PUT /profile/me", () => {
 				role: "creator",
 				bio: null,
 				image: null,
+				imageCrop: null,
 				backgroundImage: null,
 				location: "Seoul",
 				updatedAt: "2026-05-08T01:00:00.000Z",
@@ -1686,6 +1736,7 @@ describe("PUT /profile/me", () => {
 				role: "creator",
 				bio: "Updated bio",
 				image: null,
+				imageCrop: null,
 				backgroundImage: null,
 				location: "Seoul",
 				updatedAt: "2026-05-08T01:00:00.000Z",

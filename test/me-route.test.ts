@@ -76,6 +76,7 @@ describe("GET /me", () => {
 					handle: "maker",
 					name: "Maker",
 					image: "https://example.com/avatar.png",
+					imageCrop: null,
 				},
 				user: {
 					id: "user-1",
@@ -107,6 +108,7 @@ describe("GET /me", () => {
 				handle: "maker",
 				name: "Maker",
 				image: "https://example.com/avatar.png",
+				imageCrop: null,
 			},
 			user: {
 				id: "user-1",

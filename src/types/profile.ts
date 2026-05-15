@@ -1,3 +1,12 @@
+export type ProfileImageCrop = {
+	croppedAreaPixels: {
+		x: number;
+		y: number;
+		width: number;
+		height: number;
+	};
+};
+
 export type GetProfileRequest = {
 	handle: string;
 };
@@ -103,6 +112,7 @@ export type ProfileResponse = {
 		role: string | null;
 		bio: string | null;
 		image: string | null;
+		imageCrop: ProfileImageCrop | null;
 		backgroundImage: string | null;
 		location: string | null;
 		updatedAt: string;
@@ -128,6 +138,7 @@ export type ProfilePageRecord = {
 	role: string | null;
 	bio: string | null;
 	image: string | null;
+	imageCrop: ProfileImageCrop | null;
 	backgroundImage: string | null;
 	createdAt: string;
 	updatedAt: string;
