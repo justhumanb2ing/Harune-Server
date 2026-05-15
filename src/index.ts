@@ -9,6 +9,7 @@ import { csrfMiddleware } from "./middlewares/csrf-middleware";
 import { sessionMiddleware } from "./middlewares/session-middleware";
 import billingRoute from "./routes/billing-route";
 import defaultRoute from "./routes/default-route";
+import deleteUserCallbackRoute from "./routes/delete-user-callback-route";
 import docRoute from "./routes/doc-route";
 import handleRoute from "./routes/handle-route";
 import meRoute from "./routes/me-route";
@@ -24,6 +25,7 @@ const app = honoFactory
 	.use(sessionMiddleware)
 	.onError(handleHonoError)
 	.notFound((c) => notFound(c, "not_found", "route not found"))
+	.route("/auth/delete-user/callback", deleteUserCallbackRoute)
 	.on(["POST", "GET"], "/auth/*", (c) => {
 		const auth = c.get("auth");
 		return auth.handler(c.req.raw);
