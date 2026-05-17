@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { buildTransactionalEmail, sendResendEmail } from "../resend";
+import {
+	buildTransactionalEmail,
+	sendResendEmail,
+	sendResendTemplateEmail,
+} from "../resend";
 
 describe("buildTransactionalEmail", () => {
 	it("renders escaped html and plain text content", () => {
@@ -78,5 +82,69 @@ describe("sendResendEmail", () => {
 				actionUrl: "https://example.com/verify",
 			}),
 		).rejects.toThrow("Resend email request failed with status 400");
+	});
+});
+
+describe("sendResendTemplateEmail", () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it("posts a transactional template email to Resend", async () => {
+		const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+			new Response(JSON.stringify({ id: "email_123" }), {
+				status: 200,
+				headers: {
+					"content-type": "application/json",
+				},
+			}),
+		);
+
+		await sendResendTemplateEmail({
+			apiKey: "re_test",
+			to: "user@example.com",
+			templateId: "tmpl_delete_account",
+			variables: {
+				ACTION_URL: "https://example.com/delete?token=abc",
+			},
+		});
+
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+		expect(fetchMock).toHaveBeenCalledWith(
+			"https://api.resend.com/emails",
+			expect.objectContaining({
+				method: "POST",
+				headers: expect.objectContaining({
+					Authorization: "Bearer re_test",
+					"Content-Type": "application/json",
+					"User-Agent": "Harune API/1.0",
+				}),
+				body: JSON.stringify({
+					from: "Harune <noreply@harune.me>",
+					to: "user@example.com",
+					template: {
+						id: "tmpl_delete_account",
+						variables: {
+							ACTION_URL: "https://example.com/delete?token=abc",
+						},
+					},
+				}),
+			}),
+		);
+	});
+
+	it("throws when template id is missing", async () => {
+		await expect(
+			sendResendTemplateEmail({
+				apiKey: "re_test",
+				to: "user@example.com",
+				templateId: undefined,
+				variables: {
+					ACTION_URL: "https://example.com/delete?token=abc",
+				},
+			}),
+		).rejects.toThrow(
+			"RESEND_DELETE_ACCOUNT_TEMPLATE_ID is required to send delete account emails",
+		);
 	});
 });

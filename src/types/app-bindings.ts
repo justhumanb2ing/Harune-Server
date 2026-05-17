@@ -12,6 +12,7 @@ export interface AppBindings extends Env {
 		HARUNE_APP_ORIGIN?: string;
 		RESEND_API_KEY?: string;
 		RESEND_FROM_EMAIL?: string;
+		RESEND_DELETE_ACCOUNT_TEMPLATE_ID?: string;
 		GOOGLE_CLIENT_ID: string;
 		GOOGLE_CLIENT_SECRET: string;
 		GITHUB_TOKEN?: string;

@@ -22,6 +22,14 @@ export type SendResendEmailInput = {
 	from?: string;
 };
 
+export type SendResendTemplateEmailInput = {
+	apiKey: string | undefined;
+	to: string;
+	templateId: string | undefined;
+	variables?: Record<string, string | number | boolean | null>;
+	from?: string;
+};
+
 export function buildTransactionalEmail(input: {
 	headline: string;
 	body: string;
@@ -79,6 +87,44 @@ export async function sendResendEmail(input: SendResendEmailInput) {
 			subject: input.subject,
 			html: email.html,
 			text: email.text,
+		}),
+	});
+
+	if (!response.ok) {
+		const errorBody = await response.text().catch(() => "");
+		throw new Error(
+			`Resend email request failed with status ${response.status}${errorBody ? `: ${errorBody}` : ""}`,
+		);
+	}
+}
+
+export async function sendResendTemplateEmail(
+	input: SendResendTemplateEmailInput,
+) {
+	if (!input.apiKey) {
+		throw new Error("RESEND_API_KEY is required to send account emails");
+	}
+
+	if (!input.templateId) {
+		throw new Error(
+			"RESEND_DELETE_ACCOUNT_TEMPLATE_ID is required to send delete account emails",
+		);
+	}
+
+	const response = await fetch(RESEND_EMAIL_ENDPOINT, {
+		method: "POST",
+		headers: {
+			Authorization: `Bearer ${input.apiKey}`,
+			"Content-Type": "application/json",
+			"User-Agent": RESEND_USER_AGENT,
+		},
+		body: JSON.stringify({
+			from: input.from ?? DEFAULT_FROM,
+			to: input.to,
+			template: {
+				id: input.templateId,
+				variables: input.variables ?? {},
+			},
 		}),
 	});
 

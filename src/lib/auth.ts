@@ -16,7 +16,7 @@ import { createDB } from "./db";
 import { createDodoPaymentsClient } from "./dodo-payments";
 import { jwtOptions } from "./jwt";
 import { hashedPassword } from "./password";
-import { sendResendEmail } from "./resend";
+import { sendResendEmail, sendResendTemplateEmail } from "./resend";
 
 function isHaruneProductionAuthUrl(authUrl?: string) {
 	return (
@@ -84,6 +84,7 @@ export const createAuth = (c: Context<AppBindings>) => {
 	const db = createDB(c);
 	const dodoWebhookHandlers = createDodoSubscriptionWebhookHandlers(db);
 	const resendApiKey = c.env.RESEND_API_KEY;
+	const resendDeleteAccountTemplateId = c.env.RESEND_DELETE_ACCOUNT_TEMPLATE_ID;
 
 	return betterAuth({
 		appName: "Harune",
@@ -132,15 +133,14 @@ export const createAuth = (c: Context<AppBindings>) => {
 				sendDeleteAccountVerification: async ({ user, url }) => {
 					queueEmailDelivery(
 						c,
-						sendResendEmail({
+						sendResendTemplateEmail({
 							apiKey: resendApiKey,
 							from: c.env.RESEND_FROM_EMAIL,
 							to: user.email,
-							subject: "Confirm your Harune account deletion",
-							headline: "Confirm your Harune account deletion",
-							body: "Use the button below to permanently delete your Harune account. This action cannot be undone.",
-							actionLabel: "Delete account",
-							actionUrl: url,
+							templateId: resendDeleteAccountTemplateId,
+							variables: {
+								ACTION_URL: url,
+							},
 						}),
 						"delete account verification email",
 					);
