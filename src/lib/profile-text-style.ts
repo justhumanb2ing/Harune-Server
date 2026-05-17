@@ -1,16 +1,23 @@
 export type ProfileTextAlign = "start" | "center" | "end";
+export type ProfileTextVerticalAlign = "start" | "center" | "end";
 
 export type ProfileTextBentoStyle = {
 	backgroundColor: string;
 	textAlign: ProfileTextAlign;
+	verticalAlign: ProfileTextVerticalAlign;
 };
 
 const DEFAULT_PROFILE_TEXT_BENTO_STYLE: ProfileTextBentoStyle = {
 	backgroundColor: "#ffffff",
 	textAlign: "start",
+	verticalAlign: "start",
 };
 
-const PROFILE_TEXT_BENTO_STYLE_KEYS = new Set(["backgroundColor", "textAlign"]);
+const PROFILE_TEXT_BENTO_STYLE_KEYS = new Set([
+	"backgroundColor",
+	"textAlign",
+	"verticalAlign",
+]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -58,10 +65,14 @@ export function resolveProfileTextBentoStyle(
 	const textAlign =
 		normalizeProfileTextAlign(value.textAlign) ??
 		DEFAULT_PROFILE_TEXT_BENTO_STYLE.textAlign;
+	const verticalAlign =
+		normalizeProfileTextAlign(value.verticalAlign) ??
+		DEFAULT_PROFILE_TEXT_BENTO_STYLE.verticalAlign;
 
 	return {
 		backgroundColor,
 		textAlign,
+		verticalAlign,
 	};
 }
 
@@ -102,9 +113,19 @@ export function parseProfileTextBentoStyle(
 		return null;
 	}
 
+	const verticalAlign =
+		value.verticalAlign === undefined || value.verticalAlign === null
+			? DEFAULT_PROFILE_TEXT_BENTO_STYLE.verticalAlign
+			: normalizeProfileTextAlign(value.verticalAlign);
+
+	if (!verticalAlign) {
+		return null;
+	}
+
 	return {
 		backgroundColor,
 		textAlign,
+		verticalAlign,
 	};
 }
 

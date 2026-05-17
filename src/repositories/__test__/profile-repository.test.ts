@@ -418,6 +418,7 @@ describe("syncProfileBentoGraph", () => {
 					style: {
 						backgroundColor: "#111111",
 						textAlign: "center",
+						verticalAlign: "end",
 					},
 				},
 			},
@@ -430,6 +431,7 @@ describe("syncProfileBentoGraph", () => {
 				style: {
 					backgroundColor: "#111111",
 					textAlign: "center",
+					verticalAlign: "end",
 				},
 			},
 		]);
@@ -495,6 +497,7 @@ describe("syncProfileBentoGraph", () => {
 					style: {
 						backgroundColor: "#ffffff",
 						textAlign: "start",
+						verticalAlign: "start",
 					},
 				},
 			},

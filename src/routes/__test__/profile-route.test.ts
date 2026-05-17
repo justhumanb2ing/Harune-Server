@@ -1797,6 +1797,11 @@ describe("PUT /profile/me", () => {
 						},
 						content: {
 							content: "Styled text",
+							style: {
+								backgroundColor: "#ffffff",
+								textAlign: "start",
+								verticalAlign: "start",
+							},
 						},
 					},
 				],
@@ -1820,6 +1825,7 @@ describe("PUT /profile/me", () => {
 					style: {
 						backgroundColor: "#ffffff",
 						textAlign: "start",
+						verticalAlign: "start",
 					},
 				},
 			},
