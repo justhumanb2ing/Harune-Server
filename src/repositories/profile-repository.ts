@@ -2,6 +2,10 @@ import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 import type { Database } from "../lib/db";
+import {
+	type ProfileTextBentoStyle,
+	resolveProfileTextBentoStyle,
+} from "../lib/profile-text-style";
 import { users } from "../schemas/base";
 import {
 	profileBentoLayouts,
@@ -103,6 +107,7 @@ export type ProfileBentoSnapshot =
 			layout: ProfileBentoLayoutSnapshot;
 			content: {
 				content: string;
+				style: ProfileTextBentoStyle;
 			};
 	  }
 	| {
@@ -168,6 +173,7 @@ export type ProfileBentoRow = {
 	linkMetadata: Record<string, unknown> | null;
 	textBentoId: string | null;
 	textContent: string | null;
+	textStyle: ProfileTextBentoStyle | null;
 	sectionBentoId: string | null;
 	sectionTitle: string | null;
 	mediaBentoId: string | null;
@@ -320,6 +326,7 @@ function buildProfileBentoSnapshot(
 						row.textContent,
 						`profile text bento ${row.bentoId} is missing content`,
 					),
+					style: resolveProfileTextBentoStyle(row.textStyle),
 				},
 			};
 		case "section":
@@ -519,6 +526,7 @@ export async function findProfileRowsByHandle(db: Database, handle: string) {
 			linkMetadata: profileLinkBentos.metadata,
 			textBentoId: profileTextBentos.id,
 			textContent: profileTextBentos.content,
+			textStyle: profileTextBentos.style,
 			sectionBentoId: profileSectionBentos.id,
 			sectionTitle: profileSectionBentos.title,
 			mediaBentoId: profileMediaBentos.id,
@@ -686,6 +694,7 @@ export async function findProfileRowsByPageId(db: Database, pageId: string) {
 			linkMetadata: profileLinkBentos.metadata,
 			textBentoId: profileTextBentos.id,
 			textContent: profileTextBentos.content,
+			textStyle: profileTextBentos.style,
 			sectionBentoId: profileSectionBentos.id,
 			sectionTitle: profileSectionBentos.title,
 			mediaBentoId: profileMediaBentos.id,
@@ -886,10 +895,25 @@ export async function syncProfileBentoGraph(
 			publicIdToCanonicalId.set(publicId, row.bentoId);
 		}
 
-		const normalizedIncomingBentos = bentos.map((bento) => ({
-			...bento,
-			id: publicIdToCanonicalId.get(bento.id) ?? bento.id,
-		}));
+		const normalizedIncomingBentos = bentos.map((bento) => {
+			const id = publicIdToCanonicalId.get(bento.id) ?? bento.id;
+
+			if (bento.type !== "text") {
+				return {
+					...bento,
+					id,
+				};
+			}
+
+			return {
+				...bento,
+				id,
+				content: {
+					...bento.content,
+					style: resolveProfileTextBentoStyle(bento.content.style),
+				},
+			};
+		});
 
 		if (
 			buildProfileBentoGraphSignature(existingBentos) ===
@@ -975,6 +999,7 @@ export async function syncProfileBentoGraph(
 		const textRows: Array<{
 			bentoId: string;
 			content: string;
+			style: ProfileTextBentoStyle;
 		}> = [];
 		const sectionRows: Array<{
 			bentoId: string;
@@ -1059,6 +1084,7 @@ export async function syncProfileBentoGraph(
 					textRows.push({
 						bentoId: bento.id,
 						content: bento.content.content,
+						style: resolveProfileTextBentoStyle(bento.content.style),
 					});
 					break;
 				case "section":
@@ -1154,6 +1180,7 @@ export async function syncProfileBentoGraph(
 					target: profileTextBentos.bentoId,
 					set: {
 						content: sql`excluded."content"`,
+						style: sql`excluded."style"`,
 						updatedAt: now,
 					},
 				});

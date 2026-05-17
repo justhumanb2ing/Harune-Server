@@ -38,6 +38,10 @@ import {
 	parseObjectKeyFromPublicUrl,
 	parseProfileBentoMediaObjectKey,
 } from "../lib/profile-media";
+import {
+	type ProfileTextBentoStyle,
+	parseProfileTextBentoStyle,
+} from "../lib/profile-text-style";
 import type {
 	ProfileBentoSnapshot,
 	ProfilePagePatch,
@@ -85,6 +89,7 @@ type ParsedProfileBentoItem =
 			layout: ProfileBentoSnapshot["layout"];
 			content: {
 				content: string;
+				style: ProfileTextBentoStyle;
 			};
 	  }
 	| {
@@ -1277,8 +1282,15 @@ function parseTextBentoContent(value: unknown) {
 		return null;
 	}
 
+	for (const key of Object.keys(value)) {
+		if (key !== "content" && key !== "style") {
+			return null;
+		}
+	}
+
 	const content = parseTrimmedString(value.content);
-	return content ? { content } : null;
+	const style = parseProfileTextBentoStyle(value.style);
+	return content && style ? { content, style } : null;
 }
 
 function parseSectionBentoContent(value: unknown) {

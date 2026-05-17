@@ -1331,7 +1331,7 @@ if (!profileGet) {
 
 profileGet.summary = "Get a profile by handle";
 profileGet.description =
-	"Returns a profile page and its bento blocks for the provided handle. This endpoint is read-only and does not require authentication. If a session is present, the `viewer` object reflects whether the current user can edit the page.";
+	"Returns a profile page and its bento blocks for the provided handle. This endpoint is read-only and does not require authentication. Text bentos always resolve a style object, defaulting backgroundColor to `#ffffff` and textAlign to `start` when the stored row omits style fields. If a session is present, the `viewer` object reflects whether the current user can edit the page.";
 profileGet.operationId = "getProfileByHandle";
 profileGet.tags = ["Profile API"];
 profileGet.parameters = [
@@ -1350,7 +1350,7 @@ profileGet.parameters = [
 profileGet.responses = {
 	200: {
 		description:
-			"Successful profile response. `layout` is always present for every bento item. `viewer.canEdit` is true only for the authenticated owner of the page.",
+			"Successful profile response. `layout` is always present for every bento item. Text bentos always include a resolved style object. `viewer.canEdit` is true only for the authenticated owner of the page.",
 		content: {
 			"application/json": {
 				schema: {
@@ -1442,6 +1442,21 @@ profileGet.responses = {
 										favicon: "https://cdn.harune.me/favicon.ico",
 										thumbnail: "https://cdn.harune.me/thumb.jpg",
 										url: "https://example.com",
+									},
+								},
+								{
+									id: "bento_text_1",
+									type: "text",
+									layout: {
+										desktop: { x: 0, y: 2, w: 4, h: 1 },
+										compact: { x: 0, y: 2, w: 2, h: 1 },
+									},
+									content: {
+										content: "About me",
+										style: {
+											backgroundColor: "#ffffff",
+											textAlign: "start",
+										},
 									},
 								},
 							],
@@ -1559,13 +1574,35 @@ function profileTextBentoSchema() {
 			layout: profileLayoutSchema(),
 			content: {
 				type: "object",
+				additionalProperties: false,
 				properties: {
 					content: { type: "string" },
+					style: profileTextBentoStyleSchema(true),
 				},
-				required: ["content"],
+				required: ["content", "style"],
 			},
 		},
 		required: ["id", "type", "layout", "content"],
+	};
+}
+
+function profileTextBentoStyleSchema(required = false) {
+	return {
+		type: "object",
+		additionalProperties: false,
+		properties: {
+			backgroundColor: {
+				type: "string",
+				description: "Background color applied to the text surface.",
+			},
+			textAlign: {
+				type: "string",
+				enum: ["start", "center", "end"],
+				description:
+					"Text alignment within the text surface. `start` maps to left alignment and `end` maps to right alignment.",
+			},
+		},
+		...(required ? { required: ["backgroundColor", "textAlign"] } : {}),
 	};
 }
 
@@ -1799,6 +1836,7 @@ function profileTextBentoMutationSchema() {
 				additionalProperties: false,
 				properties: {
 					content: { type: "string" },
+					style: profileTextBentoStyleSchema(),
 				},
 				required: ["content"],
 			},
@@ -2563,7 +2601,7 @@ if (!profileMePut) {
 
 profileMePut.summary = "Update my profile page";
 profileMePut.description =
-	"Partially updates the authenticated user's profile page. The server trims text fields, allows null to clear fields, treats empty `bio`, `role`, and `location` strings as null, validates image/backgroundImage as absolute http or https URLs when provided, and can also accept a full `bento` snapshot in the same request so profile fields and bento graph commit together with no-store headers on success. When the authenticated user does not yet have a profile page, the same endpoint accepts the onboarding create payload with `handle` and `name` and creates the page before returning the committed profile snapshot.";
+	"Partially updates the authenticated user's profile page. The server trims text fields, allows null to clear fields, treats empty `bio`, `role`, and `location` strings as null, validates image/backgroundImage as absolute http or https URLs when provided, and can also accept a full `bento` snapshot in the same request so profile fields and bento graph commit together with no-store headers on success. Text bentos resolve style defaults when `content.style` is omitted, using backgroundColor `#ffffff` and textAlign `start`. When the authenticated user does not yet have a profile page, the same endpoint accepts the onboarding create payload with `handle` and `name` and creates the page before returning the committed profile snapshot.";
 profileMePut.operationId = "updateProfilePage";
 profileMePut.tags = ["Profile API"];
 profileMePut.requestBody = {
@@ -2606,6 +2644,21 @@ profileMePut.requestBody = {
 						bento: [
 							{
 								id: "bento_123",
+								type: "text",
+								layout: {
+									desktop: { x: 0, y: 0, w: 4, h: 2 },
+									compact: { x: 0, y: 0, w: 2, h: 2 },
+								},
+								content: {
+									content: "Styled note",
+									style: {
+										backgroundColor: "#ffffff",
+										textAlign: "start",
+									},
+								},
+							},
+							{
+								id: "bento_124",
 								type: "media",
 								layout: {
 									desktop: { x: 0, y: 0, w: 4, h: 4 },
@@ -2613,10 +2666,10 @@ profileMePut.requestBody = {
 								},
 								content: {
 									mediaType: "image",
-									url: "https://cdn.harune.me/public/users/user_123/bento/bento_123?v=content-hash-123",
-									objectKey: "public/users/user_123/bento/bento_123",
+									url: "https://cdn.harune.me/public/users/user_123/bento/bento_124?v=content-hash-123",
+									objectKey: "public/users/user_123/bento/bento_124",
 									tempObjectKey:
-										"tmp/users/user_123/bento/bento_123/123e4567-e89b-12d3-a456-426614174000",
+										"tmp/users/user_123/bento/bento_124/123e4567-e89b-12d3-a456-426614174000",
 									contentHash: "content-hash-123",
 									contentType: "image/png",
 									alt: "Alt",

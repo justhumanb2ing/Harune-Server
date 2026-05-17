@@ -1,3 +1,5 @@
+import type { ProfileTextBentoStyle } from "../lib/profile-text-style";
+
 export type ProfileImageCrop = {
 	croppedAreaPixels: {
 		x: number;
@@ -54,6 +56,7 @@ export type ProfileTextBento = {
 	layout: ProfileBentoLayouts;
 	content: {
 		content: string;
+		style: ProfileTextBentoStyle;
 	};
 };
 

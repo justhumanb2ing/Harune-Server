@@ -1777,6 +1777,55 @@ describe("PUT /profile/me", () => {
 		expect(bucket.bucket.delete).toHaveBeenCalledWith(tempObjectKey);
 	});
 
+	it("defaults missing text style values when saving a text bento", async () => {
+		const bucket = createMockBucket();
+		const { app, getLastSyncedBentos } = createEditorTestApp({
+			session: { userId: "user-1" },
+			bucket,
+		});
+
+		const response = await app.request("/profile/me", {
+			method: "PUT",
+			body: JSON.stringify({
+				bento: [
+					{
+						id: "text-bento-1",
+						type: "text",
+						layout: {
+							desktop: { x: 0, y: 0, w: 2, h: 1 },
+							compact: { x: 0, y: 0, w: 2, h: 1 },
+						},
+						content: {
+							content: "Styled text",
+						},
+					},
+				],
+			}),
+			headers: {
+				"content-type": "application/json",
+			},
+		});
+
+		expect(response.status).toBe(200);
+		expect(getLastSyncedBentos()).toEqual([
+			{
+				id: "text-bento-1",
+				type: "text",
+				layout: {
+					desktop: { x: 0, y: 0, w: 2, h: 1 },
+					compact: { x: 0, y: 0, w: 2, h: 1 },
+				},
+				content: {
+					content: "Styled text",
+					style: {
+						backgroundColor: "#ffffff",
+						textAlign: "start",
+					},
+				},
+			},
+		]);
+	});
+
 	it("persists link metadata from the submitted bento payload", async () => {
 		const bucket = createMockBucket();
 		const { app, getLastSyncedBentos } = createEditorTestApp({

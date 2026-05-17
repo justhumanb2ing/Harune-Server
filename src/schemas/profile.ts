@@ -13,6 +13,10 @@ import {
 	uniqueIndex,
 } from "drizzle-orm/pg-core";
 
+import {
+	DEFAULT_PROFILE_TEXT_BENTO_STYLE,
+	type ProfileTextBentoStyle,
+} from "../lib/profile-text-style";
 import type { ProfileImageCrop } from "../types/profile";
 import { users } from "./base";
 
@@ -244,6 +248,10 @@ export const profileTextBentos = pgTable(
 			.notNull()
 			.references(() => profileBentos.id, { onDelete: "cascade" }),
 		content: text("content").notNull(),
+		style: jsonb("style")
+			.$type<ProfileTextBentoStyle>()
+			.default(DEFAULT_PROFILE_TEXT_BENTO_STYLE)
+			.notNull(),
 		createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
 		updatedAt: timestamp("updatedAt", { mode: "date" }).defaultNow().notNull(),
 	},
