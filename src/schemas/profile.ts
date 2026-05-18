@@ -1,6 +1,7 @@
 import { type SQL, sql } from "drizzle-orm";
 import {
 	type AnyPgColumn,
+	boolean,
 	doublePrecision,
 	index,
 	integer,
@@ -335,6 +336,31 @@ export const profileMapBentos = pgTable(
 		uniqueIndex("profile_map_bento_bento_id_idx").on(table.bentoId),
 		...withRlsPolicies(
 			"profile_map_bento",
+			hasProfileBento(table.bentoId),
+			isProfileBentoOwner(table.bentoId),
+		),
+	],
+).enableRLS();
+
+export const profileClockBentos = pgTable(
+	"profile_clock_bento",
+	{
+		id: text("id")
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		bentoId: text("bentoId")
+			.notNull()
+			.references(() => profileBentos.id, { onDelete: "cascade" }),
+		timezone: text("timezone").notNull().default("Asia/Seoul"),
+		showDate: boolean("showDate").notNull().default(true),
+		showSeconds: boolean("showSeconds").notNull().default(true),
+		createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
+		updatedAt: timestamp("updatedAt", { mode: "date" }).defaultNow().notNull(),
+	},
+	(table) => [
+		uniqueIndex("profile_clock_bento_bento_id_idx").on(table.bentoId),
+		...withRlsPolicies(
+			"profile_clock_bento",
 			hasProfileBento(table.bentoId),
 			isProfileBentoOwner(table.bentoId),
 		),

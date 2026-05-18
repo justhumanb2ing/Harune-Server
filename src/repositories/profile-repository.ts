@@ -10,6 +10,7 @@ import { users } from "../schemas/base";
 import {
 	profileBentoLayouts,
 	profileBentos,
+	profileClockBentos,
 	profileLinkBentos,
 	profileMapBentos,
 	profileMediaBentos,
@@ -87,6 +88,17 @@ export type ProfileBentoLayoutSnapshot = {
 	};
 };
 
+export type ProfileClockBentoSnapshot = {
+	id: string;
+	type: "clock";
+	layout: ProfileBentoLayoutSnapshot;
+	content: {
+		timezone: string;
+		showDate: boolean;
+		showSeconds: boolean;
+	};
+};
+
 export type ProfileBentoSnapshot =
 	| {
 			id: string;
@@ -145,12 +157,13 @@ export type ProfileBentoSnapshot =
 				caption: string;
 				url: string;
 			};
-	  };
+	  }
+	| ProfileClockBentoSnapshot;
 
 export type ProfileBentoRow = {
 	pageId: string;
 	bentoId: string | null;
-	bentoType: "link" | "text" | "section" | "media" | "map" | null;
+	bentoType: "link" | "text" | "section" | "media" | "map" | "clock" | null;
 	desktopLayoutId: string | null;
 	desktopLayoutBreakdown?: "desktop" | "compact" | null;
 	desktopLayoutX: number | null;
@@ -189,6 +202,10 @@ export type ProfileBentoRow = {
 	mapZoom: number | null;
 	mapCaption: string | null;
 	mapUrl: string | null;
+	clockBentoId: string | null;
+	clockTimezone: string | null;
+	clockShowDate: boolean | null;
+	clockShowSeconds: boolean | null;
 };
 
 type ProfileBentoIdMode = "public" | "canonical";
@@ -224,6 +241,8 @@ function getProfileBentoSnapshotId(
 			return row.mediaBentoId;
 		case "map":
 			return row.mapBentoId;
+		case "clock":
+			return row.clockBentoId;
 		default:
 			return null;
 	}
@@ -425,6 +444,36 @@ function buildProfileBentoSnapshot(
 					),
 				},
 			};
+		case "clock":
+			if (!row.clockBentoId) {
+				throw profileInvariantError(
+					"profile_clock_bento_missing",
+					`profile clock bento ${row.bentoId} is missing content`,
+				);
+			}
+
+			return {
+				id: requireValue(
+					id,
+					`profile clock bento ${row.bentoId} is missing id`,
+				),
+				type: "clock",
+				layout,
+				content: {
+					timezone: requireValue(
+						row.clockTimezone,
+						`profile clock bento ${row.bentoId} is missing content`,
+					),
+					showDate: requireValue(
+						row.clockShowDate,
+						`profile clock bento ${row.bentoId} is missing content`,
+					),
+					showSeconds: requireValue(
+						row.clockShowSeconds,
+						`profile clock bento ${row.bentoId} is missing content`,
+					),
+				},
+			};
 		default:
 			throw profileInvariantError(
 				"profile_bento_type_invalid",
@@ -542,6 +591,10 @@ export async function findProfileRowsByHandle(db: Database, handle: string) {
 			mapZoom: profileMapBentos.zoom,
 			mapCaption: profileMapBentos.caption,
 			mapUrl: profileMapBentos.url,
+			clockBentoId: profileClockBentos.id,
+			clockTimezone: profileClockBentos.timezone,
+			clockShowDate: profileClockBentos.showDate,
+			clockShowSeconds: profileClockBentos.showSeconds,
 		})
 		.from(profilePages)
 		.leftJoin(profileBentos, eq(profileBentos.profilePageId, profilePages.id))
@@ -592,6 +645,13 @@ export async function findProfileRowsByHandle(db: Database, handle: string) {
 			and(
 				eq(profileMapBentos.bentoId, profileBentos.id),
 				eq(profileBentos.type, "map"),
+			),
+		)
+		.leftJoin(
+			profileClockBentos,
+			and(
+				eq(profileClockBentos.bentoId, profileBentos.id),
+				eq(profileBentos.type, "clock"),
 			),
 		)
 		.where(eq(profilePages.handle, handle))
@@ -710,6 +770,10 @@ export async function findProfileRowsByPageId(db: Database, pageId: string) {
 			mapZoom: profileMapBentos.zoom,
 			mapCaption: profileMapBentos.caption,
 			mapUrl: profileMapBentos.url,
+			clockBentoId: profileClockBentos.id,
+			clockTimezone: profileClockBentos.timezone,
+			clockShowDate: profileClockBentos.showDate,
+			clockShowSeconds: profileClockBentos.showSeconds,
 		})
 		.from(profilePages)
 		.leftJoin(profileBentos, eq(profileBentos.profilePageId, profilePages.id))
@@ -760,6 +824,13 @@ export async function findProfileRowsByPageId(db: Database, pageId: string) {
 			and(
 				eq(profileMapBentos.bentoId, profileBentos.id),
 				eq(profileBentos.type, "map"),
+			),
+		)
+		.leftJoin(
+			profileClockBentos,
+			and(
+				eq(profileClockBentos.bentoId, profileBentos.id),
+				eq(profileBentos.type, "clock"),
 			),
 		)
 		.where(eq(profilePages.id, pageId))
@@ -957,6 +1028,9 @@ export async function syncProfileBentoGraph(
 			await tx
 				.delete(profileMapBentos)
 				.where(inArray(profileMapBentos.bentoId, bentoIdsToRemove));
+			await tx
+				.delete(profileClockBentos)
+				.where(inArray(profileClockBentos.bentoId, bentoIdsToRemove));
 		}
 
 		if (deletedBentoIds.length > 0) {
@@ -1021,6 +1095,12 @@ export async function syncProfileBentoGraph(
 			zoom: number;
 			caption: string;
 			url: string;
+		}> = [];
+		const clockRows: Array<{
+			bentoId: string;
+			timezone: string;
+			showDate: boolean;
+			showSeconds: boolean;
 		}> = [];
 
 		for (const bento of normalizedIncomingBentos) {
@@ -1112,6 +1192,14 @@ export async function syncProfileBentoGraph(
 						zoom: bento.content.zoom,
 						caption: bento.content.caption,
 						url: bento.content.url,
+					});
+					break;
+				case "clock":
+					clockRows.push({
+						bentoId: bento.id,
+						timezone: bento.content.timezone,
+						showDate: bento.content.showDate,
+						showSeconds: bento.content.showSeconds,
 					});
 					break;
 			}
@@ -1228,6 +1316,21 @@ export async function syncProfileBentoGraph(
 						zoom: sql`excluded."zoom"`,
 						caption: sql`excluded."caption"`,
 						url: sql`excluded."url"`,
+						updatedAt: now,
+					},
+				});
+		}
+
+		if (clockRows.length > 0) {
+			await tx
+				.insert(profileClockBentos)
+				.values(clockRows)
+				.onConflictDoUpdate({
+					target: profileClockBentos.bentoId,
+					set: {
+						timezone: sql`excluded."timezone"`,
+						showDate: sql`excluded."showDate"`,
+						showSeconds: sql`excluded."showSeconds"`,
 						updatedAt: now,
 					},
 				});

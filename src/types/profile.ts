@@ -99,12 +99,24 @@ export type ProfileMapBento = {
 	};
 };
 
+export type ProfileClockBento = {
+	id: string;
+	type: "clock";
+	layout: ProfileBentoLayouts;
+	content: {
+		timezone: string;
+		showDate: boolean;
+		showSeconds: boolean;
+	};
+};
+
 export type ProfileBentoItem =
 	| ProfileLinkBento
 	| ProfileTextBento
 	| ProfileSectionBento
 	| ProfileMediaBento
-	| ProfileMapBento;
+	| ProfileMapBento
+	| ProfileClockBento;
 
 export type ProfileResponse = {
 	page: {

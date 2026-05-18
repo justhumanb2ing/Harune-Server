@@ -136,6 +136,19 @@ type ProfileResponse = {
   - `content.zoom`
   - `content.caption`
   - `content.url`
+- `clock`
+  - `content.timezone`
+  - `content.showDate`
+  - `content.showSeconds`
+
+### Bento Persistence Notes
+
+- `profile_clock_bento` stores clock-related bento state.
+- The persisted fields are `timezone`, `showDate`, and `showSeconds`.
+- `timezone` defaults to `Asia/Seoul`.
+- `showDate` defaults to `true`.
+- `showSeconds` defaults to `true`.
+- This table is part of the internal persistence layer. The public API contract only changes when the clock bento is added to the response and save payload shapes.
 
 ### Error Responses
 

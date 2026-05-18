@@ -127,6 +127,16 @@ type ParsedProfileBentoItem =
 				caption: string;
 				url: string;
 			};
+	  }
+	| {
+			id: string;
+			type: "clock";
+			layout: ProfileBentoSnapshot["layout"];
+			content: {
+				timezone: string;
+				showDate: boolean;
+				showSeconds: boolean;
+			};
 	  };
 
 type ProfileRouteDependencies = {
@@ -1390,6 +1400,39 @@ function parseMapBentoContent(value: unknown) {
 	};
 }
 
+function parseClockBentoContent(value: unknown) {
+	if (!isRecord(value)) {
+		return null;
+	}
+
+	const timezone =
+		value.timezone === undefined
+			? "Asia/Seoul"
+			: parseTrimmedString(value.timezone);
+	const showDate =
+		value.showDate === undefined
+			? true
+			: typeof value.showDate === "boolean"
+				? value.showDate
+				: null;
+	const showSeconds =
+		value.showSeconds === undefined
+			? true
+			: typeof value.showSeconds === "boolean"
+				? value.showSeconds
+				: null;
+
+	if (!timezone || showDate === null || showSeconds === null) {
+		return null;
+	}
+
+	return {
+		timezone,
+		showDate,
+		showSeconds,
+	};
+}
+
 function parseBentoLayoutSnapshot(value: unknown) {
 	if (!isRecord(value)) {
 		return null;
@@ -1437,6 +1480,10 @@ function parseProfileBentoItem(item: unknown): ParsedProfileBentoItem | null {
 		}
 		case "map": {
 			const content = parseMapBentoContent(item.content);
+			return content ? { id, type, layout, content } : null;
+		}
+		case "clock": {
+			const content = parseClockBentoContent(item.content);
 			return content ? { id, type, layout, content } : null;
 		}
 		default:

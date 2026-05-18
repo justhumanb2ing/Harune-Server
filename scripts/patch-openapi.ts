@@ -1331,7 +1331,7 @@ if (!profileGet) {
 
 profileGet.summary = "Get a profile by handle";
 profileGet.description =
-	"Returns a profile page and its bento blocks for the provided handle. This endpoint is read-only and does not require authentication. Text bentos always resolve a style object, defaulting backgroundColor to `#ffffff`, textAlign to `start`, and verticalAlign to `start` when the stored row omits style fields. If a session is present, the `viewer` object reflects whether the current user can edit the page.";
+	"Returns a profile page and its bento blocks for the provided handle. This endpoint is read-only and does not require authentication. Text bentos always resolve a style object, defaulting backgroundColor to `#ffffff`, textAlign to `start`, and verticalAlign to `start` when the stored row omits style fields. Clock bentos always resolve `timezone`, `showDate`, and `showSeconds` from the stored row, defaulting timezone to `Asia/Seoul` and both booleans to `true` when the stored row omits those fields. If a session is present, the `viewer` object reflects whether the current user can edit the page.";
 profileGet.operationId = "getProfileByHandle";
 profileGet.tags = ["Profile API"];
 profileGet.parameters = [
@@ -1350,7 +1350,7 @@ profileGet.parameters = [
 profileGet.responses = {
 	200: {
 		description:
-			"Successful profile response. `layout` is always present for every bento item. Text bentos always include a resolved style object with backgroundColor, textAlign, and verticalAlign. `viewer.canEdit` is true only for the authenticated owner of the page.",
+			"Successful profile response. `layout` is always present for every bento item. Text bentos always include a resolved style object with backgroundColor, textAlign, and verticalAlign. Clock bentos always include timezone, showDate, and showSeconds. `viewer.canEdit` is true only for the authenticated owner of the page.",
 		content: {
 			"application/json": {
 				schema: {
@@ -1396,6 +1396,7 @@ profileGet.responses = {
 									profileTextBentoSchema(),
 									profileSectionBentoSchema(),
 									profileMediaBentoSchema(),
+									profileClockBentoSchema(),
 									profileMapBentoSchema(),
 								],
 							},
@@ -1458,6 +1459,19 @@ profileGet.responses = {
 											textAlign: "start",
 											verticalAlign: "start",
 										},
+									},
+								},
+								{
+									id: "bento_clock_1",
+									type: "clock",
+									layout: {
+										desktop: { x: 0, y: 3, w: 4, h: 1 },
+										compact: { x: 0, y: 3, w: 2, h: 1 },
+									},
+									content: {
+										timezone: "Asia/Seoul",
+										showDate: true,
+										showSeconds: true,
 									},
 								},
 							],
@@ -1681,6 +1695,36 @@ function profileMapBentoSchema() {
 	};
 }
 
+function profileClockBentoSchema() {
+	return {
+		type: "object",
+		properties: {
+			id: { type: "string" },
+			type: { type: "string", enum: ["clock"] },
+			layout: profileLayoutSchema(),
+			content: {
+				type: "object",
+				additionalProperties: false,
+				properties: {
+					timezone: {
+						type: "string",
+						default: "Asia/Seoul",
+					},
+					showDate: {
+						type: "boolean",
+						default: true,
+					},
+					showSeconds: {
+						type: "boolean",
+						default: true,
+					},
+				},
+			},
+		},
+		required: ["id", "type", "layout", "content"],
+	};
+}
+
 function profilePageSchema() {
 	return {
 		type: "object",
@@ -1760,6 +1804,7 @@ function profileResponseSchema() {
 						profileTextBentoSchema(),
 						profileSectionBentoSchema(),
 						profileMediaBentoSchema(),
+						profileClockBentoSchema(),
 						profileMapBentoSchema(),
 					],
 				},
@@ -1926,6 +1971,36 @@ function profileMapBentoMutationSchema() {
 	};
 }
 
+function profileClockBentoMutationSchema() {
+	return {
+		type: "object",
+		properties: {
+			id: { type: "string" },
+			type: { type: "string", enum: ["clock"] },
+			layout: profileLayoutSchema(),
+			content: {
+				type: "object",
+				additionalProperties: false,
+				properties: {
+					timezone: {
+						type: "string",
+						default: "Asia/Seoul",
+					},
+					showDate: {
+						type: "boolean",
+						default: true,
+					},
+					showSeconds: {
+						type: "boolean",
+						default: true,
+					},
+				},
+			},
+		},
+		required: ["id", "type", "layout", "content"],
+	};
+}
+
 function profileBentoReplaceRequestSchema() {
 	return {
 		type: "object",
@@ -1939,6 +2014,7 @@ function profileBentoReplaceRequestSchema() {
 						profileTextBentoMutationSchema(),
 						profileSectionBentoMutationSchema(),
 						profileMediaBentoMutationSchema(),
+						profileClockBentoMutationSchema(),
 						profileMapBentoMutationSchema(),
 					],
 				},
@@ -2610,7 +2686,7 @@ if (!profileMePut) {
 
 profileMePut.summary = "Update my profile page";
 profileMePut.description =
-	"Partially updates the authenticated user's profile page. The server trims text fields, allows null to clear fields, treats empty `bio`, `role`, and `location` strings as null, validates image/backgroundImage as absolute http or https URLs when provided, and can also accept a full `bento` snapshot in the same request so profile fields and bento graph commit together with no-store headers on success. Text bentos resolve style defaults when `content.style` is omitted, using backgroundColor `#ffffff`, textAlign `start`, and verticalAlign `start`. When the authenticated user does not yet have a profile page, the same endpoint accepts the onboarding create payload with `handle` and `name` and creates the page before returning the committed profile snapshot.";
+	"Partially updates the authenticated user's profile page. The server trims text fields, allows null to clear fields, treats empty `bio`, `role`, and `location` strings as null, validates image/backgroundImage as absolute http or https URLs when provided, and can also accept a full `bento` snapshot in the same request so profile fields and bento graph commit together with no-store headers on success. Text bentos resolve style defaults when `content.style` is omitted, using backgroundColor `#ffffff`, textAlign `start`, and verticalAlign `start`. Clock bentos resolve `timezone`, `showDate`, and `showSeconds` when omitted, defaulting timezone to `Asia/Seoul` and both booleans to `true`. When the authenticated user does not yet have a profile page, the same endpoint accepts the onboarding create payload with `handle` and `name` and creates the page before returning the committed profile snapshot.";
 profileMePut.operationId = "updateProfilePage";
 profileMePut.tags = ["Profile API"];
 profileMePut.requestBody = {
@@ -2684,6 +2760,19 @@ profileMePut.requestBody = {
 									contentType: "image/png",
 									alt: "Alt",
 									caption: "Caption",
+								},
+							},
+							{
+								id: "bento_125",
+								type: "clock",
+								layout: {
+									desktop: { x: 0, y: 4, w: 4, h: 1 },
+									compact: { x: 0, y: 4, w: 2, h: 1 },
+								},
+								content: {
+									timezone: "Asia/Seoul",
+									showDate: true,
+									showSeconds: true,
 								},
 							},
 						],

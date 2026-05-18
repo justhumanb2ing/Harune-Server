@@ -1832,6 +1832,51 @@ describe("PUT /profile/me", () => {
 		]);
 	});
 
+	it("defaults missing clock values when saving a clock bento", async () => {
+		const bucket = createMockBucket();
+		const { app, getLastSyncedBentos } = createEditorTestApp({
+			session: { userId: "user-1" },
+			bucket,
+		});
+
+		const response = await app.request("/profile/me", {
+			method: "PUT",
+			body: JSON.stringify({
+				bento: [
+					{
+						id: "clock-bento-1",
+						type: "clock",
+						layout: {
+							desktop: { x: 0, y: 0, w: 2, h: 1 },
+							compact: { x: 0, y: 0, w: 2, h: 1 },
+						},
+						content: {},
+					},
+				],
+			}),
+			headers: {
+				"content-type": "application/json",
+			},
+		});
+
+		expect(response.status).toBe(200);
+		expect(getLastSyncedBentos()).toEqual([
+			{
+				id: "clock-bento-1",
+				type: "clock",
+				layout: {
+					desktop: { x: 0, y: 0, w: 2, h: 1 },
+					compact: { x: 0, y: 0, w: 2, h: 1 },
+				},
+				content: {
+					timezone: "Asia/Seoul",
+					showDate: true,
+					showSeconds: true,
+				},
+			},
+		]);
+	});
+
 	it("persists link metadata from the submitted bento payload", async () => {
 		const bucket = createMockBucket();
 		const { app, getLastSyncedBentos } = createEditorTestApp({

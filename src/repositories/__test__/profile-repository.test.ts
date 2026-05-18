@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
 	profileBentoLayouts,
 	profileBentos,
+	profileClockBentos,
 	profileLinkBentos,
 	profileMapBentos,
 	profileMediaBentos,
@@ -125,6 +126,63 @@ function createRows() {
 	] as const;
 }
 
+function createClockRow() {
+	return {
+		pageId: "page-1",
+		pageUserId: "user-1",
+		pageHandle: "maker",
+		pageName: "Maker",
+		pageRole: null,
+		pageBio: null,
+		pageImage: null,
+		pageBackgroundImage: null,
+		pageLocation: null,
+		pageUpdatedAt: new Date("2026-05-08T00:00:00.000Z"),
+		bentoId: "clock-bento-1",
+		bentoType: "clock",
+		desktopLayoutId: "layout-5",
+		desktopLayoutBreakdown: "desktop",
+		desktopLayoutX: 0,
+		desktopLayoutY: 3,
+		desktopLayoutW: 2,
+		desktopLayoutH: 1,
+		compactLayoutId: "layout-6",
+		compactLayoutBreakdown: "compact",
+		compactLayoutX: 0,
+		compactLayoutY: 3,
+		compactLayoutW: 2,
+		compactLayoutH: 1,
+		linkBentoId: null,
+		linkTitle: null,
+		linkDescription: null,
+		linkFavicon: null,
+		linkThumbnail: null,
+		linkUrl: null,
+		textBentoId: null,
+		textContent: null,
+		textStyle: null,
+		sectionBentoId: null,
+		sectionTitle: null,
+		mediaBentoId: null,
+		mediaType: null,
+		mediaUrl: null,
+		mediaObjectKey: null,
+		mediaHref: null,
+		mediaAlt: null,
+		mediaCaption: null,
+		mapBentoId: null,
+		mapLatitude: null,
+		mapLongitude: null,
+		mapZoom: null,
+		mapCaption: null,
+		mapUrl: null,
+		clockBentoId: "clock-row-1",
+		clockTimezone: "Asia/Seoul",
+		clockShowDate: true,
+		clockShowSeconds: true,
+	} as const;
+}
+
 function createMockDb(rows: readonly unknown[]) {
 	const operations: Operation[] = [];
 
@@ -181,6 +239,8 @@ function tableName(table: unknown) {
 			return "profile_media_bento";
 		case profileMapBentos:
 			return "profile_map_bento";
+		case profileClockBentos:
+			return "profile_clock_bento";
 		case profilePages:
 			return "profile_page";
 		default:
@@ -223,6 +283,7 @@ describe("syncProfileBentoGraph", () => {
 			"delete:profile_section_bento",
 			"delete:profile_media_bento",
 			"delete:profile_map_bento",
+			"delete:profile_clock_bento",
 			"delete:profile_bento",
 			"delete:profile_bento",
 			"insert:profile_bento",
@@ -256,6 +317,7 @@ describe("syncProfileBentoGraph", () => {
 			"delete:profile_section_bento",
 			"delete:profile_media_bento",
 			"delete:profile_map_bento",
+			"delete:profile_clock_bento",
 			"delete:profile_bento",
 		]);
 	});
@@ -336,6 +398,7 @@ describe("syncProfileBentoGraph", () => {
 			"delete:profile_section_bento",
 			"delete:profile_media_bento",
 			"delete:profile_map_bento",
+			"delete:profile_clock_bento",
 			"delete:profile_bento",
 		]);
 
@@ -500,6 +563,49 @@ describe("syncProfileBentoGraph", () => {
 						verticalAlign: "start",
 					},
 				},
+			},
+		]);
+	});
+
+	it("reads clock bentos with timezone and visibility flags", async () => {
+		expect(buildProfileBentosFromRows([createClockRow()] as never)).toEqual([
+			{
+				id: "clock-row-1",
+				type: "clock",
+				layout: {
+					desktop: { x: 0, y: 3, w: 2, h: 1 },
+					compact: { x: 0, y: 3, w: 2, h: 1 },
+				},
+				content: {
+					timezone: "Asia/Seoul",
+					showDate: true,
+					showSeconds: true,
+				},
+			},
+		]);
+	});
+
+	it("persists clock bentos alongside the parent graph", async () => {
+		const { db, operations } = createMockDb([]);
+
+		await syncProfileBentoGraph(db as never, "page-1", [
+			buildProfileBentosFromRows([createClockRow()] as never)[0],
+		]);
+
+		expect(
+			operations.map((operation) => `${operation.kind}:${operation.table}`),
+		).toEqual([
+			"insert:profile_bento",
+			"insert:profile_bento_layout",
+			"insert:profile_clock_bento",
+		]);
+
+		expect(getInsertValues(operations, "profile_clock_bento")).toEqual([
+			{
+				bentoId: "clock-row-1",
+				timezone: "Asia/Seoul",
+				showDate: true,
+				showSeconds: true,
 			},
 		]);
 	});

@@ -134,7 +134,7 @@ describe("OpenAPI contract", () => {
 				(item) => item.properties?.type?.enum ?? [],
 			) ?? [];
 
-		expect(types).toEqual(["link", "text", "section", "media", "map"]);
+		expect(types).toEqual(["link", "text", "section", "media", "clock", "map"]);
 	});
 
 	it("returns metadata domain instead of canonicalUrl", () => {
