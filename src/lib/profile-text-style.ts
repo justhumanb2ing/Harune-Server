@@ -7,10 +7,18 @@ export type ProfileTextBentoStyle = {
 	verticalAlign: ProfileTextVerticalAlign;
 };
 
+export type ProfileBackgroundBentoStyle = {
+	backgroundColor: string;
+};
+
 const DEFAULT_PROFILE_TEXT_BENTO_STYLE: ProfileTextBentoStyle = {
 	backgroundColor: "#ffffff",
 	textAlign: "start",
 	verticalAlign: "start",
+};
+
+const DEFAULT_PROFILE_BACKGROUND_BENTO_STYLE: ProfileBackgroundBentoStyle = {
+	backgroundColor: "#ffffff",
 };
 
 const PROFILE_TEXT_BENTO_STYLE_KEYS = new Set([
@@ -18,6 +26,7 @@ const PROFILE_TEXT_BENTO_STYLE_KEYS = new Set([
 	"textAlign",
 	"verticalAlign",
 ]);
+const PROFILE_BACKGROUND_BENTO_STYLE_KEYS = new Set(["backgroundColor"]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -129,4 +138,54 @@ export function parseProfileTextBentoStyle(
 	};
 }
 
-export { DEFAULT_PROFILE_TEXT_BENTO_STYLE };
+export function resolveProfileBackgroundBentoStyle(
+	value: unknown,
+): ProfileBackgroundBentoStyle {
+	if (!isRecord(value)) {
+		return {
+			...DEFAULT_PROFILE_BACKGROUND_BENTO_STYLE,
+		};
+	}
+
+	return {
+		backgroundColor:
+			parseTrimmedString(value.backgroundColor) ??
+			DEFAULT_PROFILE_BACKGROUND_BENTO_STYLE.backgroundColor,
+	};
+}
+
+export function parseProfileBackgroundBentoStyle(
+	value: unknown,
+): ProfileBackgroundBentoStyle | null {
+	if (value === undefined || value === null) {
+		return {
+			...DEFAULT_PROFILE_BACKGROUND_BENTO_STYLE,
+		};
+	}
+
+	if (!isRecord(value)) {
+		return null;
+	}
+
+	for (const key of Object.keys(value)) {
+		if (!PROFILE_BACKGROUND_BENTO_STYLE_KEYS.has(key)) {
+			return null;
+		}
+	}
+
+	const backgroundColor =
+		value.backgroundColor === undefined || value.backgroundColor === null
+			? DEFAULT_PROFILE_BACKGROUND_BENTO_STYLE.backgroundColor
+			: parseTrimmedString(value.backgroundColor);
+
+	if (!backgroundColor) {
+		return null;
+	}
+
+	return { backgroundColor };
+}
+
+export {
+	DEFAULT_PROFILE_BACKGROUND_BENTO_STYLE,
+	DEFAULT_PROFILE_TEXT_BENTO_STYLE,
+};

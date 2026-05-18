@@ -3,7 +3,9 @@ import { alias } from "drizzle-orm/pg-core";
 
 import type { Database } from "../lib/db";
 import {
+	type ProfileBackgroundBentoStyle,
 	type ProfileTextBentoStyle,
+	resolveProfileBackgroundBentoStyle,
 	resolveProfileTextBentoStyle,
 } from "../lib/profile-text-style";
 import { users } from "../schemas/base";
@@ -99,6 +101,7 @@ export type ProfileClockBentoSnapshot = {
 		timezone: string;
 		showDate: boolean;
 		showSeconds: boolean;
+		style: ProfileBackgroundBentoStyle;
 	};
 };
 
@@ -209,6 +212,7 @@ export type ProfileBentoRow = {
 	clockTimezone: string | null;
 	clockShowDate: boolean | null;
 	clockShowSeconds: boolean | null;
+	clockStyle: ProfileBackgroundBentoStyle | null;
 };
 
 type ProfileBentoIdMode = "public" | "canonical";
@@ -459,6 +463,7 @@ function buildProfileBentoSnapshot(
 					timezone: row.clockTimezone ?? DEFAULT_CLOCK_TIMEZONE,
 					showDate: row.clockShowDate ?? DEFAULT_CLOCK_SHOW_DATE,
 					showSeconds: row.clockShowSeconds ?? DEFAULT_CLOCK_SHOW_SECONDS,
+					style: resolveProfileBackgroundBentoStyle(row.clockStyle),
 				},
 			};
 		default:
@@ -582,6 +587,7 @@ export async function findProfileRowsByHandle(db: Database, handle: string) {
 			clockTimezone: profileClockBentos.timezone,
 			clockShowDate: profileClockBentos.showDate,
 			clockShowSeconds: profileClockBentos.showSeconds,
+			clockStyle: profileClockBentos.style,
 		})
 		.from(profilePages)
 		.leftJoin(profileBentos, eq(profileBentos.profilePageId, profilePages.id))
@@ -761,6 +767,7 @@ export async function findProfileRowsByPageId(db: Database, pageId: string) {
 			clockTimezone: profileClockBentos.timezone,
 			clockShowDate: profileClockBentos.showDate,
 			clockShowSeconds: profileClockBentos.showSeconds,
+			clockStyle: profileClockBentos.style,
 		})
 		.from(profilePages)
 		.leftJoin(profileBentos, eq(profileBentos.profilePageId, profilePages.id))
@@ -1088,6 +1095,7 @@ export async function syncProfileBentoGraph(
 			timezone: string;
 			showDate: boolean;
 			showSeconds: boolean;
+			style: ProfileBackgroundBentoStyle;
 		}> = [];
 
 		for (const bento of normalizedIncomingBentos) {
@@ -1187,6 +1195,7 @@ export async function syncProfileBentoGraph(
 						timezone: bento.content.timezone,
 						showDate: bento.content.showDate,
 						showSeconds: bento.content.showSeconds,
+						style: resolveProfileBackgroundBentoStyle(bento.content.style),
 					});
 					break;
 			}
@@ -1318,6 +1327,7 @@ export async function syncProfileBentoGraph(
 						timezone: sql`excluded."timezone"`,
 						showDate: sql`excluded."showDate"`,
 						showSeconds: sql`excluded."showSeconds"`,
+						style: sql`excluded."style"`,
 						updatedAt: now,
 					},
 				});

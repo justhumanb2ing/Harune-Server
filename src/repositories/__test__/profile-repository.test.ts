@@ -180,6 +180,7 @@ function createClockRow() {
 		clockTimezone: "Asia/Seoul",
 		clockShowDate: true,
 		clockShowSeconds: true,
+		clockStyle: { backgroundColor: "#111111" },
 	} as const;
 }
 
@@ -580,6 +581,7 @@ describe("syncProfileBentoGraph", () => {
 					timezone: "Asia/Seoul",
 					showDate: true,
 					showSeconds: true,
+					style: { backgroundColor: "#111111" },
 				},
 			},
 		]);
@@ -592,6 +594,7 @@ describe("syncProfileBentoGraph", () => {
 			clockTimezone: null,
 			clockShowDate: null,
 			clockShowSeconds: null,
+			clockStyle: null,
 		};
 
 		expect(buildProfileBentosFromRows([row] as never)).toEqual([
@@ -606,6 +609,7 @@ describe("syncProfileBentoGraph", () => {
 					timezone: "Asia/Seoul",
 					showDate: true,
 					showSeconds: true,
+					style: { backgroundColor: "#ffffff" },
 				},
 			},
 		]);
@@ -632,6 +636,7 @@ describe("syncProfileBentoGraph", () => {
 				timezone: "Asia/Seoul",
 				showDate: true,
 				showSeconds: true,
+				style: { backgroundColor: "#111111" },
 			},
 		]);
 	});

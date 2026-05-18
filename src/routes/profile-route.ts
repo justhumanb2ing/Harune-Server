@@ -39,7 +39,9 @@ import {
 	parseProfileBentoMediaObjectKey,
 } from "../lib/profile-media";
 import {
+	type ProfileBackgroundBentoStyle,
 	type ProfileTextBentoStyle,
+	parseProfileBackgroundBentoStyle,
 	parseProfileTextBentoStyle,
 } from "../lib/profile-text-style";
 import type {
@@ -136,6 +138,7 @@ type ParsedProfileBentoItem =
 				timezone: string;
 				showDate: boolean;
 				showSeconds: boolean;
+				style: ProfileBackgroundBentoStyle;
 			};
 	  };
 
@@ -1405,6 +1408,17 @@ function parseClockBentoContent(value: unknown) {
 		return null;
 	}
 
+	for (const key of Object.keys(value)) {
+		if (
+			key !== "timezone" &&
+			key !== "showDate" &&
+			key !== "showSeconds" &&
+			key !== "style"
+		) {
+			return null;
+		}
+	}
+
 	const timezone =
 		value.timezone === undefined
 			? "Asia/Seoul"
@@ -1421,8 +1435,9 @@ function parseClockBentoContent(value: unknown) {
 			: typeof value.showSeconds === "boolean"
 				? value.showSeconds
 				: null;
+	const style = parseProfileBackgroundBentoStyle(value.style);
 
-	if (!timezone || showDate === null || showSeconds === null) {
+	if (!timezone || showDate === null || showSeconds === null || !style) {
 		return null;
 	}
 
@@ -1430,6 +1445,7 @@ function parseClockBentoContent(value: unknown) {
 		timezone,
 		showDate,
 		showSeconds,
+		style,
 	};
 }
 

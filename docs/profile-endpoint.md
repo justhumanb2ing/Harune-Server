@@ -106,7 +106,7 @@ type ProfileResponse = {
 - `page.updatedAt` is serialized as an ISO-8601 string.
 - Every bento item contains both `desktop` and `compact` layout entries.
 - If any required layout row is missing, the request fails with a 500 error.
-- Clock bentos are normalized on read; if the child row is missing or partially empty, the response falls back to `Asia/Seoul`, `showDate: true`, and `showSeconds: true` instead of failing the request.
+- Clock bentos are normalized on read; if the child row is missing or partially empty, the response falls back to `Asia/Seoul`, `showDate: true`, `showSeconds: true`, and `style.backgroundColor: "#ffffff"` instead of failing the request.
 - `viewer.canEdit` is `true` only when the current session user owns the page.
 - `viewer.isAuthenticated` is based on whether a session exists.
 - `viewer.userId` is `null` when there is no session.
@@ -141,14 +141,16 @@ type ProfileResponse = {
   - `content.timezone`
   - `content.showDate`
   - `content.showSeconds`
+  - `content.style.backgroundColor`
 
 ### Bento Persistence Notes
 
 - `profile_clock_bento` stores clock-related bento state.
-- The persisted fields are `timezone`, `showDate`, and `showSeconds`.
+- The persisted fields are `timezone`, `showDate`, `showSeconds`, and `style`.
 - `timezone` defaults to `Asia/Seoul`.
 - `showDate` defaults to `true`.
 - `showSeconds` defaults to `true`.
+- `style` defaults to `{ "backgroundColor": "#ffffff" }`.
 - This table is part of the internal persistence layer. The public API contract only changes when the clock bento is added to the response and save payload shapes.
 
 ### Error Responses

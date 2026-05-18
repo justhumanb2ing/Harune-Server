@@ -15,7 +15,9 @@ import {
 } from "drizzle-orm/pg-core";
 
 import {
+	DEFAULT_PROFILE_BACKGROUND_BENTO_STYLE,
 	DEFAULT_PROFILE_TEXT_BENTO_STYLE,
+	type ProfileBackgroundBentoStyle,
 	type ProfileTextBentoStyle,
 } from "../lib/profile-text-style";
 import type { ProfileImageCrop } from "../types/profile";
@@ -355,6 +357,10 @@ export const profileClockBentos = pgTable(
 		timezone: text("timezone").notNull().default("Asia/Seoul"),
 		showDate: boolean("showDate").notNull().default(true),
 		showSeconds: boolean("showSeconds").notNull().default(true),
+		style: jsonb("style")
+			.$type<ProfileBackgroundBentoStyle>()
+			.default(DEFAULT_PROFILE_BACKGROUND_BENTO_STYLE)
+			.notNull(),
 		createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
 		updatedAt: timestamp("updatedAt", { mode: "date" }).defaultNow().notNull(),
 	},

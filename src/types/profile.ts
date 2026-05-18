@@ -1,4 +1,7 @@
-import type { ProfileTextBentoStyle } from "../lib/profile-text-style";
+import type {
+	ProfileBackgroundBentoStyle,
+	ProfileTextBentoStyle,
+} from "../lib/profile-text-style";
 
 export type ProfileImageCrop = {
 	croppedAreaPixels: {
@@ -107,6 +110,7 @@ export type ProfileClockBento = {
 		timezone: string;
 		showDate: boolean;
 		showSeconds: boolean;
+		style: ProfileBackgroundBentoStyle;
 	};
 };
 

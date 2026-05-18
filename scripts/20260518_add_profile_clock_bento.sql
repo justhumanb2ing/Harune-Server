@@ -6,9 +6,21 @@ create table if not exists profile_clock_bento (
 	"timezone" text not null default 'Asia/Seoul',
 	"showDate" boolean not null default true,
 	"showSeconds" boolean not null default true,
+	"style" jsonb not null default '{"backgroundColor":"#ffffff"}'::jsonb,
 	"createdAt" timestamp not null default now(),
 	"updatedAt" timestamp not null default now()
 );
+
+alter table profile_clock_bento
+	add column if not exists "style" jsonb;
+
+update profile_clock_bento
+	set "style" = '{"backgroundColor":"#ffffff"}'::jsonb
+	where "style" is null;
+
+alter table profile_clock_bento
+	alter column "style" set default '{"backgroundColor":"#ffffff"}'::jsonb,
+	alter column "style" set not null;
 
 create unique index if not exists profile_clock_bento_bento_id_idx
 	on profile_clock_bento ("bentoId");
