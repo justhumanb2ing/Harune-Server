@@ -1,3 +1,5 @@
+alter type profile_bento_type add value if not exists 'clock';
+
 create table if not exists profile_clock_bento (
 	"id" text primary key,
 	"bentoId" text not null references profile_bento("id") on delete cascade,

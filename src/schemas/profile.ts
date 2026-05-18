@@ -104,6 +104,7 @@ const withRlsPolicies = (
 export const profileBentoTypeEnum = pgEnum("profile_bento_type", [
 	"link",
 	"text",
+	"clock",
 	"section",
 	"media",
 	"map",

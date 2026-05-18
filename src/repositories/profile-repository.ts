@@ -22,6 +22,9 @@ import type { LinkBentoMetadata, ProfileImageCrop } from "../types/profile";
 
 const desktopBentoLayout = alias(profileBentoLayouts, "desktop_bento_layout");
 const compactBentoLayout = alias(profileBentoLayouts, "compact_bento_layout");
+const DEFAULT_CLOCK_TIMEZONE = "Asia/Seoul";
+const DEFAULT_CLOCK_SHOW_DATE = true;
+const DEFAULT_CLOCK_SHOW_SECONDS = true;
 
 export type ProfilePageSummary = {
 	id: string;
@@ -242,7 +245,7 @@ function getProfileBentoSnapshotId(
 		case "map":
 			return row.mapBentoId;
 		case "clock":
-			return row.clockBentoId;
+			return row.clockBentoId ?? row.bentoId;
 		default:
 			return null;
 	}
@@ -445,13 +448,6 @@ function buildProfileBentoSnapshot(
 				},
 			};
 		case "clock":
-			if (!row.clockBentoId) {
-				throw profileInvariantError(
-					"profile_clock_bento_missing",
-					`profile clock bento ${row.bentoId} is missing content`,
-				);
-			}
-
 			return {
 				id: requireValue(
 					id,
@@ -460,18 +456,9 @@ function buildProfileBentoSnapshot(
 				type: "clock",
 				layout,
 				content: {
-					timezone: requireValue(
-						row.clockTimezone,
-						`profile clock bento ${row.bentoId} is missing content`,
-					),
-					showDate: requireValue(
-						row.clockShowDate,
-						`profile clock bento ${row.bentoId} is missing content`,
-					),
-					showSeconds: requireValue(
-						row.clockShowSeconds,
-						`profile clock bento ${row.bentoId} is missing content`,
-					),
+					timezone: row.clockTimezone ?? DEFAULT_CLOCK_TIMEZONE,
+					showDate: row.clockShowDate ?? DEFAULT_CLOCK_SHOW_DATE,
+					showSeconds: row.clockShowSeconds ?? DEFAULT_CLOCK_SHOW_SECONDS,
 				},
 			};
 		default:

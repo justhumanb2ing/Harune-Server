@@ -568,6 +568,117 @@ describe("GET /profile/:handle", () => {
 		expect(response.headers.get("Pragma")).toBe("no-cache");
 	});
 
+	it("defaults missing clock child rows instead of failing the public profile read", async () => {
+		const bucket = createMockBucket();
+		const row = {
+			pageId: "page-1",
+			pageUserId: "user-1",
+			pageHandle: "maker",
+			pageName: "Maker",
+			pageRole: null,
+			pageBio: null,
+			pageImage: null,
+			pageImageCrop: null,
+			pageBackgroundImage: null,
+			pageLocation: null,
+			pageUpdatedAt: new Date("2026-05-08T00:00:00.000Z"),
+			bentoId: "clock-bento-1",
+			bentoType: "clock",
+			desktopLayoutId: "desktop-layout-1",
+			desktopLayoutX: 1,
+			desktopLayoutY: 2,
+			desktopLayoutW: 3,
+			desktopLayoutH: 4,
+			compactLayoutId: "compact-layout-1",
+			compactLayoutX: 5,
+			compactLayoutY: 6,
+			compactLayoutW: 7,
+			compactLayoutH: 8,
+			linkBentoId: null,
+			linkTitle: null,
+			linkDescription: null,
+			linkFavicon: null,
+			linkThumbnail: null,
+			linkUrl: null,
+			textBentoId: null,
+			textContent: null,
+			sectionBentoId: null,
+			sectionTitle: null,
+			mediaBentoId: null,
+			mediaType: null,
+			mediaUrl: null,
+			mediaObjectKey: null,
+			mediaHref: null,
+			mediaAlt: null,
+			mediaCaption: null,
+			mapBentoId: null,
+			mapLatitude: null,
+			mapLongitude: null,
+			mapZoom: null,
+			mapCaption: null,
+			mapUrl: null,
+			clockBentoId: null,
+			clockTimezone: null,
+			clockShowDate: null,
+			clockShowSeconds: null,
+		};
+		const chain = {
+			leftJoin: () => chain,
+			where: () => chain,
+			orderBy: () => Promise.resolve([row]),
+		};
+		const db = {
+			select: () => ({
+				from: () => chain,
+			}),
+		};
+		const { app } = createEditorTestApp({
+			session: null,
+			db,
+			bucket,
+		});
+
+		const response = await app.request("/profile/maker");
+		const json = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(json).toEqual({
+			page: {
+				id: "page-1",
+				userId: "user-1",
+				handle: "maker",
+				name: "Maker",
+				role: null,
+				bio: null,
+				image: null,
+				imageCrop: null,
+				backgroundImage: null,
+				location: null,
+				updatedAt: "2026-05-08T00:00:00.000Z",
+			},
+			bento: [
+				{
+					id: "clock-bento-1",
+					type: "clock",
+					layout: {
+						desktop: { x: 1, y: 2, w: 3, h: 4 },
+						compact: { x: 5, y: 6, w: 7, h: 8 },
+					},
+					content: {
+						timezone: "Asia/Seoul",
+						showDate: true,
+						showSeconds: true,
+					},
+				},
+			],
+			viewer: {
+				isAuthenticated: false,
+				userId: null,
+				canEdit: false,
+			},
+		});
+	});
+
 	it("returns a no-store 500 when a profile bento is structurally invalid", async () => {
 		const bucket = createMockBucket();
 		const row = {

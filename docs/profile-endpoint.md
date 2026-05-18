@@ -106,6 +106,7 @@ type ProfileResponse = {
 - `page.updatedAt` is serialized as an ISO-8601 string.
 - Every bento item contains both `desktop` and `compact` layout entries.
 - If any required layout row is missing, the request fails with a 500 error.
+- Clock bentos are normalized on read; if the child row is missing or partially empty, the response falls back to `Asia/Seoul`, `showDate: true`, and `showSeconds: true` instead of failing the request.
 - `viewer.canEdit` is `true` only when the current session user owns the page.
 - `viewer.isAuthenticated` is based on whether a session exists.
 - `viewer.userId` is `null` when there is no session.

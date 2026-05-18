@@ -585,6 +585,32 @@ describe("syncProfileBentoGraph", () => {
 		]);
 	});
 
+	it("defaults missing clock child values when reading clock bentos", async () => {
+		const row = {
+			...createClockRow(),
+			clockBentoId: null,
+			clockTimezone: null,
+			clockShowDate: null,
+			clockShowSeconds: null,
+		};
+
+		expect(buildProfileBentosFromRows([row] as never)).toEqual([
+			{
+				id: "clock-bento-1",
+				type: "clock",
+				layout: {
+					desktop: { x: 0, y: 3, w: 2, h: 1 },
+					compact: { x: 0, y: 3, w: 2, h: 1 },
+				},
+				content: {
+					timezone: "Asia/Seoul",
+					showDate: true,
+					showSeconds: true,
+				},
+			},
+		]);
+	});
+
 	it("persists clock bentos alongside the parent graph", async () => {
 		const { db, operations } = createMockDb([]);
 
