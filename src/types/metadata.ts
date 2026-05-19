@@ -10,6 +10,7 @@ export type NormalizedMetadata = {
 	providerMetadata:
 		| ProviderMetadata
 		| GithubContributionMetadata
+		| ChzzkChannelMetadata
 		| YoutubeChannelMetadata
 		| null;
 };
@@ -27,6 +28,18 @@ export type YoutubeChannelMetadata = ProviderMetadata & {
 	payload: {
 		snippet: Record<string, unknown>;
 		statistics: Record<string, unknown>;
+	};
+};
+
+export type ChzzkChannelMetadata = ProviderMetadata & {
+	provider: "chzzk";
+	viewType: "chzzk_channel";
+	payload: {
+		channelId: string;
+		channelName: string | null;
+		channelImageUrl: string | null;
+		followerCount: number | null;
+		verifiedMark: boolean | null;
 	};
 };
 

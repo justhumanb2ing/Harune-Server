@@ -190,6 +190,31 @@
                         }
                       }
                     }
+                  },
+                  "chzzkChannel": {
+                    "summary": "CHZZK channel metadata from channels",
+                    "value": {
+                      "url": "https://chzzk.naver.com/45e71a76e949e16a34764deb962f9d9f",
+                      "domain": "chzzk.naver.com",
+                      "title": "아야츠노 유니",
+                      "description": "Followers 123,456",
+                      "image": "https://nng-phinf.pstatic.net/profile.jpg",
+                      "siteName": "CHZZK",
+                      "favicon": "https://cdn.harune.me/public/assets/link-provider-icon/chzzk.svg",
+                      "provider": "chzzk",
+                      "providerMetadata": {
+                        "provider": "chzzk",
+                        "viewType": "chzzk_channel",
+                        "fetchedAt": "2026-05-19T00:00:00.000Z",
+                        "payload": {
+                          "channelId": "45e71a76e949e16a34764deb962f9d9f",
+                          "channelName": "아야츠노 유니",
+                          "channelImageUrl": "https://nng-phinf.pstatic.net/profile.jpg",
+                          "followerCount": 123456,
+                          "verifiedMark": true
+                        }
+                      }
+                    }
                   }
                 }
               }

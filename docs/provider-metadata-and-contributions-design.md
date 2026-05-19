@@ -137,6 +137,36 @@ YouTube 채널 링크가 들어오면 `/metadata`에서 YouTube Data API v3 `cha
 }
 ```
 
+## CHZZK 저장 규칙
+
+CHZZK 채널 링크가 들어오면 `/metadata`에서 URL path를 채널 ID로 분석하고 CHZZK Open API `GET /open/v1/channels`를 호출한다.
+
+요구사항은 다음과 같다.
+
+- 지원 URL은 `https://chzzk.naver.com/{channelId}`, `https://chzzk.naver.com/live/{channelId}`, `https://m.chzzk.naver.com/{channelId}`이다.
+- `video`, `clips`, `category` path는 채널 URL로 보지 않고 generic metadata 경로로 보낸다.
+- 요청에는 `channelIds` query parameter를 사용한다.
+- CHZZK Open API는 서버 env의 `CHZZK_CLIENT_ID`, `CHZZK_CLIENT_SECRET`을 `Client-Id`, `Client-Secret` 헤더로 사용한다.
+- 응답의 `providerMetadata`는 `ChzzkChannelMetadata` 타입으로 내려간다.
+- 즉, `provider`는 `"chzzk"`, `viewType`은 `"chzzk_channel"`로 고정된다.
+
+권장 payload는 아래 정도면 충분하다.
+
+```ts
+{
+  provider: "chzzk",
+  viewType: "chzzk_channel",
+  fetchedAt: "2026-05-19T00:00:00.000Z",
+  payload: {
+    channelId: "45e71a76e949e16a34764deb962f9d9f",
+    channelName: "아야츠노 유니",
+    channelImageUrl: "https://nng-phinf.pstatic.net/profile.jpg",
+    followerCount: 123456,
+    verifiedMark: true
+  }
+}
+```
+
 ## 결론
 
 현재 요구에서는 `profile_link_bento.metadata` JSONB를 유지하면서, 정규화된 hostname은 `profile_link_bento.domain` 컬럼에 별도로 저장하는 것이 맞다.

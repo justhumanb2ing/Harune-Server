@@ -15,6 +15,8 @@ export interface AppBindings extends Env {
 		RESEND_DELETE_ACCOUNT_TEMPLATE_ID?: string;
 		GOOGLE_CLIENT_ID: string;
 		GOOGLE_CLIENT_SECRET: string;
+		CHZZK_CLIENT_ID?: string;
+		CHZZK_CLIENT_SECRET?: string;
 		GITHUB_TOKEN?: string;
 		YOUTUBE_API_KEY?: string;
 		HYPERDRIVE: Hyperdrive;

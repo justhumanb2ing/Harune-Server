@@ -1,5 +1,6 @@
 import { HTTPException } from "hono/http-exception";
 import type { NormalizedMetadata } from "../../types/metadata";
+import { fetchChzzkMetadata, isChzzkChannelUrl } from "./chzzk";
 import { fetchGithubMetadata, isGithubProfileUrl } from "./github";
 import { fetchHeadHtml } from "./head-html";
 import { extractMetadata } from "./html";
@@ -12,10 +13,19 @@ const USER_AGENT =
 export async function fetchMetadata(
 	initialUrl: URL,
 	options?: {
+		chzzkClientId?: string | null;
+		chzzkClientSecret?: string | null;
 		githubToken?: string | null;
 		youtubeApiKey?: string | null;
 	},
 ): Promise<NormalizedMetadata> {
+	if (isChzzkChannelUrl(initialUrl)) {
+		return fetchChzzkMetadata(initialUrl, {
+			clientId: options?.chzzkClientId ?? null,
+			clientSecret: options?.chzzkClientSecret ?? null,
+		});
+	}
+
 	if (isGithubProfileUrl(initialUrl)) {
 		return fetchGithubMetadata(initialUrl, {
 			token: options?.githubToken ?? null,

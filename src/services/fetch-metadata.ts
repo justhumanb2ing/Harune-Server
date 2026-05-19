@@ -22,6 +22,8 @@ export async function fetchMetadata(
 			url,
 			() =>
 				getMetdata(url, {
+					chzzkClientId: c.env.CHZZK_CLIENT_ID ?? null,
+					chzzkClientSecret: c.env.CHZZK_CLIENT_SECRET ?? null,
 					githubToken: c.env.GITHUB_TOKEN ?? null,
 					youtubeApiKey: c.env.YOUTUBE_API_KEY ?? null,
 				}),
