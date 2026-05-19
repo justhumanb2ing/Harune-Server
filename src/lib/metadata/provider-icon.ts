@@ -10,6 +10,7 @@ const PROVIDER_ICON_HOSTS = [
 	{ icon: "github.svg", hosts: ["github.com"] },
 	{ icon: "gumroad.svg", hosts: ["gumroad.com"] },
 	{ icon: "facebook.svg", hosts: ["facebook.com"] },
+	{ icon: "discord.svg", hosts: ["discord.com", "discord.gg"] },
 	{ icon: "instagram.svg", hosts: ["instagram.com"] },
 	{ icon: "kofi.svg", hosts: ["ko-fi.com", "kofi.com"] },
 	{ icon: "linkedin.svg", hosts: ["linkedin.com"] },
@@ -22,6 +23,7 @@ const PROVIDER_ICON_HOSTS = [
 	{ icon: "tiktok.svg", hosts: ["tiktok.com"] },
 	{ icon: "twitch.svg", hosts: ["twitch.tv"] },
 	{ icon: "x.svg", hosts: ["x.com", "twitter.com"] },
+	{ icon: "substack.svg", hosts: ["substack.com"] },
 	{ icon: "youtube.svg", hosts: ["youtube.com"] },
 ] as const;
 

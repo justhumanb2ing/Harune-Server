@@ -15,6 +15,18 @@ describe("metadata provider icons", () => {
 			"https://cdn.harune.me/public/assets/link-provider-icon/facebook.svg",
 		);
 		expect(
+			resolveProviderFaviconUrl(new URL("https://discord.com/channels/123")),
+		).toBe(
+			"https://cdn.harune.me/public/assets/link-provider-icon/discord.svg",
+		);
+		expect(
+			resolveProviderFaviconUrl(
+				new URL("https://my-newsletter.substack.com/p/post"),
+			),
+		).toBe(
+			"https://cdn.harune.me/public/assets/link-provider-icon/substack.svg",
+		);
+		expect(
 			resolveProviderFaviconUrl(new URL("https://open.spotify.com/track/123")),
 		).toBe(
 			"https://cdn.harune.me/public/assets/link-provider-icon/spotify.svg",
