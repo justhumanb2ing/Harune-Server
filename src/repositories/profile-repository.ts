@@ -125,6 +125,7 @@ export type ProfileBentoSnapshot =
 			layout: ProfileBentoLayoutSnapshot;
 			content: {
 				content: string;
+				url: string | null;
 				style: ProfileTextBentoStyle;
 			};
 	  }
@@ -192,6 +193,7 @@ export type ProfileBentoRow = {
 	linkMetadata: Record<string, unknown> | null;
 	textBentoId: string | null;
 	textContent: string | null;
+	textUrl: string | null;
 	textStyle: ProfileTextBentoStyle | null;
 	sectionBentoId: string | null;
 	sectionTitle: string | null;
@@ -352,6 +354,7 @@ function buildProfileBentoSnapshot(
 						row.textContent,
 						`profile text bento ${row.bentoId} is missing content`,
 					),
+					url: row.textUrl,
 					style: resolveProfileTextBentoStyle(row.textStyle),
 				},
 			};
@@ -567,6 +570,7 @@ export async function findProfileRowsByHandle(db: Database, handle: string) {
 			linkMetadata: profileLinkBentos.metadata,
 			textBentoId: profileTextBentos.id,
 			textContent: profileTextBentos.content,
+			textUrl: profileTextBentos.url,
 			textStyle: profileTextBentos.style,
 			sectionBentoId: profileSectionBentos.id,
 			sectionTitle: profileSectionBentos.title,
@@ -747,6 +751,7 @@ export async function findProfileRowsByPageId(db: Database, pageId: string) {
 			linkMetadata: profileLinkBentos.metadata,
 			textBentoId: profileTextBentos.id,
 			textContent: profileTextBentos.content,
+			textUrl: profileTextBentos.url,
 			textStyle: profileTextBentos.style,
 			sectionBentoId: profileSectionBentos.id,
 			sectionTitle: profileSectionBentos.title,
@@ -1067,6 +1072,7 @@ export async function syncProfileBentoGraph(
 		const textRows: Array<{
 			bentoId: string;
 			content: string;
+			url: string | null;
 			style: ProfileTextBentoStyle;
 		}> = [];
 		const sectionRows: Array<{
@@ -1159,6 +1165,7 @@ export async function syncProfileBentoGraph(
 					textRows.push({
 						bentoId: bento.id,
 						content: bento.content.content,
+						url: bento.content.url,
 						style: resolveProfileTextBentoStyle(bento.content.style),
 					});
 					break;
@@ -1264,6 +1271,7 @@ export async function syncProfileBentoGraph(
 					target: profileTextBentos.bentoId,
 					set: {
 						content: sql`excluded."content"`,
+						url: sql`excluded."url"`,
 						style: sql`excluded."style"`,
 						updatedAt: now,
 					},

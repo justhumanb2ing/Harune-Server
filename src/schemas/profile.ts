@@ -252,6 +252,7 @@ export const profileTextBentos = pgTable(
 			.notNull()
 			.references(() => profileBentos.id, { onDelete: "cascade" }),
 		content: text("content").notNull(),
+		url: text("url"),
 		style: jsonb("style")
 			.$type<ProfileTextBentoStyle>()
 			.default(DEFAULT_PROFILE_TEXT_BENTO_STYLE)

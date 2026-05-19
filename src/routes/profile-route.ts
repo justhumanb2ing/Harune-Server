@@ -91,6 +91,7 @@ type ParsedProfileBentoItem =
 			layout: ProfileBentoSnapshot["layout"];
 			content: {
 				content: string;
+				url: string | null;
 				style: ProfileTextBentoStyle;
 			};
 	  }
@@ -1296,14 +1297,26 @@ function parseTextBentoContent(value: unknown) {
 	}
 
 	for (const key of Object.keys(value)) {
-		if (key !== "content" && key !== "style") {
+		if (key !== "content" && key !== "style" && key !== "url") {
 			return null;
 		}
 	}
 
 	const content = parseTrimmedString(value.content);
+	const url =
+		value.url === undefined || value.url === null
+			? null
+			: parseOptionalNullableUrlField(value.url);
 	const style = parseProfileTextBentoStyle(value.style);
-	return content && style ? { content, style } : null;
+	if (
+		!content ||
+		!style ||
+		(value.url !== undefined && value.url !== null && url === null)
+	) {
+		return null;
+	}
+
+	return { content, url, style };
 }
 
 function parseSectionBentoContent(value: unknown) {

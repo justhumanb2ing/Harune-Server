@@ -1912,6 +1912,7 @@ describe("PUT /profile/me", () => {
 						},
 						content: {
 							content: "Styled text",
+							url: null,
 							style: {
 								backgroundColor: "#ffffff",
 								textAlign: "start",
@@ -1937,6 +1938,104 @@ describe("PUT /profile/me", () => {
 				},
 				content: {
 					content: "Styled text",
+					url: null,
+					style: {
+						backgroundColor: "#ffffff",
+						textAlign: "start",
+						verticalAlign: "start",
+					},
+				},
+			},
+		]);
+	});
+
+	it("persists text urls when saving a text bento", async () => {
+		const bucket = createMockBucket();
+		const { app, getLastSyncedBentos } = createEditorTestApp({
+			session: { userId: "user-1" },
+			bucket,
+		});
+
+		const response = await app.request("/profile/me", {
+			method: "PUT",
+			body: JSON.stringify({
+				bento: [
+					{
+						id: "text-bento-1",
+						type: "text",
+						layout: {
+							desktop: { x: 0, y: 0, w: 2, h: 1 },
+							compact: { x: 0, y: 0, w: 2, h: 1 },
+						},
+						content: {
+							content: "Styled text",
+							url: "https://example.com",
+							style: {
+								backgroundColor: "#ffffff",
+								textAlign: "start",
+								verticalAlign: "start",
+							},
+						},
+					},
+				],
+			}),
+			headers: {
+				"content-type": "application/json",
+			},
+		});
+		const json = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(json).toEqual({
+			page: {
+				id: "page-1",
+				userId: "user-1",
+				handle: "maker",
+				name: "Maker",
+				role: "creator",
+				bio: "Bio",
+				image: null,
+				imageCrop: null,
+				backgroundImage: null,
+				location: "Seoul",
+				updatedAt: "2026-05-08T00:00:00.000Z",
+			},
+			bento: [
+				{
+					id: "text-bento-1",
+					type: "text",
+					layout: {
+						desktop: { x: 0, y: 0, w: 2, h: 1 },
+						compact: { x: 0, y: 0, w: 2, h: 1 },
+					},
+					content: {
+						content: "Styled text",
+						url: "https://example.com/",
+						style: {
+							backgroundColor: "#ffffff",
+							textAlign: "start",
+							verticalAlign: "start",
+						},
+					},
+				},
+			],
+			viewer: {
+				isAuthenticated: true,
+				userId: "user-1",
+				canEdit: true,
+			},
+		});
+		expect(getLastSyncedBentos()).toEqual([
+			{
+				id: "text-bento-1",
+				type: "text",
+				layout: {
+					desktop: { x: 0, y: 0, w: 2, h: 1 },
+					compact: { x: 0, y: 0, w: 2, h: 1 },
+				},
+				content: {
+					content: "Styled text",
+					url: "https://example.com/",
 					style: {
 						backgroundColor: "#ffffff",
 						textAlign: "start",

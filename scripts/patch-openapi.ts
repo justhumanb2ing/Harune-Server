@@ -1331,7 +1331,7 @@ if (!profileGet) {
 
 profileGet.summary = "Get a profile by handle";
 profileGet.description =
-	"Returns a profile page and its bento blocks for the provided handle. This endpoint is read-only and does not require authentication. Text bentos always resolve a style object, defaulting backgroundColor to `#ffffff`, textAlign to `start`, and verticalAlign to `start` when the stored row omits style fields. Clock bentos always resolve `timezone`, `showDate`, `showSeconds`, and `style.backgroundColor` from the stored row, defaulting timezone to `Asia/Seoul`, both booleans to `true`, and backgroundColor to `#ffffff` when the stored row omits those fields. If a session is present, the `viewer` object reflects whether the current user can edit the page.";
+	"Returns a profile page and its bento blocks for the provided handle. This endpoint is read-only and does not require authentication. Text bentos always resolve `content.url` and a style object, defaulting `url` to `null`, backgroundColor to `#ffffff`, textAlign to `start`, and verticalAlign to `start` when the stored row omits fields. Clock bentos always resolve `timezone`, `showDate`, `showSeconds`, and `style.backgroundColor` from the stored row, defaulting timezone to `Asia/Seoul`, both booleans to `true`, and backgroundColor to `#ffffff` when the stored row omits those fields. If a session is present, the `viewer` object reflects whether the current user can edit the page.";
 profileGet.operationId = "getProfileByHandle";
 profileGet.tags = ["Profile API"];
 profileGet.parameters = [
@@ -1350,7 +1350,7 @@ profileGet.parameters = [
 profileGet.responses = {
 	200: {
 		description:
-			"Successful profile response. `layout` is always present for every bento item. Text bentos always include a resolved style object with backgroundColor, textAlign, and verticalAlign. Clock bentos always include timezone, showDate, showSeconds, and style.backgroundColor. `viewer.canEdit` is true only for the authenticated owner of the page.",
+			"Successful profile response. `layout` is always present for every bento item. Text bentos always include `content.url` and a resolved style object with backgroundColor, textAlign, and verticalAlign. Clock bentos always include timezone, showDate, showSeconds, and style.backgroundColor. `viewer.canEdit` is true only for the authenticated owner of the page.",
 		content: {
 			"application/json": {
 				schema: {
@@ -1454,6 +1454,7 @@ profileGet.responses = {
 									},
 									content: {
 										content: "About me",
+										url: null,
 										style: {
 											backgroundColor: "#ffffff",
 											textAlign: "start",
@@ -1595,9 +1596,10 @@ function profileTextBentoSchema() {
 				additionalProperties: false,
 				properties: {
 					content: { type: "string" },
+					url: { type: "string", nullable: true },
 					style: profileTextBentoStyleSchema(true),
 				},
-				required: ["content", "style"],
+				required: ["content", "url", "style"],
 			},
 		},
 		required: ["id", "type", "layout", "content"],
@@ -1909,6 +1911,7 @@ function profileTextBentoMutationSchema() {
 				additionalProperties: false,
 				properties: {
 					content: { type: "string" },
+					url: { type: "string", nullable: true },
 					style: profileTextBentoStyleSchema(),
 				},
 				required: ["content"],
@@ -2706,7 +2709,7 @@ if (!profileMePut) {
 
 profileMePut.summary = "Update my profile page";
 profileMePut.description =
-	"Partially updates the authenticated user's profile page. The server trims text fields, allows null to clear fields, treats empty `bio`, `role`, and `location` strings as null, validates image/backgroundImage as absolute http or https URLs when provided, and can also accept a full `bento` snapshot in the same request so profile fields and bento graph commit together with no-store headers on success. Text bentos resolve style defaults when `content.style` is omitted, using backgroundColor `#ffffff`, textAlign `start`, and verticalAlign `start`. Clock bentos resolve `timezone`, `showDate`, `showSeconds`, and `style.backgroundColor` when omitted, defaulting timezone to `Asia/Seoul`, both booleans to `true`, and backgroundColor to `#ffffff`. When the authenticated user does not yet have a profile page, the same endpoint accepts the onboarding create payload with `handle` and `name` and creates the page before returning the committed profile snapshot.";
+	"Partially updates the authenticated user's profile page. The server trims text fields, allows null to clear fields, treats empty `bio`, `role`, and `location` strings as null, validates image/backgroundImage as absolute http or https URLs when provided, and can also accept a full `bento` snapshot in the same request so profile fields and bento graph commit together with no-store headers on success. Text bentos resolve `content.url` and style defaults when omitted, using `url: null`, backgroundColor `#ffffff`, textAlign `start`, and verticalAlign `start`. Clock bentos resolve `timezone`, `showDate`, `showSeconds`, and `style.backgroundColor` when omitted, defaulting timezone to `Asia/Seoul`, both booleans to `true`, and backgroundColor to `#ffffff`. When the authenticated user does not yet have a profile page, the same endpoint accepts the onboarding create payload with `handle` and `name` and creates the page before returning the committed profile snapshot.";
 profileMePut.operationId = "updateProfilePage";
 profileMePut.tags = ["Profile API"];
 profileMePut.requestBody = {
@@ -2756,6 +2759,7 @@ profileMePut.requestBody = {
 								},
 								content: {
 									content: "Styled note",
+									url: "https://example.com",
 									style: {
 										backgroundColor: "#ffffff",
 										textAlign: "start",

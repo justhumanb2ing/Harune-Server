@@ -55,6 +55,7 @@ function createRows() {
 			linkUrl: null,
 			textBentoId: null,
 			textContent: null,
+			textUrl: null,
 			textStyle: null,
 			sectionBentoId: null,
 			sectionTitle: null,
@@ -106,6 +107,7 @@ function createRows() {
 			linkUrl: null,
 			textBentoId: "text-row-1",
 			textContent: "Keep me",
+			textUrl: null,
 			textStyle: null,
 			sectionBentoId: null,
 			sectionTitle: null,
@@ -160,6 +162,7 @@ function createClockRow() {
 		linkUrl: null,
 		textBentoId: null,
 		textContent: null,
+		textUrl: null,
 		textStyle: null,
 		sectionBentoId: null,
 		sectionTitle: null,
@@ -306,6 +309,7 @@ describe("syncProfileBentoGraph", () => {
 				},
 				content: {
 					content: "Keep me",
+					url: null,
 				},
 			},
 		]);
@@ -352,6 +356,7 @@ describe("syncProfileBentoGraph", () => {
 				},
 				content: {
 					content: "Updated text",
+					url: null,
 				},
 			},
 		]);
@@ -387,6 +392,7 @@ describe("syncProfileBentoGraph", () => {
 				},
 				content: {
 					content: "Keep me",
+					url: null,
 				},
 			},
 		]);
@@ -479,6 +485,7 @@ describe("syncProfileBentoGraph", () => {
 				},
 				content: {
 					content: "Styled text",
+					url: null,
 					style: {
 						backgroundColor: "#111111",
 						textAlign: "center",
@@ -492,6 +499,44 @@ describe("syncProfileBentoGraph", () => {
 			{
 				bentoId: "text-bento-1",
 				content: "Styled text",
+				url: null,
+				style: {
+					backgroundColor: "#111111",
+					textAlign: "center",
+					verticalAlign: "end",
+				},
+			},
+		]);
+	});
+
+	it("persists text urls alongside the text content", async () => {
+		const { db, operations } = createMockDb([]);
+
+		await syncProfileBentoGraph(db as never, "page-1", [
+			{
+				id: "text-bento-1",
+				type: "text",
+				layout: {
+					desktop: { x: 0, y: 0, w: 2, h: 1 },
+					compact: { x: 0, y: 0, w: 2, h: 1 },
+				},
+				content: {
+					content: "Styled text",
+					url: "https://example.com",
+					style: {
+						backgroundColor: "#111111",
+						textAlign: "center",
+						verticalAlign: "end",
+					},
+				},
+			},
+		]);
+
+		expect(getInsertValues(operations, "profile_text_bento")).toEqual([
+			{
+				bentoId: "text-bento-1",
+				content: "Styled text",
+				url: "https://example.com",
 				style: {
 					backgroundColor: "#111111",
 					textAlign: "center",
@@ -530,6 +575,7 @@ describe("syncProfileBentoGraph", () => {
 					linkMetadata: null,
 					textBentoId: "text-row-1",
 					textContent: "Keep me",
+					textUrl: null,
 					textStyle: null,
 					sectionBentoId: null,
 					sectionTitle: null,
@@ -558,6 +604,76 @@ describe("syncProfileBentoGraph", () => {
 				},
 				content: {
 					content: "Keep me",
+					url: null,
+					style: {
+						backgroundColor: "#ffffff",
+						textAlign: "start",
+						verticalAlign: "start",
+					},
+				},
+			},
+		]);
+	});
+
+	it("reads text urls from bento rows", async () => {
+		expect(
+			buildProfileBentosFromRows([
+				{
+					pageId: "page-1",
+					bentoId: "bento-1",
+					bentoType: "text",
+					desktopLayoutId: "layout-1",
+					desktopLayoutBreakdown: "desktop",
+					desktopLayoutX: 0,
+					desktopLayoutY: 0,
+					desktopLayoutW: 1,
+					desktopLayoutH: 1,
+					compactLayoutId: "layout-2",
+					compactLayoutBreakdown: "compact",
+					compactLayoutX: 0,
+					compactLayoutY: 0,
+					compactLayoutW: 1,
+					compactLayoutH: 1,
+					linkBentoId: null,
+					linkTitle: null,
+					linkDescription: null,
+					linkFavicon: null,
+					linkThumbnail: null,
+					linkUrl: null,
+					linkDomain: null,
+					linkMetadata: null,
+					textBentoId: "text-row-1",
+					textContent: "Keep me",
+					textUrl: "https://example.com",
+					textStyle: null,
+					sectionBentoId: null,
+					sectionTitle: null,
+					mediaBentoId: null,
+					mediaType: null,
+					mediaUrl: null,
+					mediaObjectKey: null,
+					mediaHref: null,
+					mediaAlt: null,
+					mediaCaption: null,
+					mapBentoId: null,
+					mapLatitude: null,
+					mapLongitude: null,
+					mapZoom: null,
+					mapCaption: null,
+					mapUrl: null,
+				},
+			] as never),
+		).toEqual([
+			{
+				id: "text-row-1",
+				type: "text",
+				layout: {
+					desktop: { x: 0, y: 0, w: 1, h: 1 },
+					compact: { x: 0, y: 0, w: 1, h: 1 },
+				},
+				content: {
+					content: "Keep me",
+					url: "https://example.com",
 					style: {
 						backgroundColor: "#ffffff",
 						textAlign: "start",

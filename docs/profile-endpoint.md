@@ -122,6 +122,7 @@ type ProfileResponse = {
   - `content.metadata`
 - `text`
   - `content.content`
+  - `content.url`
 - `section`
   - `content.title`
 - `media`
@@ -152,6 +153,8 @@ type ProfileResponse = {
 - `showSeconds` defaults to `true`.
 - `style` defaults to `{ "backgroundColor": "#ffffff" }`.
 - This table is part of the internal persistence layer. The public API contract only changes when the clock bento is added to the response and save payload shapes.
+- `profile_text_bento` also stores an optional `url` alongside `content` and `style`.
+- `url` is optional in save payloads and is returned as `null` when not set.
 
 ### Error Responses
 
