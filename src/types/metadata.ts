@@ -11,7 +11,11 @@ export type NormalizedMetadata = {
 		| ProviderMetadata
 		| GithubContributionMetadata
 		| ChzzkChannelMetadata
+		| TwitchChannelMetadata
+		| DiscordInviteMetadata
 		| YoutubeChannelMetadata
+		| YoutubeVideoMetadata
+		| SpotifyOEmbedMetadata
 		| null;
 };
 
@@ -31,6 +35,24 @@ export type YoutubeChannelMetadata = ProviderMetadata & {
 	};
 };
 
+export type SpotifyOEmbedMetadata = ProviderMetadata & {
+	provider: "spotify";
+	viewType: "spotify_oembed";
+	payload: {
+		title: string | null;
+		html: string | null;
+		width: number | null;
+		height: number | null;
+		version: string | null;
+		providerName: string | null;
+		providerUrl: string | null;
+		type: string | null;
+		thumbnailUrl: string | null;
+		thumbnailWidth: number | null;
+		thumbnailHeight: number | null;
+	};
+};
+
 export type ChzzkChannelMetadata = ProviderMetadata & {
 	provider: "chzzk";
 	viewType: "chzzk_channel";
@@ -40,6 +62,36 @@ export type ChzzkChannelMetadata = ProviderMetadata & {
 		channelImageUrl: string | null;
 		followerCount: number | null;
 		verifiedMark: boolean | null;
+	};
+};
+
+export type TwitchChannelMetadata = ProviderMetadata & {
+	provider: "twitch";
+	viewType: "twitch_channel";
+	payload: {
+		broadcasterId: string;
+		broadcasterLogin: string;
+		broadcasterName: string | null;
+		displayName: string | null;
+		description: string | null;
+		profileImageUrl: string | null;
+		offlineImageUrl: string | null;
+		followerCount: number | null;
+		viewCount: number | null;
+	};
+};
+
+export type DiscordInviteMetadata = ProviderMetadata & {
+	provider: "discord";
+	viewType: "discord_invite";
+	payload: {
+		code: string;
+		guildId: string | null;
+		guildName: string | null;
+		guildDescription: string | null;
+		iconUrl: string | null;
+		memberCount: number | null;
+		presenceCount: number | null;
 	};
 };
 
@@ -63,6 +115,19 @@ export type GithubContributionMetadata = ProviderMetadata & {
 		rangeEnd: string;
 		totalContributions: number;
 		days: GithubContributionDay[];
+	};
+};
+
+export type YoutubeVideoMetadata = ProviderMetadata & {
+	provider: "youtube";
+	viewType: "youtube_video";
+	payload: {
+		videoId: string;
+		channelId: string | null;
+		channelTitle: string | null;
+		snippet: Record<string, unknown>;
+		statistics: Record<string, unknown>;
+		player: Record<string, unknown>;
 	};
 };
 

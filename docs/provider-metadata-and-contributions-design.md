@@ -137,6 +137,41 @@ YouTube 채널 링크가 들어오면 `/metadata`에서 YouTube Data API v3 `cha
 }
 ```
 
+## Spotify 저장 규칙
+
+Spotify 링크가 들어오면 `/metadata`에서 Spotify oEmbed를 우선 시도한다.
+
+요구사항은 다음과 같다.
+
+- 공식 문서상 `open.spotify.com`과 `spotify.link`의 대부분 페이지가 oEmbed를 지원한다.
+- 서버는 페이지에서 `application/json+oembed` 링크를 찾을 수 있을 때만 oEmbed를 사용한다.
+- oEmbed 링크가 없으면 generic HTML metadata 추출로 fallback한다.
+- oEmbed 응답의 `title`과 `thumbnail_url`을 metadata에 반영한다.
+- `providerMetadata`는 `provider: "spotify"`, `viewType: "spotify_oembed"` envelope로 내려간다.
+
+권장 payload는 아래 정도면 충분하다.
+
+```ts
+{
+  provider: "spotify",
+  viewType: "spotify_oembed",
+  fetchedAt: "2026-05-19T00:00:00.000Z",
+  payload: {
+    title: "My Path to Spotify: Women in Engineering",
+    html: "<iframe src=\"https://open.spotify.com/embed/track/123\"></iframe>",
+    width: 456,
+    height: 152,
+    version: "1.0",
+    providerName: "Spotify",
+    providerUrl: "https://spotify.com",
+    type: "rich",
+    thumbnailUrl: "https://i.scdn.co/image/ab67656300005f1ff8141e891abf749375772343",
+    thumbnailWidth: 300,
+    thumbnailHeight: 300
+  }
+}
+```
+
 ## CHZZK 저장 규칙
 
 CHZZK 채널 링크가 들어오면 `/metadata`에서 URL path를 채널 ID로 분석하고 CHZZK Open API `GET /open/v1/channels`를 호출한다.

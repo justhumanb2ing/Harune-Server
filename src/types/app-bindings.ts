@@ -18,6 +18,8 @@ export interface AppBindings extends Env {
 		CHZZK_CLIENT_ID?: string;
 		CHZZK_CLIENT_SECRET?: string;
 		GITHUB_TOKEN?: string;
+		TWITCH_CLIENT_ID?: string;
+		TWITCH_USER_ACCESS_TOKEN?: string;
 		YOUTUBE_API_KEY?: string;
 		HYPERDRIVE: Hyperdrive;
 		UMAMI_SCRIPT_SRC?: string;

@@ -2,8 +2,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
 	extractYoutubeChannelCandidate,
+	extractYoutubeVideoId,
 	fetchYoutubeMetadata,
+	fetchYoutubeVideoMetadata,
 	isYoutubeChannelUrl,
+	isYoutubeVideoUrl,
 } from "../youtube";
 
 afterEach(() => {
@@ -33,6 +36,22 @@ describe("youtube metadata", () => {
 		expect(
 			isYoutubeChannelUrl(
 				new URL("https://www.youtube.com/watch?v=dQw4w9WgXcQ"),
+			),
+		).toBe(false);
+		expect(
+			isYoutubeVideoUrl(new URL("https://www.youtube.com/watch?v=dQw4w9WgXcQ")),
+		).toBe(true);
+		expect(extractYoutubeVideoId(new URL("https://youtu.be/dQw4w9WgXcQ"))).toBe(
+			"dQw4w9WgXcQ",
+		);
+		expect(
+			extractYoutubeVideoId(
+				new URL("https://www.youtube.com/shorts/dQw4w9WgXcQ"),
+			),
+		).toBe("dQw4w9WgXcQ");
+		expect(
+			isYoutubeVideoUrl(
+				new URL("https://www.youtube.com/@YouTubeCreators/videos"),
 			),
 		).toBe(false);
 	});
@@ -224,6 +243,105 @@ describe("youtube metadata", () => {
 						subscriberCount: 7890,
 						hiddenSubscriberCount: false,
 						videoCount: 42,
+					},
+				},
+			},
+		});
+	});
+
+	it("uses videos.list and player metadata for video URLs", async () => {
+		const now = new Date("2026-05-12T12:00:00.000Z");
+		const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+			new Response(
+				JSON.stringify({
+					items: [
+						{
+							id: "dQw4w9WgXcQ",
+							snippet: {
+								title: "Never Gonna Give You Up",
+								description: "Music video",
+								channelId: "UCuAXFkgsw1L7xaCfnd5JJOw",
+								channelTitle: "Rick Astley",
+								thumbnails: {
+									high: {
+										url: "https://i.ytimg.com/high.jpg",
+									},
+								},
+							},
+							player: {
+								embedHtml:
+									'<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>',
+								embedWidth: 640,
+								embedHeight: 360,
+							},
+							statistics: {
+								viewCount: 123456789,
+								likeCount: 9876543,
+								commentCount: 12345,
+							},
+						},
+					],
+				}),
+				{
+					status: 200,
+					headers: {
+						"content-type": "application/json",
+					},
+				},
+			) as Response,
+		);
+
+		const metadata = await fetchYoutubeVideoMetadata(
+			new URL("https://www.youtube.com/watch?v=dQw4w9WgXcQ"),
+			{
+				apiKey: "youtube-key",
+				now,
+			},
+		);
+
+		expect(fetchSpy).toHaveBeenCalledTimes(1);
+		expect(String(fetchSpy.mock.calls[0]?.[0])).toBe(
+			"https://www.googleapis.com/youtube/v3/videos?part=snippet%2Cplayer%2Cstatistics&id=dQw4w9WgXcQ&key=youtube-key",
+		);
+		expect(metadata).toEqual({
+			url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+			domain: "youtube.com",
+			title: "Never Gonna Give You Up",
+			description: "Music video",
+			image: "https://i.ytimg.com/high.jpg",
+			siteName: "YouTube",
+			favicon:
+				"https://cdn.harune.me/public/assets/link-provider-icon/youtube.svg",
+			provider: "youtube",
+			providerMetadata: {
+				provider: "youtube",
+				viewType: "youtube_video",
+				fetchedAt: "2026-05-12T12:00:00.000Z",
+				payload: {
+					videoId: "dQw4w9WgXcQ",
+					channelId: "UCuAXFkgsw1L7xaCfnd5JJOw",
+					channelTitle: "Rick Astley",
+					snippet: {
+						title: "Never Gonna Give You Up",
+						description: "Music video",
+						channelId: "UCuAXFkgsw1L7xaCfnd5JJOw",
+						channelTitle: "Rick Astley",
+						thumbnails: {
+							high: {
+								url: "https://i.ytimg.com/high.jpg",
+							},
+						},
+					},
+					statistics: {
+						viewCount: 123456789,
+						likeCount: 9876543,
+						commentCount: 12345,
+					},
+					player: {
+						embedHtml:
+							'<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>',
+						embedWidth: 640,
+						embedHeight: 360,
 					},
 				},
 			},

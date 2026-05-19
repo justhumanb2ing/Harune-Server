@@ -161,6 +161,62 @@
                       }
                     }
                   },
+                  "twitchChannel": {
+                    "summary": "Twitch channel with follower count",
+                    "value": {
+                      "url": "https://www.twitch.tv/twitchdev",
+                      "domain": "twitch.tv",
+                      "title": "TwitchDev",
+                      "description": "Followers 1,234,567",
+                      "image": "https://static-cdn.jtvnw.net/jtv_user_pictures/profile_image.png",
+                      "siteName": "Twitch",
+                      "favicon": "https://cdn.harune.me/public/assets/link-provider-icon/twitch.svg",
+                      "provider": "twitch",
+                      "providerMetadata": {
+                        "provider": "twitch",
+                        "viewType": "twitch_channel",
+                        "fetchedAt": "2026-05-19T00:00:00.000Z",
+                        "payload": {
+                          "broadcasterId": "141981764",
+                          "broadcasterLogin": "twitchdev",
+                          "broadcasterName": "TwitchDev",
+                          "displayName": "TwitchDev",
+                          "description": "Supporting third-party developers.",
+                          "profileImageUrl": "https://static-cdn.jtvnw.net/jtv_user_pictures/profile_image.png",
+                          "offlineImageUrl": "https://static-cdn.jtvnw.net/jtv_user_pictures/offline_image.png",
+                          "followerCount": 1234567,
+                          "viewCount": 5980557
+                        }
+                      }
+                    }
+                  },
+                  "discordInvite": {
+                    "summary": "Discord invite metadata with approximate member count",
+                    "value": {
+                      "url": "https://discord.gg/abc123",
+                      "domain": "discord.gg",
+                      "title": "Harune Community",
+                      "description": "Members 12,345",
+                      "image": "https://cdn.discordapp.com/icons/123456789012345678/guild_icon.png?size=256",
+                      "siteName": "Discord",
+                      "favicon": "https://cdn.harune.me/public/assets/link-provider-icon/discord.svg",
+                      "provider": "discord",
+                      "providerMetadata": {
+                        "provider": "discord",
+                        "viewType": "discord_invite",
+                        "fetchedAt": "2026-05-19T00:00:00.000Z",
+                        "payload": {
+                          "code": "abc123",
+                          "guildId": "123456789012345678",
+                          "guildName": "Harune Community",
+                          "guildDescription": "A friendly place",
+                          "iconUrl": "https://cdn.discordapp.com/icons/123456789012345678/guild_icon.png?size=256",
+                          "memberCount": 12345,
+                          "presenceCount": 321
+                        }
+                      }
+                    }
+                  },
                   "youtubeChannel": {
                     "summary": "YouTube channel metadata from channels.list",
                     "value": {
@@ -187,6 +243,74 @@
                             "hiddenSubscriberCount": false,
                             "videoCount": 42
                           }
+                        }
+                      }
+                    }
+                  },
+                  "youtubeVideo": {
+                    "summary": "YouTube video metadata from videos.list",
+                    "value": {
+                      "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                      "domain": "youtube.com",
+                      "title": "Never Gonna Give You Up",
+                      "description": "Music video",
+                      "image": "https://i.ytimg.com/high.jpg",
+                      "siteName": "YouTube",
+                      "favicon": "https://cdn.harune.me/public/assets/link-provider-icon/youtube.svg",
+                      "provider": "youtube",
+                      "providerMetadata": {
+                        "provider": "youtube",
+                        "viewType": "youtube_video",
+                        "fetchedAt": "2026-05-12T00:00:00.000Z",
+                        "payload": {
+                          "videoId": "dQw4w9WgXcQ",
+                          "channelId": "UCuAXFkgsw1L7xaCfnd5JJOw",
+                          "channelTitle": "Rick Astley",
+                          "snippet": {
+                            "title": "Never Gonna Give You Up",
+                            "description": "Music video"
+                          },
+                          "statistics": {
+                            "viewCount": 123456789,
+                            "likeCount": 9876543,
+                            "commentCount": 12345
+                          },
+                          "player": {
+                            "embedHtml": "<iframe src=\"https://www.youtube.com/embed/dQw4w9WgXcQ\"></iframe>",
+                            "embedWidth": 640,
+                            "embedHeight": 360
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "spotifyOembed": {
+                    "summary": "Spotify page metadata from oEmbed",
+                    "value": {
+                      "url": "https://open.spotify.com/track/123",
+                      "domain": "open.spotify.com",
+                      "title": "My Path to Spotify: Women in Engineering",
+                      "description": null,
+                      "image": "https://i.scdn.co/image/ab67656300005f1ff8141e891abf749375772343",
+                      "siteName": "Spotify",
+                      "favicon": "https://cdn.harune.me/public/assets/link-provider-icon/spotify.svg",
+                      "provider": "spotify",
+                      "providerMetadata": {
+                        "provider": "spotify",
+                        "viewType": "spotify_oembed",
+                        "fetchedAt": "2026-05-19T00:00:00.000Z",
+                        "payload": {
+                          "title": "My Path to Spotify: Women in Engineering",
+                          "html": "<iframe src=\"https://open.spotify.com/embed/track/123\"></iframe>",
+                          "width": 456,
+                          "height": 152,
+                          "version": "1.0",
+                          "providerName": "Spotify",
+                          "providerUrl": "https://spotify.com",
+                          "type": "rich",
+                          "thumbnailUrl": "https://i.scdn.co/image/ab67656300005f1ff8141e891abf749375772343",
+                          "thumbnailWidth": 300,
+                          "thumbnailHeight": 300
                         }
                       }
                     }
@@ -447,7 +571,7 @@
             }
           }
         },
-        "description": "Returns metadata extracted from the target URL.\n\nRules:\n- `domain` is the normalized hostname from the resolved URL with common prefixes like `www.` removed\n- Supported provider URLs return the canonical R2 favicon URL instead of a fetched page favicon\n- GitHub profile URLs also include a provider metadata payload with the recent 60-day contribution calendar\n- GitHub enrichment requires `GITHUB_TOKEN`\n- YouTube channel URLs also include a provider metadata payload from `channels.list` and the server tries `id`, `forHandle`, and `forUsername` until one returns a channel\n- YouTube responses narrow `providerMetadata` to `provider: \"youtube\"`, `viewType: \"youtube_channel\"`, and a payload containing `snippet` and `statistics`\n- YouTube enrichment requires `YOUTUBE_API_KEY`\n- Non-provider URLs keep the generic metadata response and leave provider fields null",
+        "description": "Returns metadata extracted from the target URL.\n\nRules:\n- `domain` is the normalized hostname from the resolved URL with common prefixes like `www.` removed\n- Supported provider URLs return the canonical R2 favicon URL instead of a fetched page favicon\n- GitHub profile URLs also include a provider metadata payload with the recent 60-day contribution calendar\n- GitHub enrichment requires `GITHUB_TOKEN`\n- Twitch channel URLs also include a provider metadata payload from Helix `users` plus `channels/followers` and return the channel's follower count when `TWITCH_CLIENT_ID` and `TWITCH_USER_ACCESS_TOKEN` are configured\n- Twitch responses narrow `providerMetadata` to `provider: \"twitch\"`, `viewType: \"twitch_channel\"`, and a payload containing broadcaster info plus `followerCount`\n- Discord invite URLs also include a provider metadata payload from `invites/{code}?with_counts=true` and return the guild member count\n- Discord responses narrow `providerMetadata` to `provider: \"discord\"`, `viewType: \"discord_invite\"`, and a payload containing invite, guild, and count fields\n- YouTube channel URLs also include a provider metadata payload from `channels.list` and the server tries `id`, `forHandle`, and `forUsername` until one returns a channel\n- YouTube responses narrow `providerMetadata` to `provider: \"youtube\"`, `viewType: \"youtube_channel\"`, and a payload containing `snippet` and `statistics`\n- YouTube video URLs also include a provider metadata payload from `videos.list` and the server uses `player.embedHtml` with the fetched video snippet and statistics\n- YouTube video responses narrow `providerMetadata` to `provider: \"youtube\"`, `viewType: \"youtube_video\"`, and a payload containing `snippet`, `player`, and `statistics`\n- YouTube enrichment requires `YOUTUBE_API_KEY`\n- Spotify URLs on `open.spotify.com` and `spotify.link` are treated as oEmbed candidates; the server only uses Spotify oEmbed when the page exposes an `application/json+oembed` link, and otherwise falls back to generic HTML metadata extraction\n- Spotify oEmbed responses narrow `providerMetadata` to `provider: \"spotify\"`, `viewType: \"spotify_oembed\"`, and a payload containing the oEmbed title, embed HTML, size, provider, and thumbnail fields\n- Non-provider URLs keep the generic metadata response and leave provider fields null",
         "tags": [
           "Metadata API"
         ],

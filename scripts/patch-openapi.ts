@@ -137,6 +137,69 @@ metadataGet.responses["200"] = {
 						},
 					},
 				},
+				twitchChannel: {
+					summary: "Twitch channel with follower count",
+					value: {
+						url: "https://www.twitch.tv/twitchdev",
+						domain: "twitch.tv",
+						title: "TwitchDev",
+						description: "Followers 1,234,567",
+						image:
+							"https://static-cdn.jtvnw.net/jtv_user_pictures/profile_image.png",
+						siteName: "Twitch",
+						favicon:
+							"https://cdn.harune.me/public/assets/link-provider-icon/twitch.svg",
+						provider: "twitch",
+						providerMetadata: {
+							provider: "twitch",
+							viewType: "twitch_channel",
+							fetchedAt: "2026-05-19T00:00:00.000Z",
+							payload: {
+								broadcasterId: "141981764",
+								broadcasterLogin: "twitchdev",
+								broadcasterName: "TwitchDev",
+								displayName: "TwitchDev",
+								description: "Supporting third-party developers.",
+								profileImageUrl:
+									"https://static-cdn.jtvnw.net/jtv_user_pictures/profile_image.png",
+								offlineImageUrl:
+									"https://static-cdn.jtvnw.net/jtv_user_pictures/offline_image.png",
+								followerCount: 1234567,
+								viewCount: 5980557,
+							},
+						},
+					},
+				},
+				discordInvite: {
+					summary: "Discord invite metadata with approximate member count",
+					value: {
+						url: "https://discord.gg/abc123",
+						domain: "discord.gg",
+						title: "Harune Community",
+						description: "Members 12,345",
+						image:
+							"https://cdn.discordapp.com/icons/123456789012345678/guild_icon.png?size=256",
+						siteName: "Discord",
+						favicon:
+							"https://cdn.harune.me/public/assets/link-provider-icon/discord.svg",
+						provider: "discord",
+						providerMetadata: {
+							provider: "discord",
+							viewType: "discord_invite",
+							fetchedAt: "2026-05-19T00:00:00.000Z",
+							payload: {
+								code: "abc123",
+								guildId: "123456789012345678",
+								guildName: "Harune Community",
+								guildDescription: "A friendly place",
+								iconUrl:
+									"https://cdn.discordapp.com/icons/123456789012345678/guild_icon.png?size=256",
+								memberCount: 12345,
+								presenceCount: 321,
+							},
+						},
+					},
+				},
 				youtubeChannel: {
 					summary: "YouTube channel metadata from channels.list",
 					value: {
@@ -164,6 +227,79 @@ metadataGet.responses["200"] = {
 									hiddenSubscriberCount: false,
 									videoCount: 42,
 								},
+							},
+						},
+					},
+				},
+				youtubeVideo: {
+					summary: "YouTube video metadata from videos.list",
+					value: {
+						url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+						domain: "youtube.com",
+						title: "Never Gonna Give You Up",
+						description: "Music video",
+						image: "https://i.ytimg.com/high.jpg",
+						siteName: "YouTube",
+						favicon:
+							"https://cdn.harune.me/public/assets/link-provider-icon/youtube.svg",
+						provider: "youtube",
+						providerMetadata: {
+							provider: "youtube",
+							viewType: "youtube_video",
+							fetchedAt: "2026-05-12T00:00:00.000Z",
+							payload: {
+								videoId: "dQw4w9WgXcQ",
+								channelId: "UCuAXFkgsw1L7xaCfnd5JJOw",
+								channelTitle: "Rick Astley",
+								snippet: {
+									title: "Never Gonna Give You Up",
+									description: "Music video",
+								},
+								statistics: {
+									viewCount: 123456789,
+									likeCount: 9876543,
+									commentCount: 12345,
+								},
+								player: {
+									embedHtml:
+										'<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>',
+									embedWidth: 640,
+									embedHeight: 360,
+								},
+							},
+						},
+					},
+				},
+				spotifyOembed: {
+					summary: "Spotify page metadata from oEmbed",
+					value: {
+						url: "https://open.spotify.com/track/123",
+						domain: "open.spotify.com",
+						title: "My Path to Spotify: Women in Engineering",
+						description: null,
+						image:
+							"https://i.scdn.co/image/ab67656300005f1ff8141e891abf749375772343",
+						siteName: "Spotify",
+						favicon:
+							"https://cdn.harune.me/public/assets/link-provider-icon/spotify.svg",
+						provider: "spotify",
+						providerMetadata: {
+							provider: "spotify",
+							viewType: "spotify_oembed",
+							fetchedAt: "2026-05-19T00:00:00.000Z",
+							payload: {
+								title: "My Path to Spotify: Women in Engineering",
+								html: '<iframe src="https://open.spotify.com/embed/track/123"></iframe>',
+								width: 456,
+								height: 152,
+								version: "1.0",
+								providerName: "Spotify",
+								providerUrl: "https://spotify.com",
+								type: "rich",
+								thumbnailUrl:
+									"https://i.scdn.co/image/ab67656300005f1ff8141e891abf749375772343",
+								thumbnailWidth: 300,
+								thumbnailHeight: 300,
 							},
 						},
 					},

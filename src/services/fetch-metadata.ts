@@ -25,6 +25,8 @@ export async function fetchMetadata(
 					chzzkClientId: c.env.CHZZK_CLIENT_ID ?? null,
 					chzzkClientSecret: c.env.CHZZK_CLIENT_SECRET ?? null,
 					githubToken: c.env.GITHUB_TOKEN ?? null,
+					twitchClientId: c.env.TWITCH_CLIENT_ID ?? null,
+					twitchUserAccessToken: c.env.TWITCH_USER_ACCESS_TOKEN ?? null,
 					youtubeApiKey: c.env.YOUTUBE_API_KEY ?? null,
 				}),
 			cacheStore,

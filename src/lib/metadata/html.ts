@@ -252,7 +252,7 @@ function parseIconSizes(rawSizes: string): Array<[number, number]> {
 	return parsed;
 }
 
-function parseAttributes(tag: string): Record<string, string> {
+export function parseAttributes(tag: string): Record<string, string> {
 	const attributes: Record<string, string> = {};
 	const attributePattern =
 		/([a-zA-Z_:][-a-zA-Z0-9_:.]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/g;

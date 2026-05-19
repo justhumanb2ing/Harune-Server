@@ -3,18 +3,27 @@ import { HTTPException } from "hono/http-exception";
 import type {
 	NormalizedMetadata,
 	YoutubeChannelMetadata,
+	YoutubeVideoMetadata,
 } from "../../types/metadata";
 import { deriveDomainFromUrl } from "./domain";
 import { fetchHeadHtml } from "./head-html";
 import { pickBestFavicon } from "./html";
 import { resolveProviderFaviconUrl } from "./provider-icon";
 
+const YOUTUBE_API_VIDEOS_ENDPOINT =
+	"https://www.googleapis.com/youtube/v3/videos";
 const YOUTUBE_API_ENDPOINT = "https://www.googleapis.com/youtube/v3/channels";
 const YOUTUBE_FAVICON = "https://www.youtube.com/favicon.ico";
 const YOUTUBE_CHANNEL_HOSTS = new Set([
 	"youtube.com",
 	"www.youtube.com",
 	"m.youtube.com",
+]);
+const YOUTUBE_VIDEO_HOSTS = new Set([
+	"youtube.com",
+	"www.youtube.com",
+	"m.youtube.com",
+	"youtu.be",
 ]);
 const YOUTUBE_NON_CHANNEL_PATHS = new Set([
 	"about",
@@ -31,6 +40,7 @@ const YOUTUBE_NON_CHANNEL_PATHS = new Set([
 	"watch",
 	"videos",
 ]);
+const YOUTUBE_VIDEO_PATHS = new Set(["embed", "live", "shorts", "v", "watch"]);
 
 type YoutubeChannelsListResponse = {
 	items?: Array<{
@@ -42,6 +52,10 @@ type YoutubeChannelsListResponse = {
 
 export function isYoutubeChannelUrl(url: URL): boolean {
 	return extractYoutubeChannelCandidate(url) !== null;
+}
+
+export function isYoutubeVideoUrl(url: URL): boolean {
+	return extractYoutubeVideoId(url) !== null;
 }
 
 type YoutubeChannelCandidate = {
@@ -83,6 +97,40 @@ export function extractYoutubeChannelCandidate(
 
 	if (YOUTUBE_NON_CHANNEL_PATHS.has(firstSegment.toLowerCase())) {
 		return null;
+	}
+
+	return null;
+}
+
+export function extractYoutubeVideoId(url: URL): string | null {
+	if (!YOUTUBE_VIDEO_HOSTS.has(url.hostname.toLowerCase())) {
+		return null;
+	}
+
+	if (url.hostname.toLowerCase() === "youtu.be") {
+		const videoId = url.pathname.split("/").filter(Boolean)[0]?.trim();
+		return videoId ? videoId : null;
+	}
+
+	const segments = url.pathname.split("/").filter(Boolean);
+	const firstSegment = segments[0]?.trim();
+	const secondSegment = segments[1]?.trim();
+
+	if (!firstSegment) {
+		return null;
+	}
+
+	if (firstSegment.startsWith("@")) {
+		return null;
+	}
+
+	if (firstSegment === "watch") {
+		const videoId = url.searchParams.get("v")?.trim();
+		return videoId ? videoId : null;
+	}
+
+	if (YOUTUBE_VIDEO_PATHS.has(firstSegment.toLowerCase())) {
+		return secondSegment ? secondSegment : null;
 	}
 
 	return null;
@@ -261,4 +309,101 @@ function pickBestYoutubeThumbnailUrl(
 	}
 
 	return null;
+}
+
+export async function fetchYoutubeVideoMetadata(
+	inputUrl: URL,
+	options: {
+		apiKey?: string | null;
+		now?: Date;
+	},
+): Promise<NormalizedMetadata> {
+	const videoId = extractYoutubeVideoId(inputUrl);
+
+	if (!videoId) {
+		throw new HTTPException(400, {
+			message: "url is not a YouTube video URL",
+			cause: { error: "invalid_url" },
+		});
+	}
+
+	if (!options.apiKey) {
+		throw new HTTPException(502, {
+			message: "youtube metadata requires YOUTUBE_API_KEY",
+			cause: { error: "fetch_failed" },
+		});
+	}
+
+	const requestUrl = new URL(YOUTUBE_API_VIDEOS_ENDPOINT);
+	requestUrl.searchParams.set("part", "snippet,player,statistics");
+	requestUrl.searchParams.set("id", videoId);
+	requestUrl.searchParams.set("key", options.apiKey);
+
+	const response = await fetch(requestUrl, {
+		headers: {
+			accept: "application/json",
+			"user-agent": "Harune API",
+		},
+	});
+
+	if (!response.ok) {
+		throw new HTTPException(response.status === 404 ? 404 : 502, {
+			message: "failed to fetch youtube video metadata",
+			cause: {
+				error: response.status === 404 ? "not_found" : "fetch_failed",
+				status: response.status,
+			},
+		});
+	}
+
+	const body = (await response.json()) as {
+		items?: Array<{
+			id?: string;
+			snippet?: Record<string, unknown>;
+			player?: Record<string, unknown>;
+			statistics?: Record<string, unknown>;
+		}>;
+	};
+	const video = body.items?.[0];
+
+	if (!video?.id) {
+		throw new HTTPException(404, {
+			message: "youtube video not found",
+			cause: { error: "not_found" },
+		});
+	}
+
+	const snippet = video.snippet ?? {};
+	const player = video.player ?? {};
+	const statistics = video.statistics ?? {};
+	const title = getString(snippet, "title");
+	const description = getString(snippet, "description");
+	const image = pickBestYoutubeThumbnailUrl(snippet);
+	const canonicalUrl = `https://www.youtube.com/watch?v=${video.id}`;
+	const fetchedAt = (options.now ?? new Date()).toISOString();
+	const providerMetadata: YoutubeVideoMetadata = {
+		provider: "youtube",
+		viewType: "youtube_video",
+		fetchedAt,
+		payload: {
+			videoId: video.id,
+			channelId: getString(snippet, "channelId"),
+			channelTitle: getString(snippet, "channelTitle"),
+			snippet,
+			statistics,
+			player,
+		},
+	};
+
+	return {
+		url: canonicalUrl,
+		domain: deriveDomainFromUrl(canonicalUrl),
+		title,
+		description,
+		image,
+		siteName: "YouTube",
+		favicon: resolveProviderFaviconUrl(canonicalUrl) ?? YOUTUBE_FAVICON,
+		provider: "youtube",
+		providerMetadata,
+	};
 }

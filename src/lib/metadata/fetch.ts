@@ -1,10 +1,18 @@
 import { HTTPException } from "hono/http-exception";
 import type { NormalizedMetadata } from "../../types/metadata";
 import { fetchChzzkMetadata, isChzzkChannelUrl } from "./chzzk";
+import { fetchDiscordMetadata, isDiscordInviteUrl } from "./discord";
 import { fetchGithubMetadata, isGithubProfileUrl } from "./github";
 import { fetchHeadHtml } from "./head-html";
 import { extractMetadata } from "./html";
-import { fetchYoutubeMetadata, isYoutubeChannelUrl } from "./youtube";
+import { fetchSpotifyMetadata, isSpotifyUrl } from "./spotify";
+import { fetchTwitchMetadata, isTwitchChannelUrl } from "./twitch";
+import {
+	fetchYoutubeMetadata,
+	fetchYoutubeVideoMetadata,
+	isYoutubeChannelUrl,
+	isYoutubeVideoUrl,
+} from "./youtube";
 
 const MAX_HTML_BYTES = 1_500_000;
 const USER_AGENT =
@@ -16,6 +24,8 @@ export async function fetchMetadata(
 		chzzkClientId?: string | null;
 		chzzkClientSecret?: string | null;
 		githubToken?: string | null;
+		twitchClientId?: string | null;
+		twitchUserAccessToken?: string | null;
 		youtubeApiKey?: string | null;
 	},
 ): Promise<NormalizedMetadata> {
@@ -32,11 +42,32 @@ export async function fetchMetadata(
 		});
 	}
 
+	if (isTwitchChannelUrl(initialUrl)) {
+		return fetchTwitchMetadata(initialUrl, {
+			clientId: options?.twitchClientId ?? null,
+			accessToken: options?.twitchUserAccessToken ?? null,
+		});
+	}
+
+	if (isDiscordInviteUrl(initialUrl)) {
+		return fetchDiscordMetadata(initialUrl);
+	}
+
+	if (isYoutubeVideoUrl(initialUrl)) {
+		return fetchYoutubeVideoMetadata(initialUrl, {
+			apiKey: options?.youtubeApiKey ?? null,
+		});
+	}
+
 	if (isYoutubeChannelUrl(initialUrl)) {
 		return fetchYoutubeMetadata(initialUrl, {
 			apiKey: options?.youtubeApiKey ?? null,
 			page: () => fetchHeadHtml(initialUrl),
 		});
+	}
+
+	if (isSpotifyUrl(initialUrl)) {
+		return fetchSpotifyMetadata(initialUrl);
 	}
 
 	const page = await fetchHeadHtml(initialUrl);
