@@ -11,11 +11,6 @@ export type DatabaseClient = {
 	close: () => Promise<void>;
 };
 
-let sharedClient: {
-	connectionString: string;
-	client: DatabaseClient;
-} | null = null;
-
 export function createDatabaseClient(connectionString: string): DatabaseClient {
 	const pool = new Pool({
 		connectionString,
@@ -37,31 +32,8 @@ export function createDB(c: Context<AppBindings>): Database {
 		return cachedDB;
 	}
 
-	const client = getSharedDatabaseClient(c.env.HYPERDRIVE.connectionString);
+	const client = createDatabaseClient(c.env.HYPERDRIVE.connectionString);
 	c.set("db", client.db);
 
 	return client.db;
-}
-
-function getSharedDatabaseClient(connectionString: string): DatabaseClient {
-	if (sharedClient && sharedClient.connectionString === connectionString) {
-		return sharedClient.client;
-	}
-
-	const client = createDatabaseClient(connectionString);
-	sharedClient = {
-		connectionString,
-		client,
-	};
-	return client;
-}
-
-export async function resetSharedDatabaseClientForTests() {
-	if (!sharedClient) {
-		return;
-	}
-
-	const { client } = sharedClient;
-	sharedClient = null;
-	await client.close();
 }
