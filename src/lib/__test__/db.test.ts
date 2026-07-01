@@ -1,64 +1,86 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 let drizzleCalls = 0;
 let poolCalls = 0;
 
 vi.mock("drizzle-orm/node-postgres", () => ({
-  drizzle: () => {
-    drizzleCalls += 1;
-    return { tag: "db" };
-  },
+	drizzle: () => {
+		drizzleCalls += 1;
+		return { tag: "db" };
+	},
 }));
 
 vi.mock("pg", () => ({
-  Pool: class PoolMock {
-    constructor() {
-      poolCalls += 1;
-    }
-  },
+	Pool: class PoolMock {
+		constructor() {
+			poolCalls += 1;
+		}
+
+		end() {
+			return Promise.resolve();
+		}
+	},
 }));
 
 function createContext(connectionString: string) {
-  const store = new Map<string, unknown>();
+	const store = new Map<string, unknown>();
 
-  return {
-    env: {
-      HYPERDRIVE: {
-        connectionString,
-      },
-    },
-    get(key: string) {
-      return store.get(key);
-    },
-    set(key: string, value: unknown) {
-      store.set(key, value);
-    },
-  } as never;
+	return {
+		env: {
+			HYPERDRIVE: {
+				connectionString,
+			},
+		},
+		get(key: string) {
+			return store.get(key);
+		},
+		set(key: string, value: unknown) {
+			store.set(key, value);
+		},
+	} as never;
 }
 
 describe("createDB", () => {
-  it("reuses the same database instance within a request", async () => {
-    const { createDB } = await import("../db");
+	afterEach(async () => {
+		const { resetSharedDatabaseClientForTests } = await import("../db");
+		await resetSharedDatabaseClientForTests();
+	});
 
-    const context = createContext("postgres://example/db");
-    const first = createDB(context);
-    const second = createDB(context);
+	it("reuses the same database instance within a request", async () => {
+		const { createDB } = await import("../db");
 
-    expect(first).toBe(second);
-    expect(poolCalls).toBe(1);
-    expect(drizzleCalls).toBe(1);
-  });
+		const context = createContext("postgres://example/db");
+		const first = createDB(context);
+		const second = createDB(context);
 
-  it("creates a fresh Pool for each request context", async () => {
-    const { createDB } = await import("../db");
+		expect(first).toBe(second);
+		expect(poolCalls).toBe(1);
+		expect(drizzleCalls).toBe(1);
+	});
 
-    const initialPoolCalls = poolCalls;
-    const initialDrizzleCalls = drizzleCalls;
+	it("reuses the same Pool across request contexts", async () => {
+		const { createDB } = await import("../db");
 
-    createDB(createContext("postgres://example/db"));
-    createDB(createContext("postgres://example/db"));
+		const initialPoolCalls = poolCalls;
+		const initialDrizzleCalls = drizzleCalls;
 
-    expect(poolCalls - initialPoolCalls).toBe(2);
-    expect(drizzleCalls - initialDrizzleCalls).toBe(2);
-  });
+		createDB(createContext("postgres://example/db"));
+		createDB(createContext("postgres://example/db"));
+
+		expect(poolCalls - initialPoolCalls).toBe(1);
+		expect(drizzleCalls - initialDrizzleCalls).toBe(1);
+	});
+
+	it("rebuilds the shared client when the connection string changes", async () => {
+		const { createDB } = await import("../db");
+
+		const initialPoolCalls = poolCalls;
+		const initialDrizzleCalls = drizzleCalls;
+
+		createDB(createContext("postgres://example/db"));
+		createDB(createContext("postgres://example/other-db"));
+
+		expect(poolCalls - initialPoolCalls).toBe(2);
+		expect(drizzleCalls - initialDrizzleCalls).toBe(2);
+	});
 });
