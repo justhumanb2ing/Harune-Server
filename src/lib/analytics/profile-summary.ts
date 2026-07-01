@@ -33,7 +33,7 @@ export const getProfileAnalyticsResponse = async (options: {
 		endAt: todayWindow.endAt,
 		path: buildProfilePageAnalyticsPath(options.profilePageId),
 		startAt: todayWindow.startAt,
-	});
+	}).catch(() => ({ visitors: 0 }));
 
 	return { visitors: stats.visitors };
 };

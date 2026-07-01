@@ -1579,7 +1579,7 @@
             }
           },
           "500": {
-            "description": "Failed to load analytics.",
+            "description": "Unexpected internal failure while loading analytics.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1623,7 +1623,7 @@
             }
           }
         },
-        "description": "Returns today's unique visitors for the authenticated owner's current profile page. The server normalizes timezone input, reads ownership from the authenticated session, and returns no-store headers on success. If the user has no profile page or analytics is disabled, the response still returns `0` visitors.",
+        "description": "Returns today's unique visitors for the authenticated owner's current profile page. The server normalizes timezone input, reads ownership from the authenticated session, and returns no-store headers on success. If the user has no profile page, analytics is disabled, or the reporting provider is unavailable, the response still returns `0` visitors.",
         "tags": [
           "Me API"
         ],
