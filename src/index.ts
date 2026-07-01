@@ -2,6 +2,7 @@ import type { ScheduledController } from "@cloudflare/workers-types";
 
 import honoFactory from "./hono-factory";
 import { notFound } from "./lib/api-response";
+import { getAuth } from "./lib/auth";
 import { createDatabaseClient } from "./lib/db";
 import { handleHonoError } from "./lib/error-utils";
 import { corsMiddleware } from "./middlewares/cors-middlewares";
@@ -27,7 +28,7 @@ const app = honoFactory
 	.notFound((c) => notFound(c, "not_found", "route not found"))
 	.route("/auth/delete-user/callback", deleteUserCallbackRoute)
 	.on(["POST", "GET"], "/auth/*", (c) => {
-		const auth = c.get("auth");
+		const auth = getAuth(c);
 		return auth.handler(c.req.raw);
 	})
 	.route("/", defaultRoute)
