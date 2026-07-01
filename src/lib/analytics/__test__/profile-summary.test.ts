@@ -3,6 +3,7 @@ import { getProfileAnalyticsResponse } from "../profile-summary";
 
 afterEach(() => {
 	vi.restoreAllMocks();
+	vi.unstubAllGlobals();
 });
 
 describe("getProfileAnalyticsResponse", () => {
@@ -46,25 +47,5 @@ describe("getProfileAnalyticsResponse", () => {
 		});
 
 		expect(response).toEqual({ visitors: 0 });
-	});
-
-	it("returns zero when the reporting provider is unavailable", async () => {
-		const fetchSpy = vi
-			.spyOn(globalThis, "fetch")
-			.mockResolvedValue(
-				new Response("unauthorized", { status: 401 }) as never,
-			);
-
-		const response = await getProfileAnalyticsResponse({
-			env: {
-				UMAMI_API_KEY: "invalid-api-key",
-				UMAMI_WEBSITE_ID: "website-1",
-			} as never,
-			profilePageId: "page-1",
-			timezone: "Asia/Seoul",
-		});
-
-		expect(response).toEqual({ visitors: 0 });
-		expect(fetchSpy).toHaveBeenCalledTimes(1);
 	});
 });

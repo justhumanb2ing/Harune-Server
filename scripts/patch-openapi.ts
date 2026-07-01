@@ -1388,7 +1388,7 @@ const analyticsTodayVisitorsExample = {
 
 meAnalyticsGet.summary = "Get today's visitors for the current user";
 meAnalyticsGet.description =
-	"Returns today's unique visitors for the authenticated owner's current profile page. The server normalizes timezone input, reads ownership from the authenticated session, and returns no-store headers on success. If the user has no profile page, analytics is disabled, or the reporting provider is unavailable, the response still returns `0` visitors.";
+	"Returns today's unique visitors for the authenticated owner's current profile page. The server normalizes timezone input, reads ownership from the authenticated session, and returns no-store headers on success. If the user has no profile page or analytics is disabled, the response still returns `0` visitors.";
 meAnalyticsGet.operationId = "getMeAnalytics";
 meAnalyticsGet.tags = ["Me API"];
 meAnalyticsGet.responses = {
@@ -1439,7 +1439,7 @@ meAnalyticsGet.responses = {
 		},
 	},
 	500: {
-		description: "Unexpected internal failure while loading analytics.",
+		description: "Failed to load analytics.",
 		content: {
 			"application/json": {
 				schema: {
