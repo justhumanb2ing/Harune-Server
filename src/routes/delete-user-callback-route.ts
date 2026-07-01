@@ -2,7 +2,6 @@ import { Hono } from "hono";
 
 import { getAllowedOrigins } from "../config/origins";
 import { badRequest, notFound } from "../lib/api-response";
-import { getAuth } from "../lib/auth";
 import type { AppBindings } from "../types/app-bindings";
 
 function getFallbackRedirectURL(c: { env?: AppBindings["Bindings"] }) {
@@ -44,7 +43,7 @@ export function createDeleteUserCallbackRoute() {
 			return badRequest(c, "validation_error", "token is required");
 		}
 
-		const auth = getAuth(c);
+		const auth = c.get("auth");
 		const authContext = await auth.$context;
 		const verification =
 			await authContext.internalAdapter.findVerificationValue(

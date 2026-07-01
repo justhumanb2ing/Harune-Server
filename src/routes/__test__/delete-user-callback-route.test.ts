@@ -53,13 +53,12 @@ describe("delete user callback route", () => {
 		} = createTestApp({
 			findVerificationValue: vi.fn(async () => ({
 				value: "user-1",
-				expiresAt: new Date("2026-08-16T00:00:00.000Z"),
+				expiresAt: new Date("2026-05-16T00:00:00.000Z"),
 			})),
 		});
 
 		const response = await app.request(
 			"/auth/delete-user/callback?token=token-123&callbackURL=https%3A%2F%2Fharune.me%2Fsign-in",
-			{ redirect: "manual" },
 		);
 
 		expect(response.status).toBe(302);

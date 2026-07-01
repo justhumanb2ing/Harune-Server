@@ -232,14 +232,3 @@ export const createAuth = (c: Context<AppBindings>) => {
 		],
 	});
 };
-
-export function getAuth(c: Context<AppBindings>) {
-	const cachedAuth = c.get("auth") as ReturnType<typeof createAuth> | undefined;
-	if (cachedAuth) {
-		return cachedAuth;
-	}
-
-	const auth = createAuth(c);
-	c.set("auth", auth);
-	return auth;
-}
